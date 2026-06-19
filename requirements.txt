@@ -2,5 +2,7 @@ datasets
 huggingface_hub
 Jupyter
 llm-codegen-research
+pytorch
 radon
 tqdm
+unsloth
