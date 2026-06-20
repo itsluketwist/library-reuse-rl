@@ -1,0 +1,11 @@
+# model registry - base models we start from, plus any models trained from them.
+# "path" is blank for base models, and filled in (by register_model) once a model
+# has actually been trained - see src/utils/config.py and src/run_train.py
+
+qwen2-7b:
+  base: "Qwen/Qwen2.5-Coder-7B-Instruct"
+  path:
+
+qwen3-8b:
+  base: "Qwen/Qwen3-8B"
+  path:

@@ -1,0 +1,5 @@
+# eval dataset config - nice names mapped to their dataset file paths
+
+livecodebench: "data/eval/livecodebench.jsonl"
+apps_introductory: "data/eval/apps_introductory.jsonl"
+skywork_val: "data/skywork/val.jsonl"
