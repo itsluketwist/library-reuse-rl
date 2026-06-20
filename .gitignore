@@ -171,7 +171,8 @@ cython_debug/
 todo.txt
 output/archive
 data/raw
-data/train
+data/skywork
+logs/*
 
 # temporary ignore
 output/*

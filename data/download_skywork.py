@@ -8,10 +8,10 @@ freedom over its own code structure and imports, so they're excluded.
 
 Unlike the evaluation datasets in data/download_eval.py, this dataset is too large
 to commit to the repo (~700MB after filtering), so the outputs are written to
-data/train/, which is gitignored - this script must be re-run to regenerate
+data/skywork/, which is gitignored - this script must be re-run to regenerate
 them locally or on a server.
 
-Usage: python data/download_train.py
+Usage: python data/download_skywork.py
 """
 
 import json
@@ -25,7 +25,7 @@ from llm_cgr import load_jsonl, save_jsonl
 
 
 # split outputs are written here - gitignored, since the dataset is too large to commit
-OUTPUT_DIR = Path(__file__).parent / "train"
+OUTPUT_DIR = Path(__file__).parent / "skywork"
 
 # commit hash pinned for reproducibility
 REVISIONS = {
