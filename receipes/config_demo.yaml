@@ -1,0 +1,81 @@
+# Model arguments
+model_name_or_path: Qwen/Qwen2.5-Coder-7B-Instruct
+model_revision: main
+torch_dtype: bfloat16
+attn_implementation: sdpa  # sdpa, flash_attention_2
+
+# Data training arguments
+dataset_name: "./recipes/acecode_hard_with_inference_all_1.jsonl" # local file or dataset from Hugging face
+dataset_prompt_column: question # change it based on the dataset
+system_prompt: "You are a helpful AI Assistant that provides well-reasoned and detailed responses. You first think about the reasoning process as an internal monologue and then provide the user with the answer. Respond in the following format: <think>\n...\n</think>\n<answer>\n...\n</answer>"
+
+
+# GRPO trainer config
+sync_ref_model: True
+ref_model_sync_steps: 64
+beta: 0.01
+bf16: true
+use_vllm: false
+do_eval: false
+num_generations: 8
+num_iterations: 2
+per_device_eval_batch_size: 1
+per_device_train_batch_size: 16
+gradient_accumulation_steps: 2
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+
+
+# gradient_accumulation_steps: 4
+# gradient_checkpointing: true
+# gradient_checkpointing_kwargs:
+#   use_reentrant: false
+# hub_model_id: Qwen2.5-Coder-7B-Instruct
+# hub_strategy: every_save
+# push_to_hub: false
+
+learning_rate: 1.0e-06
+adam_beta1: 0.9
+adam_beta2: 0.99
+weight_decay: 0.1
+max_grad_norm: 0.2
+log_completions: true
+log_level: info
+logging_first_step: true
+logging_steps: 10
+logging_strategy: steps
+lr_scheduler_type: cosine_with_min_lr
+lr_scheduler_kwargs:
+  min_lr_rate: 0.1
+# max_steps: 500
+
+
+num_train_epochs: 1
+output_dir: "./experiment_result/" 
+overwrite_output_dir: true
+e2b_router_url: 0.0.0.0:8001
+
+
+
+## generation config
+max_prompt_length: 1024
+max_completion_length: 2048
+random_masking: True
+generation_batch_size: 10
+generation_temperature: 1.0
+
+
+
+report_to:
+- wandb
+reward_funcs:
+- code_similarity_checking_reward
+reward_weights:
+- 1.0
+save_strategy: "steps"
+save_steps: 100
+save_total_limit: 1
+seed: 42
+temperature: 1.0
+warmup_ratio: 0.0001
