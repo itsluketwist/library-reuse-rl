@@ -30,5 +30,5 @@ dev = [
 ]
 
 [project.scripts]
-train = "src.cli_train:main"
+run_grpo = "src.run_grpo:main"
 eval = "src.cli_eval:main"

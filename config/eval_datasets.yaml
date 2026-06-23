@@ -2,4 +2,4 @@
 
 livecodebench: "data/eval/livecodebench.jsonl"
 apps_introductory: "data/eval/apps_introductory.jsonl"
-skywork_val: "data/skywork/val.jsonl"
+skywork_test: "data/skywork/test.jsonl"

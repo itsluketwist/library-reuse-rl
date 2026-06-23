@@ -12,29 +12,79 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""The GRPO training loop, wired to this project's reward and dataset format."""
+
 import logging
 import os
 import sys
+from pathlib import Path
 
 import datasets
-from datasets import load_dataset
 import transformers
-from transformers import set_seed
+from transformers import TrainerCallback, set_seed
+from transformers.trainer_callback import TrainerControl, TrainerState
 from transformers.trainer_utils import get_last_checkpoint
-
-from configs import GRPOConfig, GRPOScriptArguments
-from rewards import get_reward_funcs
-from utils import get_dataset, get_model, get_tokenizer
-from utils.callbacks import get_callbacks
-from utils.wandb_logging import init_wandb_training
+from transformers.training_args import TrainingArguments
 from trl import GRPOTrainer, ModelConfig, TrlParser, get_peft_config
+
+from src.data import load_train_dataset
+from src.response.reward import RewardBit
+from src.utils.config import load_full_yaml
+
+from .model_utils import GRPOConfig, get_model, get_tokenizer
+from .rewards import make_library_reuse_reward
+from .wandb_logging import init_wandb_training
 
 
 logger = logging.getLogger(__name__)
 
 
-def main(script_args, training_args, model_args):
-    # Set seed for reproducibility
+class SaveTrainerStateCallback(TrainerCallback):
+    """
+    Periodically overwrites output_dir/trainer_state.json with the training history so
+    far, on the same cadence as checkpointing (`save_steps`) - so if a run crashes, the
+    metric history up to the last save isn't lost along with it.
+    """
+
+    def on_step_end(
+        self,
+        args: TrainingArguments,
+        state: TrainerState,
+        control: TrainerControl,
+        **kwargs,
+    ) -> None:
+        if state.is_world_process_zero and state.global_step % args.save_steps == 0:
+            state.save_to_json(os.path.join(args.output_dir, "trainer_state.json"))
+
+
+def train_model_with_grpo(
+    model_name_or_path: str,
+    dataset_dir: str | Path,
+    output_dir: str | Path,
+    reward_bits: RewardBit,
+    seed: int,
+    recipe_config: str = "config/train/demo.yaml",
+) -> None:
+    """
+    Run GRPO training for `model_name_or_path` against the skywork-format dataset at
+    `dataset_dir` (see src/data.py::load_train_dataset), saving the trained model to
+    `output_dir`.
+
+    `seed` overrides the corresponding field parsed from `recipe_config`, so that -
+    along with the model, dataset, and output path - it's resolved once by the caller
+    (src/run_grpo.py) rather than duplicated in the recipe file. Every other training
+    hyperparameter, including `system_prompt` (used to build the dataset's prompts)
+    and the decoding settings used during rollout generation (temperature/top_p/top_k),
+    comes straight from `recipe_config`.
+    """
+    training_args, model_args = TrlParser((GRPOConfig, ModelConfig)).parse_dict(
+        load_full_yaml(recipe_config)
+    )
+
+    model_args.model_name_or_path = model_name_or_path
+    training_args.output_dir = str(output_dir)
+    training_args.seed = seed
+
     set_seed(training_args.seed)
 
     ###############
@@ -58,7 +108,6 @@ def main(script_args, training_args, model_args):
         + f" distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}"
     )
     logger.info(f"Model parameters {model_args}")
-    logger.info(f"Script parameters {script_args}")
     logger.info(f"Training parameters {training_args}")
 
     # Check for last checkpoint
@@ -71,15 +120,13 @@ def main(script_args, training_args, model_args):
     if "wandb" in training_args.report_to:
         init_wandb_training(training_args)
 
-    # Load the dataset
-        # Load the dataset
-    if os.path.isfile(script_args.dataset_name):
-        # If dataset_name is a local file path, load it using data_files
-        dataset = load_dataset("json", data_files=script_args.dataset_name)
-    else:
-        # If dataset_name is an online dataset, load it using the original method
-        dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
-    # dataset = get_dataset(script_args)
+    ###############
+    # Load dataset
+    ###############
+    dataset = load_train_dataset(
+        dataset_dir=dataset_dir,
+        system_prompt=training_args.system_prompt,
+    )
 
     ################
     # Load tokenizer
@@ -92,40 +139,21 @@ def main(script_args, training_args, model_args):
     logger.info("*** Loading model ***")
     model = get_model(model_args, training_args)
 
-    # Get reward functions from the registry
-    reward_funcs = get_reward_funcs(script_args)
-
-    # Format into conversation
-    def make_conversation(example, prompt_column: str = script_args.dataset_prompt_column):
-        prompt = []
-
-        if training_args.system_prompt is not None:
-            prompt.append({"role": "system", "content": training_args.system_prompt})
-
-        if prompt_column not in example:
-            raise ValueError(f"Dataset Question Field Error: {prompt_column} is not supported.")
-
-        prompt.append({"role": "user", "content": example[prompt_column]})
-        return {"prompt": prompt}
-
-    dataset = dataset.map(make_conversation)
-
-    for split in dataset:
-        if "messages" in dataset[split].column_names:
-            dataset[split] = dataset[split].remove_columns("messages")
+    # Get the reward function, configured with this run's reward_bits
+    reward_func = make_library_reuse_reward(reward_bits)
 
     #############################
     # Initialize the GRPO trainer
     #############################
     trainer = GRPOTrainer(
         model=model,
-        reward_funcs=reward_funcs,
+        reward_funcs=[reward_func],
         args=training_args,
-        train_dataset=dataset[script_args.dataset_train_split],
-        eval_dataset=(dataset[script_args.dataset_test_split] if training_args.eval_strategy != "no" else None),
+        train_dataset=dataset["train"],
+        eval_dataset=dataset["val"] if training_args.eval_strategy != "no" else None,
         peft_config=get_peft_config(model_args),
-        callbacks=get_callbacks(training_args, model_args),
         processing_class=tokenizer,
+        callbacks=[SaveTrainerStateCallback()],
     )
 
     ###############
@@ -139,7 +167,7 @@ def main(script_args, training_args, model_args):
         checkpoint = last_checkpoint
     train_result = trainer.train(resume_from_checkpoint=checkpoint)
     metrics = train_result.metrics
-    metrics["train_samples"] = len(dataset[script_args.dataset_train_split])
+    metrics["train_samples"] = len(dataset["train"])
     trainer.log_metrics("train", metrics)
     trainer.save_metrics("train", metrics)
     trainer.save_state()
@@ -155,10 +183,7 @@ def main(script_args, training_args, model_args):
     logger.info(f"Model saved to {training_args.output_dir}")
 
     # Save everything else on main process
-    kwargs = {
-        "dataset_name": script_args.dataset_name,
-        "tags": ["open-r1"],
-    }
+    kwargs = {"tags": ["library-reuse-rl"]}
     if trainer.accelerator.is_main_process:
         trainer.create_model_card(**kwargs)
         # Restore k,v cache for fast inference
@@ -171,7 +196,7 @@ def main(script_args, training_args, model_args):
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
         metrics = trainer.evaluate()
-        metrics["eval_samples"] = len(dataset[script_args.dataset_test_split])
+        metrics["eval_samples"] = len(dataset["val"])
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
 
@@ -181,9 +206,3 @@ def main(script_args, training_args, model_args):
     if training_args.push_to_hub:
         logger.info("Pushing to hub...")
         trainer.push_to_hub(**kwargs)
-
-
-if __name__ == "__main__":
-    parser = TrlParser((GRPOScriptArguments, GRPOConfig, ModelConfig))
-    script_args, training_args, model_args = parser.parse_args_and_config()
-    main(script_args, training_args, model_args)

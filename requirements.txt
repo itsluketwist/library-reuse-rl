@@ -6,4 +6,5 @@ pyyaml
 radon
 torch
 tqdm
+trl
 unsloth

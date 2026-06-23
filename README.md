@@ -49,12 +49,12 @@ pip install -e .
 
 ## *usage*
 
-After [*installation*](#installation), training and evaluation are run via the `train` and
-`eval` console scripts (installed by `pip install -e .`, see
-[`src/cli_train.py`](src/cli_train.py) and [`src/cli_eval.py`](src/cli_eval.py)):
+After [*installation*](#installation), training and evaluation are run via the `run_grpo`
+and `eval` console scripts (installed by `pip install -e .`, see
+[`src/run_grpo.py`](src/run_grpo.py) and [`src/cli_eval.py`](src/cli_eval.py)):
 
 ```shell
-train -m qwen3-8b -d data/skywork
+run_grpo -m qwen3-8b -d data/skywork
 
 eval -m qwen3-8b
 ```
@@ -63,8 +63,8 @@ Run either with `--help` to see all options (base/decoding/reward configuration,
 datasets to evaluate against, etc).
 
 On a slurm cluster, use the submission scripts in [`scripts/`](scripts/) instead - edit the
-configuration block at the top of each, then run e.g. `bash scripts/submit_train.sh`. This
-also takes care of automatically queuing an `eval` job once `train` finishes.
+configuration block at the top of each, then run e.g. `bash scripts/submit_grpo.sh`. This
+also takes care of automatically queuing an `eval` job once `run_grpo` finishes.
 
 ## *structure*
 
@@ -78,14 +78,17 @@ also takes care of automatically queuing an `eval` job once `train` finishes.
 - [`notebooks/`](notebooks/) - One-off, numbered notebooks for exploratory work that doesn't
   belong in `src/`.
 - [`output/`](output/) - Trained model outputs, named and registered automatically by `train`
-  (see `trained_model_path` in [`src/run_train.py`](src/run_train.py)). Gitignored.
+  (see `trained_model_path` in [`src/run_grpo.py`](src/run_grpo.py)). Gitignored.
 - [`scripts/`](scripts/) - Bash scripts for running jobs on a slurm cluster
-  (`setup_job.sh`, `submit_train.sh`, `submit_eval.sh`).
+  (`setup_job.sh`, `submit_grpo.sh`, `submit_eval.sh`).
 - [`setup/`](setup/) - Defines the isolated venv used to sandbox LLM-generated code during
   evaluation, kept separate from the project's own venv so we control exactly which
   libraries generated code can import (`setup_eval_venv.sh`, `requirements/`).
 - [`src/`](src/) - The main project code:
-  - `cli_train.py` / `run_train.py` - the RL training entry point and loop.
+  - `run_grpo.py` - the RL training entry point: CLI parsing, dataset loading, output
+    naming, and model registration.
+  - `grpo/` - the GRPO training loop itself (model/tokenizer loading, reward function,
+    trainer setup).
   - `cli_eval.py` / `run_eval.py` - the evaluation entry point and loop.
   - `response/` - parses an LLM response into candidate code, sandboxes and runs it
     against a record's test cases, and computes a reward from the outcome.

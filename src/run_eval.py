@@ -19,7 +19,7 @@ def run(
     `model` is a key from `model_config` (see config/models.yaml), which holds both
     base models (with a blank "path") and trained models (registered by register_model
     in src/utils/config.py once training produces one) - this is what lets the
-    post-training eval job (queued by scripts/submit_train.sh) point at the model a
+    post-training eval job (queued by scripts/submit_grpo.sh) point at the model a
     training run just produced, by name, the same way it points at a base model.
 
     `datasets` is a list of nice names looked up in `eval_datasets_config` (see

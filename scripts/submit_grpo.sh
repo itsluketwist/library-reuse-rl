@@ -28,8 +28,9 @@ training_datasets=(
     # "data/skywork"
 )
 
-# decoding profile used to generate responses during rl training (from config/decoding.yaml)
-decoding_profile="random"
+# grpo training recipe - hyperparameters, including the decoding settings used to
+# generate responses during rollout (see config/train/demo.yaml)
+recipe_config="config/train/demo.yaml"
 
 # random seed for training
 seed=42
@@ -55,7 +56,7 @@ eval_decoding_profile="greedy"
 #                            submit jobs                                      #
 ###############################################################################
 
-# join the enabled reward bit names into the comma-separated form `train` expects
+# join the enabled reward bit names into the comma-separated form `run_grpo` expects
 reward_bits_joined=$(IFS=,; echo "${reward_bits[*]}")
 reward_bits_flag="--reward-bits $reward_bits_joined"
 
@@ -67,7 +68,7 @@ fi
 
 echo
 echo "Training ${#models[@]} models x ${#training_datasets[@]} datasets"
-echo "  Decoding profile: $decoding_profile"
+echo "  Recipe: $recipe_config"
 echo "  Seed: $seed"
 echo "  Reward bits: ${reward_bits_joined:-none}"
 echo "  Post-training eval datasets: ${eval_datasets:-all} [$eval_decoding_profile]"
@@ -81,21 +82,21 @@ for model in "${models[@]}"; do
 
         # call the actual trained_model_path function (rather than reimplementing its
         # naming convention here in bash) so this can never drift out of sync with
-        # src/run_train.py - this also means the venv must be active before running
+        # src/run_grpo.py - this also means the venv must be active before running
         # this script, since it needs `python` and the `src` package on the path
         trained_model_path=$(python -c "
 from src.response.reward import parse_reward_bits
-from src.run_train import trained_model_path
+from src.run_grpo import trained_model_path
 print(trained_model_path(
     model='$model',
     dataset='$training_dataset',
-    decoding_profile='$decoding_profile',
+    recipe_config='$recipe_config',
     reward_bits=parse_reward_bits('$reward_bits_joined'),
     seed=$seed,
 ))
 ")
 
-        echo "  Submitting: $dataset_name [$decoding_profile]"
+        echo "  Submitting: $dataset_name [$recipe_config]"
 
         # submit train job and capture the job id so eval can depend on it
         train_job_id=$(sbatch --parsable <<EOF
@@ -110,10 +111,10 @@ print(trained_model_path(
 
 source ./scripts/setup_job.sh
 
-train \
+run_grpo \
     -m $model \
     -d $training_dataset \
-    --decoding-profile $decoding_profile \
+    --recipe-config $recipe_config \
     -s $seed \
     $reward_bits_flag
 
