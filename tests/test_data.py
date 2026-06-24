@@ -107,6 +107,54 @@ class TestLoadTrainDataset:
             {"role": "user", "content": "solve this"},
         ]
 
+    def test_truncates_train_and_val_splits(self, tmp_path: Path):
+        """train_n/val_n cap each split to that many rows."""
+        _write_jsonl(
+            tmp_path / "train.jsonl",
+            [
+                _make_skywork_record(f"train prompt {i}", ["1\n"], ["1\n"])
+                for i in range(5)
+            ],
+        )
+        _write_jsonl(
+            tmp_path / "val.jsonl",
+            [
+                _make_skywork_record(f"val prompt {i}", ["1\n"], ["1\n"])
+                for i in range(5)
+            ],
+        )
+
+        dataset = load_train_dataset(
+            tmp_path,
+            system_prompt=None,
+            train_n=2,
+            val_n=3,
+        )
+
+        assert len(dataset["train"]) == 2
+        assert len(dataset["val"]) == 3
+
+    def test_train_n_larger_than_split_keeps_full_split(self, tmp_path: Path):
+        """A truncation larger than the split doesn't error, and keeps every row."""
+        _write_jsonl(
+            tmp_path / "train.jsonl",
+            [_make_skywork_record("train prompt", ["1\n"], ["1\n"])],
+        )
+        _write_jsonl(
+            tmp_path / "val.jsonl",
+            [_make_skywork_record("val prompt", ["1\n"], ["1\n"])],
+        )
+
+        dataset = load_train_dataset(
+            tmp_path,
+            system_prompt=None,
+            train_n=10,
+            val_n=10,
+        )
+
+        assert len(dataset["train"]) == 1
+        assert len(dataset["val"]) == 1
+
 
 class TestLoadEvalDataset:
     """Tests for load_eval_dataset."""

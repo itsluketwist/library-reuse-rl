@@ -9,3 +9,9 @@ qwen2-7b:
 qwen3-8b:
   base: "Qwen/Qwen3-8B"
   path:
+
+# tiny model used by run_grpo's --debug flag, to quickly smoke-test that the training
+# code runs correctly without waiting on a full-size model
+qwen3-debug:
+  base: "Qwen/Qwen3-0.6B"
+  path:

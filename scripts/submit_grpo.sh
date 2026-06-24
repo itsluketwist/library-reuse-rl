@@ -35,6 +35,13 @@ recipe_config="config/train/demo.yaml"
 # random seed for training
 seed=42
 
+# set true to run a tiny smoke test instead of full training - truncates the dataset
+# to a handful of samples, to quickly check the training code runs correctly
+# end-to-end (see the --debug flag in src/run_grpo.py) before submitting a real job.
+# the model trained is still whichever one is in `models` below - set that to
+# "qwen3-debug" too if you also want a tiny, fast-to-load model
+debug=false
+
 # reward components switched on for this run (see RewardBit in src/grpo/rewards.py)
 # comment out a line to switch that component off
 reward_bits=(
@@ -64,6 +71,12 @@ reward_bits_flag="--reward-bits $reward_bits_joined"
 eval_datasets_flag=""
 if [ -n "$eval_datasets" ]; then
     eval_datasets_flag="-d $eval_datasets"
+fi
+
+# build debug flag string
+debug_flag=""
+if [ "$debug" = true ]; then
+    debug_flag="--debug"
 fi
 
 echo
@@ -116,7 +129,8 @@ run_grpo \
     -d $training_dataset \
     --recipe-config $recipe_config \
     -s $seed \
-    $reward_bits_flag
+    $reward_bits_flag \
+    $debug_flag
 
 echo "RL training complete for model: $model, dataset: $dataset_name"
 EOF

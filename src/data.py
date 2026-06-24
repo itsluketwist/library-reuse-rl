@@ -46,6 +46,8 @@ def _make_conversation(
 def load_train_dataset(
     dataset_dir: str | Path,
     system_prompt: str | None,
+    train_n: int | None = None,
+    val_n: int | None = None,
 ) -> DatasetDict:
     """Load the skywork-format train/val splits from `dataset_dir` and build chat prompts.
 
@@ -53,11 +55,15 @@ def load_train_dataset(
     by data/download_skywork.py: {prompt, ground_truth: {inputs, outputs}, data_source,
     source}.
 
+    `train_n`/`val_n` truncate the train/val splits to at most that many rows (e.g. for
+    a quick debug smoke test) - leave as None to use the full split.
+
     Returns a DatasetDict with "train" and "val" splits, each with the raw "prompt"
     column replaced by a chat-messages list, and "inputs"/"expected_outputs" columns
     added for the reward function to evaluate against.
     """
     dataset_dir = Path(dataset_dir)
+    split_n = {"train": train_n, "val": val_n}
     splits = {}
     for split in ("train", "val"):
         split_file = dataset_dir / f"{split}.jsonl"
@@ -65,6 +71,12 @@ def load_train_dataset(
         split_dataset = datasets.load_dataset("json", data_files=str(split_file))[
             "train"
         ]
+
+        n = split_n[split]
+        if n is not None:
+            split_dataset = split_dataset.select(range(min(n, len(split_dataset))))
+            logger.info(f"Truncated {split} split to {len(split_dataset)} rows")
+
         splits[split] = split_dataset
 
     dataset = DatasetDict(splits)

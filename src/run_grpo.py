@@ -13,6 +13,10 @@ from src.utils.log import log, log_header
 # default, matching the convention used in data/download_skywork.py
 DEFAULT_SEED = 42
 
+# model key (see config/models.yaml) used by --debug, to smoke-test the training code
+# with a tiny, fast-to-load model instead of a full-size one
+DEBUG_MODEL_KEY = "qwen3-debug"
+
 
 # create the main argument parser
 parser = ArgumentParser()
@@ -21,8 +25,8 @@ parser.add_argument(
     "-m",
     "--model",
     type=str,
-    required=True,
-    help="Model key from models.yaml.",
+    default=None,
+    help="Model key from models.yaml. Not required if --debug is set.",
 )
 
 parser.add_argument(
@@ -69,6 +73,16 @@ parser.add_argument(
     help="Path to the GRPO training hyperparameters recipe file.",
 )
 
+parser.add_argument(
+    "--debug",
+    action="store_true",
+    help=(
+        f"Run a tiny smoke test: defaults the model to '{DEBUG_MODEL_KEY}' (see "
+        "config/models.yaml) if --model isn't given, and truncates the dataset to a "
+        "handful of samples, to quickly check the training code runs end-to-end."
+    ),
+)
+
 
 def trained_model_path(
     model: str,
@@ -98,12 +112,13 @@ def trained_model_path(
 
 
 def run(
-    model: str,
+    model: str | None,
     dataset: str,
     model_config: str = "config/models.yaml",
     reward_bits: RewardBit = ALL_REWARD_BITS,
     seed: int = DEFAULT_SEED,
     recipe_config: str = "config/train/demo.yaml",
+    debug: bool = False,
 ) -> None:
     """
     Run GRPO RL training for the given model and dataset.
@@ -111,6 +126,12 @@ def run(
     `dataset` is a directory containing train/val/test.jsonl files (e.g. data/skywork)
     - training runs against its train.jsonl, and uses val.jsonl for periodic
     evaluation if the recipe at `recipe_config` switches that on.
+
+    If `debug` is set, src/grpo/train_model.py::train_model_with_grpo truncates the
+    dataset to a handful of samples - useful to quickly check the training code runs
+    end-to-end. `model` defaults to `DEBUG_MODEL_KEY` in that case, but an explicit
+    `model` is still respected, so a bigger model can be smoke-tested too. Without
+    `debug`, `model` is required.
 
     Resolves the model, then runs GRPO training (see
     src/grpo/train_model.py::train_model_with_grpo, which loads the dataset itself -
@@ -120,12 +141,18 @@ def run(
     finishes, registers the trained model in `model_config` under that output path's
     name, so eval can look it up by name just like a base model.
     """
+    if model is None:
+        if not debug:
+            raise ValueError("--model is required unless --debug is set.")
+        model = DEBUG_MODEL_KEY
+
     model_settings = load_yaml_config(config_file=model_config, key=model)
     log(f"Model path: {model_settings['base']}")
     log(f"Dataset: {dataset}")
     log(f"Reward bits: {RewardBit(reward_bits)!r}")
     log(f"Seed: {seed}")
     log(f"Recipe: {recipe_config}")
+    log(f"Debug: {debug}")
 
     output_path = trained_model_path(
         model=model,
@@ -143,6 +170,7 @@ def run(
         reward_bits=reward_bits,
         seed=seed,
         recipe_config=recipe_config,
+        debug=debug,
     )
 
     register_model(
@@ -164,6 +192,7 @@ def main() -> None:
     log(f"Recipe: {args.recipe_config}")
     log(f"Reward bits: {RewardBit(args.reward_bits)!r}")
     log(f"Seed: {args.seed}")
+    log(f"Debug: {args.debug}")
     log()
 
     run(
@@ -173,6 +202,7 @@ def main() -> None:
         reward_bits=args.reward_bits,
         seed=args.seed,
         recipe_config=args.recipe_config,
+        debug=args.debug,
     )
 
     # --- summary ---

@@ -37,6 +37,13 @@ from .wandb_logging import init_wandb_training
 
 logger = logging.getLogger(__name__)
 
+# sample counts used by --debug mode (src/run_grpo.py) - just enough to fill a train
+# batch and give eval a couple of rows (see config/train/demo.yaml), small enough to
+# finish in seconds. GRPOTrainer still takes a real optimizer step on a partial/short
+# epoch like this - transformers' Trainer flushes any accumulated gradients at epoch end.
+DEBUG_TRAIN_SAMPLES = 16
+DEBUG_VAL_SAMPLES = 4
+
 
 class SaveTrainerStateCallback(TrainerCallback):
     """
@@ -63,6 +70,7 @@ def train_model_with_grpo(
     reward_bits: RewardBit,
     seed: int,
     recipe_config: str = "config/train/demo.yaml",
+    debug: bool = False,
 ) -> None:
     """
     Run GRPO training for `model_name_or_path` against the skywork-format dataset at
@@ -75,6 +83,9 @@ def train_model_with_grpo(
     hyperparameter, including `system_prompt` (used to build the dataset's prompts)
     and the decoding settings used during rollout generation (temperature/top_p/top_k),
     comes straight from `recipe_config`.
+
+    If `debug` is set, the train/val splits are truncated to DEBUG_TRAIN_SAMPLES /
+    DEBUG_VAL_SAMPLES rows, to quickly smoke-test that training runs end-to-end.
     """
     training_args, model_args = TrlParser((GRPOConfig, ModelConfig)).parse_dict(
         load_full_yaml(recipe_config)
@@ -125,6 +136,8 @@ def train_model_with_grpo(
     dataset = load_train_dataset(
         dataset_dir=dataset_dir,
         system_prompt=training_args.system_prompt,
+        train_n=DEBUG_TRAIN_SAMPLES if debug else None,
+        val_n=DEBUG_VAL_SAMPLES if debug else None,
     )
 
     ################
