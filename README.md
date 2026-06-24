@@ -21,8 +21,8 @@ optionally reward library imports/usage on top of plain correctness (see
 
 ## *installation*
 
-The code requires Python 3.11 to run.
-Ensure you have it installed with the command below, otherwise download and install it from
+The project was built using Python 3.11, any other version does not guarantee reproducibility of the experiments.
+Check if you have it installed with the command below, otherwise download and install it from
 [here](https://www.python.org/downloads/).
 
 ```shell
@@ -35,7 +35,22 @@ Now clone the repository code:
 git clone https://github.com/itsluketwist/library-reuse-rl
 ```
 
-Once cloned, install the requirements locally in a virtual environment:
+If on a compatible HPC, you can load the exact modules used:
+
+```shell
+module load python/3.11.6-gcc-13.2.0
+module load cudnn/8.7.0.84-11.8-gcc-13.2.0
+module load cuda/12.2.1-gcc-13.2.0
+```
+
+Configure pip to use the correct PyTorch index before installing:
+
+```shell
+mkdir -p ~/.config/pip
+echo -e "[global]\nextra-index-url = https://download.pytorch.org/whl/cu121" > ~/.config/pip/pip.conf
+```
+
+Now create a virtual environment and install the requirements:
 
 ```shell
 python3.11 -m venv .venv
@@ -45,6 +60,12 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 pip install -e .
+```
+
+Create the isolated venv used to run llm-generated code during evaluation.
+
+```shell
+bash setup/setup_eval_venv.sh v1
 ```
 
 ## *usage*
@@ -98,8 +119,6 @@ also takes care of automatically queuing an `eval` job once `run_grpo` finishes.
 ## *development*
 
 ```shell
-pip install -e ".[dev]"
-
 # run tests
 pytest tests/
 
@@ -107,11 +126,7 @@ pytest tests/
 pre-commit run --all-files
 
 # update dependency lockfiles
-uv pip compile requirements.txt --output-file requirements.frozen --upgrade
-
-# create the isolated venv used to run llm-generated code during evaluation, with a
-# controlled set of libraries - see setup/requirements/ for the available versions
-bash setup/setup_eval_venv.sh v1
+uv pip compile requirements.in --output-file requirements.txt --upgrade
 ```
 
 ## *paper*

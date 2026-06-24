@@ -1,0 +1,10 @@
+--extra-index-url https://download.pytorch.org/whl/cu121
+datasets
+huggingface_hub
+Jupyter
+llm-codegen-research
+pyyaml
+radon
+torch
+tqdm
+trl
