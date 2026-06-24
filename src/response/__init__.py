@@ -1,4 +1,4 @@
-"""Response processing: parsing, sandboxed evaluation, and reward computation."""
+"""Response processing: parsing and sandboxed evaluation."""
 
 from src.response.evaluate import evaluate_record, execute_code, resolve_eval_python
 from src.response.parser import (
@@ -9,24 +9,12 @@ from src.response.parser import (
     strip_reasoning,
 )
 from src.response.pipeline import ProcessedResponse, process_response
-from src.response.reward import (
-    ALL_REWARD_BITS,
-    REWARD_WEIGHTS,
-    RewardBit,
-    compute_reward,
-    compute_reward_bits,
-)
 
 
 __all__ = [
-    "ALL_REWARD_BITS",
-    "REWARD_WEIGHTS",
     "ParsedResponse",
     "ProcessedResponse",
-    "RewardBit",
     "code_metrics",
-    "compute_reward",
-    "compute_reward_bits",
     "evaluate_record",
     "execute_code",
     "parse_response",

@@ -28,11 +28,10 @@ from transformers.training_args import TrainingArguments
 from trl import GRPOTrainer, ModelConfig, TrlParser, get_peft_config
 
 from src.data import load_train_dataset
-from src.response.reward import RewardBit
 from src.utils.config import load_full_yaml
 
 from .model_utils import GRPOConfig, get_model, get_tokenizer
-from .rewards import make_library_reuse_reward
+from .rewards import RewardBit, make_library_reuse_reward
 from .wandb_logging import init_wandb_training
 
 

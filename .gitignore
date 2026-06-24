@@ -176,3 +176,4 @@ logs/*
 
 # temporary ignore
 output/*
+CLAUDE.md

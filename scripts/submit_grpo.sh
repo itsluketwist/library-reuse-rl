@@ -35,7 +35,7 @@ recipe_config="config/train/demo.yaml"
 # random seed for training
 seed=42
 
-# reward components switched on for this run (see RewardBit in src/response/reward.py)
+# reward components switched on for this run (see RewardBit in src/grpo/rewards.py)
 # comment out a line to switch that component off
 reward_bits=(
     "CORRECT_FORMAT"
@@ -85,7 +85,7 @@ for model in "${models[@]}"; do
         # src/run_grpo.py - this also means the venv must be active before running
         # this script, since it needs `python` and the `src` package on the path
         trained_model_path=$(python -c "
-from src.response.reward import parse_reward_bits
+from src.grpo.rewards import parse_reward_bits
 from src.run_grpo import trained_model_path
 print(trained_model_path(
     model='$model',

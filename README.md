@@ -17,16 +17,16 @@ Research code studying whether reinforcement learning can teach LLMs to reuse ex
 libraries when writing code, instead of reimplementing functionality from scratch. Models
 are trained and evaluated on stdin/stdout coding problems, with a reward function that can
 optionally reward library imports/usage on top of plain correctness (see
-[`src/response/reward.py`](src/response/reward.py)).
+[`src/grpo/rewards.py`](src/grpo/rewards.py)).
 
 ## *installation*
 
-The code requires Python 3.12 to run.
+The code requires Python 3.11 to run.
 Ensure you have it installed with the command below, otherwise download and install it from
 [here](https://www.python.org/downloads/).
 
 ```shell
-python3.12 --version
+python3.11 --version
 ```
 
 Now clone the repository code:
@@ -38,7 +38,7 @@ git clone https://github.com/itsluketwist/library-reuse-rl
 Once cloned, install the requirements locally in a virtual environment:
 
 ```shell
-python3.12 -m venv .venv
+python3.11 -m venv .venv
 
 source .venv/bin/activate
 

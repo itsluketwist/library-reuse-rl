@@ -31,7 +31,7 @@ fi
 # rather than layering new packages on top of whatever was already installed
 rm -rf .venv-eval
 
-uv venv .venv-eval --python 3.12
+uv venv .venv-eval --python 3.11
 uv pip install --python .venv-eval -r "$REQUIREMENTS_FILE"
 
 # pin the requirements file to the exact versions that were just installed, so it

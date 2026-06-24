@@ -3,8 +3,8 @@
 from argparse import ArgumentParser
 from pathlib import Path
 
+from src.grpo.rewards import ALL_REWARD_BITS, RewardBit, parse_reward_bits
 from src.grpo.train_model import train_model_with_grpo
-from src.response.reward import ALL_REWARD_BITS, RewardBit, parse_reward_bits
 from src.utils.config import load_yaml_config, register_model
 from src.utils.log import log, log_header
 
@@ -48,7 +48,7 @@ parser.add_argument(
     default=ALL_REWARD_BITS,
     help=(
         "Comma-separated RewardBit names selecting which reward components are "
-        "switched on (see RewardBit in src/response/reward.py). Defaults to every "
+        "switched on (see RewardBit in src/grpo/rewards.py). Defaults to every "
         "component switched on. Available bits: "
         + ", ".join(bit.name for bit in RewardBit if bit.name is not None)
     ),
@@ -115,7 +115,7 @@ def run(
     Resolves the model, then runs GRPO training (see
     src/grpo/train_model.py::train_model_with_grpo, which loads the dataset itself -
     see src/data.py::load_train_dataset) with `reward_bits` (see RewardBit in
-    src/response/reward.py) selecting which reward components count, and saves the
+    src/grpo/rewards.py) selecting which reward components count, and saves the
     trained output under the path returned by `trained_model_path`. Once training
     finishes, registers the trained model in `model_config` under that output path's
     name, so eval can look it up by name just like a base model.

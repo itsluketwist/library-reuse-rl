@@ -18,7 +18,7 @@ echo "Available memory: $(free -h | awk '/^Mem:/ {print $7}')"
 echo
 
 echo "Loading modules..."
-module load python/3.12-gcc-13.2.0
+module load python/3.11-gcc-13.2.0
 module load cudnn/8.7.0.84-11.8-gcc-13.2.0
 module load cuda/12.2.1-gcc-13.2.0
 echo "Modules loaded:"

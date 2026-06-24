@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         # only check the version that was used for project development
-        python-version: ["3.12"]
+        python-version: ["3.11"]
 
     steps:
       - name: 1. Checkout the code...
