@@ -18,14 +18,13 @@ CPU_MEMORY="96G"                 # cpu memory allocation
 
 # the base models to train (see config/models.yaml)
 models=(
-    # "qwen2-7b"
     # "qwen3-8b"
 )
 
 # training dataset directories (each containing train/val/test.jsonl) — one set of
 # jobs is submitted per directory
 training_datasets=(
-    # "data/skywork"
+    "data/skywork"
 )
 
 # grpo training recipe - hyperparameters, including the decoding settings used to
@@ -38,8 +37,9 @@ seed=42
 # set true to run a tiny smoke test instead of full training - truncates the dataset
 # to a handful of samples, to quickly check the training code runs correctly
 # end-to-end (see the --debug flag in src/run_grpo.py) before submitting a real job.
-# the model trained is still whichever one is in `models` below - set that to
-# "qwen3-debug" too if you also want a tiny, fast-to-load model
+# if `models` below is left empty, debug runs default to the tiny "qwen3-debug" model
+# (see DEBUG_MODEL_KEY in src/run_grpo.py) - set an explicit model there to smoke-test
+# a bigger one instead
 debug=false
 
 # reward components switched on for this run (see RewardBit in src/grpo/rewards.py)
@@ -77,6 +77,23 @@ fi
 debug_flag=""
 if [ "$debug" = true ]; then
     debug_flag="--debug"
+fi
+
+# default to the tiny debug model if smoke-testing and no model was set, mirroring
+# run_grpo.py's own --debug default (see DEBUG_MODEL_KEY in src/run_grpo.py) - without
+# this, debug=true with an empty `models` array would silently submit nothing
+if [ "$debug" = true ] && [ ${#models[@]} -eq 0 ]; then
+    models=("qwen3-debug")
+fi
+
+# fail loudly instead of silently submitting nothing if the arrays above are empty
+if [ ${#models[@]} -eq 0 ]; then
+    echo "No models configured - uncomment/add at least one entry in the models array."
+    exit 1
+fi
+if [ ${#training_datasets[@]} -eq 0 ]; then
+    echo "No training datasets configured - uncomment/add at least one entry in the training_datasets array."
+    exit 1
 fi
 
 echo
