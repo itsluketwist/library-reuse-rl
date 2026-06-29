@@ -40,7 +40,7 @@ seed=42
 # if `models` below is left empty, debug runs default to the tiny "qwen3-debug" model
 # (see DEBUG_MODEL_KEY in src/run_grpo.py) - set an explicit model there to smoke-test
 # a bigger one instead
-debug=false
+debug=true
 
 # reward components switched on for this run (see RewardBit in src/grpo/rewards.py)
 # comment out a line to switch that component off

@@ -29,3 +29,9 @@ dependencies = [
 [project.scripts]
 run_grpo = "src.run_grpo:main"
 run_eval = "src.run_eval:main"
+
+[tool.uv]
+# without this, uv pins every package also mirrored on the pytorch index (eg.
+# requests, numpy) to the old version found there, which drags trl down to an
+# ancient release that predates GRPOConfig.
+index-strategy = "unsafe-best-match"

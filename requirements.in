@@ -5,6 +5,6 @@ Jupyter
 llm-codegen-research
 pyyaml
 radon
-torch
+torch==2.5.1
 tqdm
-trl
+trl>=0.20
