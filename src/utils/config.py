@@ -55,8 +55,7 @@ def register_model(
     exclusive file lock so concurrent slurm jobs cannot corrupt the file by writing at
     the same time.
     """
-    # a separate lock file lets us hold the lock for the whole read-modify-write cycle
-    # without truncating the yaml file itself part-way through
+    # separate lock file, so we hold the lock without truncating the yaml itself
     lock_path = config_file + ".lock"
 
     with open(file=lock_path, mode="a") as lock_file:

@@ -9,12 +9,10 @@ from src.utils.config import load_yaml_config, register_model
 from src.utils.log import log, log_header
 
 
-# used whenever a caller doesn't pass an explicit seed - keeps runs reproducible by
-# default, matching the convention used in data/download_skywork.py
+# default seed, matching the convention in data/download_skywork.py
 DEFAULT_SEED = 42
 
-# model key (see config/models.yaml) used by --debug, to smoke-test the training code
-# with a tiny, fast-to-load model instead of a full-size one
+# tiny model (see config/models.yaml) used to smoke-test --debug runs
 DEBUG_MODEL_KEY = "qwen3-debug"
 
 

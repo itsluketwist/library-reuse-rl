@@ -7,15 +7,12 @@ from src.response.pipeline import process_response
 from src.utils.config import load_yaml_config
 
 
-# "os" is commonly imported only for fast stdin/stdout reading (e.g. os.read(0, ...)),
-# not as a genuine example of reusing library functionality, so it's excluded from
-# the internal-library components below.
+# excluded from "library reuse" - "os" is usually just stdin/stdout boilerplate
 _IO_BOILERPLATE_LIB = "os"
 
 
-# every reward component name this project knows how to compute, valid as a key in
-# a config/rewards.yaml profile - add new components here, and a matching `if` branch
-# in compute_reward below
+# valid component names for a config/rewards.yaml profile - add new ones here,
+# with a matching `if` branch in compute_reward below
 REWARD_COMPONENTS = frozenset(
     {
         "correct_format",
@@ -63,8 +60,7 @@ def compute_reward(
         if passed:
             reward += weight
 
-    # stdlib imports, excluding "os" - commonly imported only for fast stdin/stdout
-    # reading (e.g. os.read(0, ...)), not as a genuine example of library reuse
+    # stdlib imports, excluding the io-boilerplate exception (see above)
     internal_libs = [lib for lib in parsed.std_libs if lib != _IO_BOILERPLATE_LIB]
 
     if weight := weights.get("internal_lib_imported"):

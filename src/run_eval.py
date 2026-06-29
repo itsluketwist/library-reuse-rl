@@ -8,8 +8,7 @@ from src.utils.config import load_full_yaml, load_yaml_config
 from src.utils.log import log, log_header
 
 
-# model key (see config/models.yaml) used by --debug, to smoke-test the eval code
-# with a tiny, fast-to-load model instead of a full-size one
+# tiny model (see config/models.yaml) used to smoke-test --debug runs
 DEBUG_MODEL_KEY = "qwen3-debug"
 
 

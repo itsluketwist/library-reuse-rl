@@ -47,8 +47,7 @@ def resolve_eval_python(
 
     Returns the resolved interpreter path.
     """
-    # resolve to an absolute path - execute_code runs the subprocess in a different
-    # cwd, so a relative path here would no longer point at the right interpreter
+    # resolve to absolute - execute_code runs the subprocess in a different cwd
     resolved = Path(python_executable).resolve() if python_executable else _EVAL_PYTHON
     if not resolved.exists():
         raise FileNotFoundError(
@@ -165,7 +164,7 @@ def evaluate_record(
     Evaluate a candidate code fragment against a stdin/stdout record's test cases.
 
     The record must have "inputs" and "expected_outputs" lists of equal length, as
-    produced by data/download.ipynb.
+    produced by data/download_skywork.py and data/download_eval.py.
 
     Returns a (passed, captured stdout or an error message) tuple.
     """

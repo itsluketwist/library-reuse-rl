@@ -26,7 +26,7 @@ def get_model(
     model_args: ModelConfig,
     gradient_checkpointing: bool = False,
 ) -> AutoModelForCausalLM:
-    """Get the model"""
+    """Get the model, resolving dtype and quantization/device settings from `model_args`."""
     torch_dtype = (
         model_args.torch_dtype
         if model_args.torch_dtype in ["auto", None]
