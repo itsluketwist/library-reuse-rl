@@ -28,4 +28,4 @@ dependencies = [
 
 [project.scripts]
 run_grpo = "src.run_grpo:main"
-eval = "src.cli_eval:main"
+run_eval = "src.run_eval:main"

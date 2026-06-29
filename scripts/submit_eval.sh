@@ -65,8 +65,7 @@ for model in "${models[@]}"; do
 
 source ./scripts/setup_job.sh
 
-# "command" forces bash to use the installed eval script, not its eval builtin
-command eval \
+run_eval \
     -m $model \
     $datasets_flag \
     --decoding-profile $decoding_profile

@@ -1,6 +1,6 @@
-"""Shared GRPO training utilities: model/tokenizer loading, config, and reward."""
+"""Shared GRPO training utilities: training config and reward computation."""
 
-from .model_utils import GRPOConfig, get_model, get_tokenizer
+from .config import GRPOConfig
 from .rewards import (
     ALL_REWARD_BITS,
     RewardBit,
@@ -17,8 +17,6 @@ __all__ = [
     "RewardBit",
     "compute_reward",
     "compute_reward_bits",
-    "get_model",
-    "get_tokenizer",
     "make_library_reuse_reward",
     "parse_reward_bits",
 ]

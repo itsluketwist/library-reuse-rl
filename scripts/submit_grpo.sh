@@ -166,8 +166,7 @@ EOF
 
 source ./scripts/setup_job.sh
 
-# "command" forces bash to use the installed eval script, not its eval builtin
-command eval \
+run_eval \
     -m $trained_model_path \
     $eval_datasets_flag \
     --decoding-profile $eval_decoding_profile

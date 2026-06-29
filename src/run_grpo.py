@@ -111,7 +111,7 @@ def trained_model_path(
     )
 
 
-def run(
+def run_grpo(
     model: str | None,
     dataset: str,
     model_config: str = "config/models.yaml",
@@ -195,7 +195,7 @@ def main() -> None:
     log(f"Debug: {args.debug}")
     log()
 
-    run(
+    run_grpo(
         model=args.model,
         dataset=args.dataset,
         model_config=args.model_config,

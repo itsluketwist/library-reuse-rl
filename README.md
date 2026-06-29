@@ -71,13 +71,13 @@ bash setup/setup_eval_venv.sh v1
 ## *usage*
 
 After [*installation*](#installation), training and evaluation are run via the `run_grpo`
-and `eval` console scripts (installed by `pip install -e .`, see
-[`src/run_grpo.py`](src/run_grpo.py) and [`src/cli_eval.py`](src/cli_eval.py)):
+and `run_eval` console scripts (installed by `pip install -e .`, see
+[`src/run_grpo.py`](src/run_grpo.py) and [`src/run_eval.py`](src/run_eval.py)):
 
 ```shell
 run_grpo -m qwen3-8b -d data/skywork
 
-eval -m qwen3-8b
+run_eval -m qwen3-8b
 ```
 
 Run either with `--help` to see all options (base/decoding/reward configuration, which
@@ -85,7 +85,7 @@ datasets to evaluate against, etc).
 
 On a slurm cluster, use the submission scripts in [`scripts/`](scripts/) instead - edit the
 configuration block at the top of each, then run e.g. `bash scripts/submit_grpo.sh`. This
-also takes care of automatically queuing an `eval` job once `run_grpo` finishes.
+also takes care of automatically queuing a `run_eval` job once `run_grpo` finishes.
 
 Pass `--debug` to `run_grpo` to smoke-test the training code end-to-end: it truncates the
 train/val splits to a handful of samples, and defaults to the tiny `qwen3-debug` model
@@ -118,9 +118,12 @@ The same flag is available as the `debug` setting in [`scripts/submit_grpo.sh`](
 - [`src/`](src/) - The main project code:
   - `run_grpo.py` - the RL training entry point: CLI parsing, dataset loading, output
     naming, and model registration.
-  - `grpo/` - the GRPO training loop itself (model/tokenizer loading, reward function,
-    trainer setup).
-  - `cli_eval.py` / `run_eval.py` - the evaluation entry point and loop.
+  - `grpo/` - the GRPO training loop itself (reward function, trainer setup).
+  - `run_eval.py` - the evaluation entry point: CLI parsing, dataset/output-path
+    naming.
+  - `eval/` - the evaluation loop itself (model/tokenizer loading, generation,
+    scoring each response, saving results).
+  - `models.py` - model/tokenizer loading, shared by training and evaluation.
   - `response/` - parses an LLM response into candidate code, sandboxes and runs it
     against a record's test cases, and computes a reward from the outcome.
   - `utils/` - shared config loading, logging, and I/O helpers.

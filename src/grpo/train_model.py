@@ -28,9 +28,10 @@ from transformers.training_args import TrainingArguments
 from trl import GRPOTrainer, ModelConfig, TrlParser, get_peft_config
 
 from src.data import load_train_dataset
+from src.models import get_model, get_tokenizer
 from src.utils.config import load_full_yaml
 
-from .model_utils import GRPOConfig, get_model, get_tokenizer
+from .config import GRPOConfig
 from .rewards import RewardBit, make_library_reuse_reward
 from .wandb_logging import init_wandb_training
 
@@ -143,13 +144,15 @@ def train_model_with_grpo(
     ################
     # Load tokenizer
     ################
-    tokenizer = get_tokenizer(model_args, training_args)
+    tokenizer = get_tokenizer(model_args, chat_template=training_args.chat_template)
 
     ##############
     # Load model #
     ##############
     logger.info("*** Loading model ***")
-    model = get_model(model_args, training_args)
+    model = get_model(
+        model_args, gradient_checkpointing=training_args.gradient_checkpointing
+    )
 
     # Get the reward function, configured with this run's reward_bits
     reward_func = make_library_reuse_reward(reward_bits)
