@@ -7,4 +7,4 @@ pyyaml
 radon
 torch==2.5.1
 tqdm
-trl>=0.20
+trl>=0.20,<=0.28.0

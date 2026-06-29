@@ -144,7 +144,6 @@ jinja2==3.1.6
     #   jupyterlab-server
     #   nbconvert
     #   torch
-    #   trl
 json5==0.15.0
     # via jupyterlab-server
 jsonpointer==3.1.1
@@ -458,7 +457,7 @@ transformers==5.12.1
     # via trl
 triton==3.1.0
     # via torch
-trl==1.7.0
+trl==0.28.0
     # via -r requirements.in
 typer==0.25.1
     # via
