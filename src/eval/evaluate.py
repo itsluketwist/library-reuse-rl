@@ -23,12 +23,17 @@ EVAL_ATTN_IMPLEMENTATION = "sdpa"
 # a response is allowed to generate
 DEFAULT_MAX_NEW_TOKENS = 2048
 
+# sample count used by --debug mode (src/run_eval.py) - just enough to smoke-test
+# generation and scoring end-to-end without waiting on a full dataset
+DEBUG_EVAL_SAMPLES = 4
+
 
 def evaluate_model(
     model_name_or_path: str,
     dataset_files: dict[str, str],
     decoding_settings: dict,
     output_paths: dict[str, Path],
+    debug: bool = False,
 ) -> None:
     """
     Generate responses from `model_name_or_path` against each dataset in
@@ -41,6 +46,9 @@ def evaluate_model(
     (see src/response/pipeline.py::process_response - reused rather than
     reimplementing scoring), and saves one record per prompt to that dataset's
     `output_paths` entry.
+
+    If `debug` is set, each dataset is truncated to DEBUG_EVAL_SAMPLES rows, to
+    quickly smoke-test that evaluation runs end-to-end.
     """
     model_args = ModelConfig(
         model_name_or_path=model_name_or_path,
@@ -57,7 +65,11 @@ def evaluate_model(
         log_header(f"DATASET: {name}")
         log(f"Dataset file: {dataset_file}")
 
-        dataset = load_eval_dataset(dataset_file=dataset_file, system_prompt=None)
+        dataset = load_eval_dataset(
+            dataset_file=dataset_file,
+            system_prompt=None,
+            n=DEBUG_EVAL_SAMPLES if debug else None,
+        )
 
         with log_timer("generation"):
             responses = generate_responses(

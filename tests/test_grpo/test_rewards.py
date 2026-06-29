@@ -1,9 +1,10 @@
 """Tests for reward computation and the GRPO reward function factory."""
 
+import pytest
+
 from src.grpo.rewards import (
-    RewardBit,
     compute_reward,
-    compute_reward_bits,
+    load_reward_profile,
     make_library_reuse_reward,
 )
 from src.response.parser import ParsedResponse
@@ -11,6 +12,8 @@ from src.response.pipeline import ProcessedResponse
 
 
 def _dummy_parsed(
+    reasoning: str = "thinking",
+    answer: str | None = None,
     code: str = "print(1)",
     valid: bool = True,
     std_libs: list[str] | None = None,
@@ -19,8 +22,8 @@ def _dummy_parsed(
 ) -> ParsedResponse:
     """Build a ParsedResponse for reward tests, with sensible defaults."""
     return ParsedResponse(
-        reasoning="",
-        answer=code,
+        reasoning=reasoning,
+        answer=answer if answer is not None else code,
         code=code,
         valid=valid,
         error=None,
@@ -32,95 +35,122 @@ def _dummy_parsed(
     )
 
 
-class TestComputeRewardBits:
-    """Tests for compute_reward_bits."""
+class TestComputeRewardComponents:
+    """Tests for the individual reward components inside compute_reward."""
 
-    def test_correct_format_and_passed(self):
-        """Valid, non-empty code that passes sets the format and passed bits only."""
-        bits = compute_reward_bits(parsed=_dummy_parsed(), passed=True)
+    def test_correct_format_requires_reasoning_answer_and_code(self):
+        """Correct format needs non-empty reasoning, answer, and code - not validity."""
+        weights = {"correct_format": 1.0}
 
-        assert bits == RewardBit.CORRECT_FORMAT | RewardBit.PASSED_TESTS
+        assert compute_reward(_dummy_parsed(), False, weights) == 1.0
+        assert compute_reward(_dummy_parsed(reasoning=""), False, weights) == 0.0
+        assert compute_reward(_dummy_parsed(answer=""), False, weights) == 0.0
+        assert compute_reward(_dummy_parsed(code=""), False, weights) == 0.0
+        # invalid code doesn't affect format, since format is about response shape
+        assert compute_reward(_dummy_parsed(valid=False), False, weights) == 1.0
 
-    def test_failed_still_credits_format(self):
-        """Valid, non-empty code that fails evaluation still gets the format bit."""
-        bits = compute_reward_bits(parsed=_dummy_parsed(), passed=False)
+    def test_passes_syntax_check_only_cares_about_validity(self):
+        """Syntax check is true whenever valid, regardless of format/emptiness."""
+        weights = {"passes_syntax_check": 1.0}
 
-        assert bits == RewardBit.CORRECT_FORMAT
+        assert compute_reward(_dummy_parsed(), False, weights) == 1.0
+        assert compute_reward(_dummy_parsed(code=""), False, weights) == 1.0
+        assert compute_reward(_dummy_parsed(reasoning=""), False, weights) == 1.0
+        assert compute_reward(_dummy_parsed(valid=False), False, weights) == 0.0
 
-    def test_invalid_code_has_no_format_bit(self):
-        """Code that didn't parse as valid python doesn't get the format bit."""
-        bits = compute_reward_bits(parsed=_dummy_parsed(valid=False), passed=False)
+    def test_passed_tests_reflects_the_passed_argument(self):
+        """Passed-tests just reports the caller's evaluation outcome."""
+        weights = {"passed_tests": 1.0}
 
-        assert RewardBit.CORRECT_FORMAT not in bits
-
-    def test_empty_code_has_no_format_bit(self):
-        """An empty (but technically 'valid') code fragment doesn't get the format bit."""
-        bits = compute_reward_bits(parsed=_dummy_parsed(code=""), passed=False)
-
-        assert RewardBit.CORRECT_FORMAT not in bits
+        assert compute_reward(_dummy_parsed(), True, weights) == 1.0
+        assert compute_reward(_dummy_parsed(), False, weights) == 0.0
 
     def test_os_import_alone_is_not_an_internal_lib(self):
-        """Importing only 'os' (stdin/stdout boilerplate) doesn't set the internal-lib bits."""
-        bits = compute_reward_bits(
-            parsed=_dummy_parsed(std_libs=["os"], lib_usage={"os": [{"call": "read"}]}),
-            passed=False,
-        )
+        """Importing only 'os' (stdin/stdout boilerplate) doesn't count as internal."""
+        parsed = _dummy_parsed(std_libs=["os"], lib_usage={"os": [{"call": "read"}]})
+        weights = {"internal_lib_imported": 1.0, "internal_lib_used": 1.0}
 
-        assert RewardBit.INTERNAL_LIB_IMPORTED not in bits
-        assert RewardBit.INTERNAL_LIB_USED not in bits
+        assert compute_reward(parsed, False, weights) == 0.0
 
     def test_internal_lib_imported_but_unused(self):
         """A stdlib import with no recorded usage sets imported but not used."""
-        bits = compute_reward_bits(
-            parsed=_dummy_parsed(std_libs=["math"]), passed=False
-        )
+        parsed = _dummy_parsed(std_libs=["math"])
 
-        assert RewardBit.INTERNAL_LIB_IMPORTED in bits
-        assert RewardBit.INTERNAL_LIB_USED not in bits
+        assert compute_reward(parsed, False, {"internal_lib_imported": 1.0}) == 1.0
+        assert compute_reward(parsed, False, {"internal_lib_used": 1.0}) == 0.0
 
     def test_internal_lib_imported_and_used(self):
-        """A stdlib import with recorded usage sets both the imported and used bits."""
-        bits = compute_reward_bits(
-            parsed=_dummy_parsed(
-                std_libs=["math"],
-                lib_usage={"math": [{"call": "sqrt"}]},
-            ),
-            passed=False,
+        """A stdlib import with recorded usage sets both imported and used."""
+        parsed = _dummy_parsed(
+            std_libs=["math"], lib_usage={"math": [{"call": "sqrt"}]}
         )
+        weights = {"internal_lib_imported": 1.0, "internal_lib_used": 1.0}
 
-        assert RewardBit.INTERNAL_LIB_IMPORTED in bits
-        assert RewardBit.INTERNAL_LIB_USED in bits
+        assert compute_reward(parsed, False, weights) == 2.0
 
     def test_external_lib_imported_and_used(self):
-        """A third-party import with recorded usage sets both the imported and used bits."""
-        bits = compute_reward_bits(
-            parsed=_dummy_parsed(
-                ext_libs=["numpy"],
-                lib_usage={"numpy": [{"call": "array"}]},
-            ),
-            passed=False,
+        """A third-party import with recorded usage sets both imported and used."""
+        parsed = _dummy_parsed(
+            ext_libs=["numpy"], lib_usage={"numpy": [{"call": "array"}]}
         )
+        weights = {"external_lib_imported": 1.0, "external_lib_used": 1.0}
 
-        assert RewardBit.EXTERNAL_LIB_IMPORTED in bits
-        assert RewardBit.EXTERNAL_LIB_USED in bits
+        assert compute_reward(parsed, False, weights) == 2.0
+
+
+class TestLoadRewardProfile:
+    """Tests for load_reward_profile."""
+
+    def test_loads_a_named_profile(self, tmp_path):
+        """A profile's weights are returned as a plain dict."""
+        config_file = tmp_path / "rewards.yaml"
+        config_file.write_text("full:\n  passed_tests: 1.0\n  correct_format: 0.1\n")
+
+        weights = load_reward_profile(profile="full", config_file=str(config_file))
+
+        assert weights == {"passed_tests": 1.0, "correct_format": 0.1}
+
+    def test_unknown_component_raises(self, tmp_path):
+        """A typo'd component name fails fast instead of silently never counting."""
+        config_file = tmp_path / "rewards.yaml"
+        config_file.write_text("full:\n  not_a_real_component: 1.0\n")
+
+        with pytest.raises(ValueError):
+            load_reward_profile(profile="full", config_file=str(config_file))
 
 
 class TestComputeReward:
     """Tests for compute_reward."""
 
     def test_passed_gets_format_and_passed_weights(self):
-        """A passing, well-formatted response gets the sum of those two bits' weights."""
-        reward = compute_reward(parsed=_dummy_parsed(), passed=True)
-
-        assert reward == (
-            RewardBit.CORRECT_FORMAT.weight + RewardBit.PASSED_TESTS.weight
+        """A passing, well-formatted response gets the sum of those two weights."""
+        reward = compute_reward(
+            parsed=_dummy_parsed(),
+            passed=True,
+            weights={"correct_format": 0.1, "passed_tests": 1.0},
         )
 
-    def test_failed_gets_no_reward_for_passed_bit(self):
-        """A response whose code failed evaluation doesn't get the passed-tests weight."""
-        reward = compute_reward(parsed=_dummy_parsed(), passed=False)
+        assert reward == 1.1
 
-        assert reward == RewardBit.CORRECT_FORMAT.weight
+    def test_failed_gets_no_reward_for_passed_component(self):
+        """A response whose code failed evaluation doesn't get the passed-tests weight."""
+        reward = compute_reward(
+            parsed=_dummy_parsed(),
+            passed=False,
+            weights={"correct_format": 0.1, "passed_tests": 1.0},
+        )
+
+        assert reward == 0.1
+
+    def test_components_not_in_weights_dont_contribute(self):
+        """A component left out of the profile never contributes, even if satisfied."""
+        reward = compute_reward(
+            parsed=_dummy_parsed(),
+            passed=True,
+            weights={"passed_tests": 1.0},
+        )
+
+        assert reward == 1.0
 
 
 class TestMakeLibraryReuseReward:
@@ -141,32 +171,29 @@ class TestMakeLibraryReuseReward:
             [{"content": "bbb"}],
         ]
 
-        library_reuse_reward = make_library_reuse_reward(RewardBit.PASSED_TESTS)
+        library_reuse_reward = make_library_reuse_reward({"passed_tests": 1.0})
         rewards = library_reuse_reward(
             completions,
             inputs=[["1\n"], ["2\n"]],
             expected_outputs=[["1\n"], ["2\n"]],
         )
 
-        assert rewards == [
-            RewardBit.PASSED_TESTS.weight,
-            RewardBit.PASSED_TESTS.weight,
-        ]
+        assert rewards == [1.0, 1.0]
         assert seen_calls == [
             ("aa", {"inputs": ["1\n"], "expected_outputs": ["1\n"]}),
             ("bbb", {"inputs": ["2\n"], "expected_outputs": ["2\n"]}),
         ]
 
-    def test_binds_the_given_reward_bits(self):
-        """The factory's reward_bits argument restricts which components count."""
-        library_reuse_reward = make_library_reuse_reward(RewardBit.CORRECT_FORMAT)
+    def test_binds_the_given_weights(self):
+        """The factory's weights argument restricts which components count."""
+        library_reuse_reward = make_library_reuse_reward({"correct_format": 0.1})
 
         rewards = library_reuse_reward(
-            [[{"content": "```python\nprint(1)\n```"}]],
+            [[{"content": "reasoning</think>\n```python\nprint(1)\n```"}]],
             inputs=[["irrelevant\n"]],
             expected_outputs=[["wrong\n"]],
         )
 
-        # the code fails evaluation, so only the format bit (which is switched on)
-        # contributes - the passed-tests bit is unsatisfied regardless
-        assert rewards == [RewardBit.CORRECT_FORMAT.weight]
+        # the code fails evaluation, so only correct_format (which is in weights)
+        # contributes - passed_tests isn't even in weights, so it's irrelevant
+        assert rewards == [0.1]

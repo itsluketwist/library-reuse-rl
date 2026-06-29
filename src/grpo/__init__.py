@@ -2,21 +2,17 @@
 
 from .config import GRPOConfig
 from .rewards import (
-    ALL_REWARD_BITS,
-    RewardBit,
+    REWARD_COMPONENTS,
     compute_reward,
-    compute_reward_bits,
+    load_reward_profile,
     make_library_reuse_reward,
-    parse_reward_bits,
 )
 
 
 __all__ = [
-    "ALL_REWARD_BITS",
     "GRPOConfig",
-    "RewardBit",
+    "REWARD_COMPONENTS",
     "compute_reward",
-    "compute_reward_bits",
+    "load_reward_profile",
     "make_library_reuse_reward",
-    "parse_reward_bits",
 ]

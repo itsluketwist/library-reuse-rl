@@ -42,16 +42,8 @@ seed=42
 # a bigger one instead
 debug=true
 
-# reward components switched on for this run (see RewardBit in src/grpo/rewards.py)
-# comment out a line to switch that component off
-reward_bits=(
-    "CORRECT_FORMAT"
-    "PASSED_TESTS"
-    "INTERNAL_LIB_IMPORTED"
-    "EXTERNAL_LIB_IMPORTED"
-    "INTERNAL_LIB_USED"
-    "EXTERNAL_LIB_USED"
-)
+# reward profile to use for this run (see config/rewards.yaml)
+reward_profile="full"
 
 # comma-separated eval dataset names from config/eval_datasets.yaml, and the decoding
 # profile, used for the automatic post-training eval job - leave eval_datasets empty
@@ -63,9 +55,7 @@ eval_decoding_profile="greedy"
 #                            submit jobs                                      #
 ###############################################################################
 
-# join the enabled reward bit names into the comma-separated form `run_grpo` expects
-reward_bits_joined=$(IFS=,; echo "${reward_bits[*]}")
-reward_bits_flag="--reward-bits $reward_bits_joined"
+reward_profile_flag="--reward-profile $reward_profile"
 
 # build eval-datasets flag string
 eval_datasets_flag=""
@@ -100,7 +90,7 @@ echo
 echo "Training ${#models[@]} models x ${#training_datasets[@]} datasets"
 echo "  Recipe: $recipe_config"
 echo "  Seed: $seed"
-echo "  Reward bits: ${reward_bits_joined:-none}"
+echo "  Reward profile: $reward_profile"
 echo "  Post-training eval datasets: ${eval_datasets:-all} [$eval_decoding_profile]"
 echo
 
@@ -115,13 +105,12 @@ for model in "${models[@]}"; do
         # src/run_grpo.py - this also means the venv must be active before running
         # this script, since it needs `python` and the `src` package on the path
         trained_model_path=$(python -c "
-from src.grpo.rewards import parse_reward_bits
 from src.run_grpo import trained_model_path
 print(trained_model_path(
     model='$model',
     dataset='$training_dataset',
     recipe_config='$recipe_config',
-    reward_bits=parse_reward_bits('$reward_bits_joined'),
+    reward_profile='$reward_profile',
     seed=$seed,
 ))
 ")
@@ -146,7 +135,7 @@ run_grpo \
     -d $training_dataset \
     --recipe-config $recipe_config \
     -s $seed \
-    $reward_bits_flag \
+    $reward_profile_flag \
     $debug_flag
 
 echo "RL training complete for model: $model, dataset: $dataset_name"

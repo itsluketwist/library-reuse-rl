@@ -3,7 +3,7 @@
 from argparse import ArgumentParser
 from pathlib import Path
 
-from src.grpo.rewards import ALL_REWARD_BITS, RewardBit, parse_reward_bits
+from src.grpo.rewards import load_reward_profile
 from src.grpo.train_model import train_model_with_grpo
 from src.utils.config import load_yaml_config, register_model
 from src.utils.log import log, log_header
@@ -46,16 +46,18 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "-rb",
-    "--reward-bits",
-    type=parse_reward_bits,
-    default=ALL_REWARD_BITS,
-    help=(
-        "Comma-separated RewardBit names selecting which reward components are "
-        "switched on (see RewardBit in src/grpo/rewards.py). Defaults to every "
-        "component switched on. Available bits: "
-        + ", ".join(bit.name for bit in RewardBit if bit.name is not None)
-    ),
+    "-rp",
+    "--reward-profile",
+    type=str,
+    default="full",
+    help="Reward profile name within the rewards config file.",
+)
+
+parser.add_argument(
+    "--rewards-config",
+    type=str,
+    default="config/rewards.yaml",
+    help="Path to rewards config file.",
 )
 
 parser.add_argument(
@@ -88,15 +90,15 @@ def trained_model_path(
     model: str,
     dataset: str,
     recipe_config: str,
-    reward_bits: RewardBit,
+    reward_profile: str,
     seed: int,
 ) -> Path:
     """
     Compute the output path a training run saves its trained model to.
 
-    The recipe config, reward bits, and seed are all part of the path (not just the
-    model and dataset) since each produces a genuinely different trained model - this
-    keeps every run's output uniquely and unambiguously named.
+    The recipe config, reward profile, and seed are all part of the path (not just
+    the model and dataset) since each produces a genuinely different trained model -
+    this keeps every run's output uniquely and unambiguously named.
 
     This is deterministic, so a slurm submission script can compute the same path and
     queue the post-training eval job (pointed at this path, rather than the original
@@ -107,7 +109,7 @@ def trained_model_path(
     dataset_name = Path(dataset).name
     recipe_name = Path(recipe_config).stem
     return Path("output") / (
-        f"{model}-{dataset_name}-{recipe_name}-rb{int(reward_bits)}-seed{seed}"
+        f"{model}-{dataset_name}-{recipe_name}-{reward_profile}-seed{seed}"
     )
 
 
@@ -115,7 +117,8 @@ def run_grpo(
     model: str | None,
     dataset: str,
     model_config: str = "config/models.yaml",
-    reward_bits: RewardBit = ALL_REWARD_BITS,
+    reward_profile: str = "full",
+    rewards_config: str = "config/rewards.yaml",
     seed: int = DEFAULT_SEED,
     recipe_config: str = "config/train/demo.yaml",
     debug: bool = False,
@@ -133,13 +136,14 @@ def run_grpo(
     `model` is still respected, so a bigger model can be smoke-tested too. Without
     `debug`, `model` is required.
 
-    Resolves the model, then runs GRPO training (see
+    Resolves the model and reward profile, then runs GRPO training (see
     src/grpo/train_model.py::train_model_with_grpo, which loads the dataset itself -
-    see src/data.py::load_train_dataset) with `reward_bits` (see RewardBit in
-    src/grpo/rewards.py) selecting which reward components count, and saves the
-    trained output under the path returned by `trained_model_path`. Once training
-    finishes, registers the trained model in `model_config` under that output path's
-    name, so eval can look it up by name just like a base model.
+    see src/data.py::load_train_dataset) with the weights from `reward_profile` (see
+    config/rewards.yaml and src/grpo/rewards.py) selecting which reward components
+    count, and saves the trained output under the path returned by
+    `trained_model_path`. Once training finishes, registers the trained model in
+    `model_config` under that output path's name, so eval can look it up by name just
+    like a base model.
     """
     if model is None:
         if not debug:
@@ -147,9 +151,12 @@ def run_grpo(
         model = DEBUG_MODEL_KEY
 
     model_settings = load_yaml_config(config_file=model_config, key=model)
+    reward_weights = load_reward_profile(
+        profile=reward_profile, config_file=rewards_config
+    )
     log(f"Model path: {model_settings['base']}")
     log(f"Dataset: {dataset}")
-    log(f"Reward bits: {RewardBit(reward_bits)!r}")
+    log(f"Reward profile '{reward_profile}': {reward_weights}")
     log(f"Seed: {seed}")
     log(f"Recipe: {recipe_config}")
     log(f"Debug: {debug}")
@@ -158,7 +165,7 @@ def run_grpo(
         model=model,
         dataset=dataset,
         recipe_config=recipe_config,
-        reward_bits=reward_bits,
+        reward_profile=reward_profile,
         seed=seed,
     )
     log(f"Output model path: {output_path}")
@@ -167,7 +174,8 @@ def run_grpo(
         model_name_or_path=model_settings["base"],
         dataset_dir=dataset,
         output_dir=output_path,
-        reward_bits=reward_bits,
+        reward_profile=reward_profile,
+        reward_weights=reward_weights,
         seed=seed,
         recipe_config=recipe_config,
         debug=debug,
@@ -190,7 +198,7 @@ def main() -> None:
     log(f"Model: {args.model}")
     log(f"Dataset: {args.dataset}")
     log(f"Recipe: {args.recipe_config}")
-    log(f"Reward bits: {RewardBit(args.reward_bits)!r}")
+    log(f"Reward: {args.rewards_config} [{args.reward_profile}]")
     log(f"Seed: {args.seed}")
     log(f"Debug: {args.debug}")
     log()
@@ -199,7 +207,8 @@ def main() -> None:
         model=args.model,
         dataset=args.dataset,
         model_config=args.model_config,
-        reward_bits=args.reward_bits,
+        reward_profile=args.reward_profile,
+        rewards_config=args.rewards_config,
         seed=args.seed,
         recipe_config=args.recipe_config,
         debug=args.debug,

@@ -32,7 +32,7 @@ from src.models import get_model, get_tokenizer
 from src.utils.config import load_full_yaml
 
 from .config import GRPOConfig
-from .rewards import RewardBit, make_library_reuse_reward
+from .rewards import make_library_reuse_reward
 from .wandb_logging import init_wandb_training
 
 
@@ -68,7 +68,8 @@ def train_model_with_grpo(
     model_name_or_path: str,
     dataset_dir: str | Path,
     output_dir: str | Path,
-    reward_bits: RewardBit,
+    reward_profile: str,
+    reward_weights: dict[str, float],
     seed: int,
     recipe_config: str = "config/train/demo.yaml",
     debug: bool = False,
@@ -84,6 +85,11 @@ def train_model_with_grpo(
     hyperparameter, including `system_prompt` (used to build the dataset's prompts)
     and the decoding settings used during rollout generation (temperature/top_p/top_k),
     comes straight from `recipe_config`.
+
+    `reward_profile` and `reward_weights` (see config/rewards.yaml and
+    src/grpo/rewards.py) are recorded into train_results.json, alongside the rest of
+    the run's training metrics, so the exact reward function used to produce a
+    trained model stays recoverable from its output directory.
 
     If `debug` is set, the train/val splits are truncated to DEBUG_TRAIN_SAMPLES /
     DEBUG_VAL_SAMPLES rows, to quickly smoke-test that training runs end-to-end.
@@ -154,8 +160,8 @@ def train_model_with_grpo(
         model_args, gradient_checkpointing=training_args.gradient_checkpointing
     )
 
-    # Get the reward function, configured with this run's reward_bits
-    reward_func = make_library_reuse_reward(reward_bits)
+    # Get the reward function, configured with this run's reward_weights
+    reward_func = make_library_reuse_reward(reward_weights)
 
     #############################
     # Initialize the GRPO trainer
@@ -184,6 +190,10 @@ def train_model_with_grpo(
     metrics = train_result.metrics
     metrics["train_samples"] = len(dataset["train"])
     trainer.log_metrics("train", metrics)
+    # added after log_metrics (rather than before) since its formatting only handles
+    # scalar metric values - save_metrics, called next, just does a plain json.dump,
+    # so this still lands in train_results.json alongside the rest of the run's metrics
+    metrics["reward_profile"] = {"name": reward_profile, "weights": reward_weights}
     trainer.save_metrics("train", metrics)
     trainer.save_state()
 

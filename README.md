@@ -43,14 +43,8 @@ module load cudnn/8.7.0.84-11.8-gcc-13.2.0
 module load cuda/12.2.1-gcc-13.2.0
 ```
 
-Configure pip to use the correct PyTorch index before installing:
-
-```shell
-mkdir -p ~/.config/pip
-echo -e "[global]\nextra-index-url = https://download.pytorch.org/whl/cu121" > ~/.config/pip/pip.conf
-```
-
-Now create a virtual environment and install the requirements:
+Now create a virtual environment and install the requirements (`requirements.txt` already
+points pip at the correct PyTorch index, so no extra pip config is needed):
 
 ```shell
 python3.11 -m venv .venv
@@ -97,6 +91,48 @@ run_grpo -d data/skywork --debug
 
 The same flag is available as the `debug` setting in [`scripts/submit_grpo.sh`](scripts/submit_grpo.sh).
 
+## *rewards*
+
+GRPO training scores each response with a reward function built from named **reward
+profiles** in [`config/rewards.yaml`](config/rewards.yaml). Each profile maps reward
+component names to the weight they contribute when satisfied - a component left out
+of a profile never contributes for that profile:
+
+```yaml
+full:
+  correct_format: 0.1
+  passes_syntax_check: 0.05
+  passed_tests: 1.0
+
+correctness_only:
+  passed_tests: 1.0
+```
+
+Pick a profile by name with `-rp`/`--reward-profile` (default `full`), and it's baked
+into the trained model's output directory name (see `trained_model_path` in
+[`src/run_grpo.py`](src/run_grpo.py)) so a run's reward function is always recoverable
+from its path. The resolved profile (name + weights) is also saved into the run's
+`train_results.json`, alongside the rest of its training metrics.
+
+The actual reward logic lives in [`src/grpo/rewards.py`](src/grpo/rewards.py):
+
+- `REWARD_COMPONENTS` is the set of valid component names - the names you're allowed
+  to use as keys in a `config/rewards.yaml` profile.
+- `compute_reward` is a single function with one `if weight := weights.get("name"):`
+  block per component, each checking that component's condition and adding its weight
+  to the total if satisfied.
+
+**To add a new reward profile**, just add a new top-level entry to
+`config/rewards.yaml` using any of the existing component names.
+
+**To add a new reward component**, in `src/grpo/rewards.py`:
+
+1. Add its name to the `REWARD_COMPONENTS` frozenset.
+2. Add a matching `if weight := weights.get("your_component_name"):` block in
+   `compute_reward`, with a short comment explaining what it checks and `reward +=
+   weight` if the condition is met.
+3. Reference the new name in a profile in `config/rewards.yaml` to use it.
+
 ## *structure*
 
 - [`config/`](config/) - YAML config: the model registry (base models, and trained models
@@ -138,8 +174,9 @@ pytest tests/
 # run linting
 pre-commit run --all-files
 
-# update dependency lockfiles
-uv pip compile requirements.in --output-file requirements.txt --upgrade
+# update dependency lockfiles (--emit-index-url keeps the PyTorch index in
+# requirements.txt, so `pip install -r requirements.txt` doesn't need its own pip config)
+uv pip compile requirements.in --output-file requirements.txt --upgrade --emit-index-url
 ```
 
 ## *paper*

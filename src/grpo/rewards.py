@@ -1,129 +1,127 @@
 """Reward computation for GRPO training, built on the response parsing/evaluation pipeline."""
 
-import functools
-import operator
 from typing import Callable
 
 from src.response.parser import ParsedResponse
 from src.response.pipeline import process_response
-from src.utils.enums import WeightedIntFlag
+from src.utils.config import load_yaml_config
 
 
 # "os" is commonly imported only for fast stdin/stdout reading (e.g. os.read(0, ...)),
 # not as a genuine example of reusing library functionality, so it's excluded from
-# the internal-library bits below.
+# the internal-library components below.
 _IO_BOILERPLATE_LIB = "os"
 
 
-class RewardBit(WeightedIntFlag):
-    """
-    Bitmask flags for the reward components a response can satisfy, each carrying
-    the weight it contributes when satisfied and switched on.
-
-    A caller (e.g. the training cli) passes a combination of these bits in as the
-    `reward_bits` argument to compute_reward, to choose which components actually
-    count towards the reward - this is what lets the reward function itself be a
-    configurable choice at training time, rather than fixed in code.
-
-    New components should be added as new members, written below as just their
-    weight (a placeholder, since the RL approach isn't decided yet) - see
-    WeightedIntFlag for how the actual bit value (1, 2, 4, ...) gets auto-assigned.
-    """
-
-    CORRECT_FORMAT = 0.1  # answer contains a non-empty, valid python fragment
-    PASSED_TESTS = 1.0  # code passed evaluation against the record's tests
-    INTERNAL_LIB_IMPORTED = 0.05  # imports a stdlib module (other than os)
-    EXTERNAL_LIB_IMPORTED = 0.05  # imports a third-party module
-    INTERNAL_LIB_USED = 0.05  # actually calls/uses an imported stdlib module
-    EXTERNAL_LIB_USED = 0.05  # actually calls/uses an imported third-party module
-
-
-# every bit or-ed together - the default `reward_bits`, so all components count
-# unless a caller deliberately restricts which ones are switched on
-ALL_REWARD_BITS: RewardBit = functools.reduce(operator.or_, RewardBit, RewardBit(0))
-
-
-def parse_reward_bits(value: str) -> RewardBit:
-    """
-    Parse a comma-separated list of RewardBit names (e.g. "CORRECT_FORMAT,PASSED_TESTS")
-    into a bitmask - this is what lets a config file or command line flag switch
-    individual reward components on/off by name, rather than needing to work out a raw
-    integer bitmask by hand. A blank string parses to no bits switched on.
-
-    Returns the combined RewardBit bitmask.
-    """
-    value = value.strip()
-    if not value:
-        return RewardBit(0)
-
-    bits = RewardBit(0)
-    for name in value.split(","):
-        bits |= RewardBit[name.strip()]
-    return bits
-
-
-def compute_reward_bits(
-    parsed: ParsedResponse,
-    passed: bool,
-) -> RewardBit:
-    """
-    Determine which reward components a response satisfies.
-
-    This is unconditional on `reward_bits` - it reports everything the response
-    satisfies, regardless of which components a given training run has switched on.
-
-    Returns the bitmask of satisfied RewardBit flags.
-    """
-    bits = RewardBit(0)
-
-    if parsed.valid and parsed.code.strip():
-        bits |= RewardBit.CORRECT_FORMAT
-
-    if passed:
-        bits |= RewardBit.PASSED_TESTS
-
-    internal_libs = [lib for lib in parsed.std_libs if lib != _IO_BOILERPLATE_LIB]
-    if internal_libs:
-        bits |= RewardBit.INTERNAL_LIB_IMPORTED
-
-    if parsed.ext_libs:
-        bits |= RewardBit.EXTERNAL_LIB_IMPORTED
-
-    if any(lib in parsed.lib_usage for lib in internal_libs):
-        bits |= RewardBit.INTERNAL_LIB_USED
-
-    if any(lib in parsed.lib_usage for lib in parsed.ext_libs):
-        bits |= RewardBit.EXTERNAL_LIB_USED
-
-    return bits
+# every reward component name this project knows how to compute, valid as a key in
+# a config/rewards.yaml profile - add new components here, and a matching `if` branch
+# in compute_reward below
+REWARD_COMPONENTS = frozenset(
+    {
+        "correct_format",
+        "passes_syntax_check",
+        "passed_tests",
+        "internal_lib_imported",
+        "external_lib_imported",
+        "internal_lib_used",
+        "external_lib_used",
+    }
+)
 
 
 def compute_reward(
     parsed: ParsedResponse,
     passed: bool,
-    reward_bits: RewardBit = ALL_REWARD_BITS,
+    weights: dict[str, float],
 ) -> float:
     """
     Compute a reward for a response, given whether its code passed evaluation.
 
-    Only the components switched on in `reward_bits` contribute - this is how a
-    training run chooses its reward function (e.g. correctness-only, versus
-    correctness plus library-reuse shaping) without changing this code.
+    Only the components present in `weights` contribute, each scaled by its weight -
+    this is how a reward profile (config/rewards.yaml) chooses the reward function for
+    a training run without changing this code. Each `if` below is independent, so a
+    response can earn any combination of components.
 
     Returns a scalar reward.
     """
-    satisfied = compute_reward_bits(parsed=parsed, passed=passed) & reward_bits
-    return sum(bit.weight for bit in RewardBit if bit in satisfied)
+    reward = 0.0
+
+    if weight := weights.get("correct_format"):
+        # response followed the expected think/answer shape - non-empty reasoning, a
+        # non-empty answer, and a code fragment found in it. this is about response
+        # structure only, not whether the code itself is valid python.
+        if parsed.reasoning.strip() and parsed.answer.strip() and parsed.code.strip():
+            reward += weight
+
+    if weight := weights.get("passes_syntax_check"):
+        # the selected code fragment parses as valid python
+        if parsed.valid:
+            reward += weight
+
+    if weight := weights.get("passed_tests"):
+        # the code passed evaluation against the record's tests
+        if passed:
+            reward += weight
+
+    # stdlib imports, excluding "os" - commonly imported only for fast stdin/stdout
+    # reading (e.g. os.read(0, ...)), not as a genuine example of library reuse
+    internal_libs = [lib for lib in parsed.std_libs if lib != _IO_BOILERPLATE_LIB]
+
+    if weight := weights.get("internal_lib_imported"):
+        # imports a stdlib module (other than the io boilerplate exception)
+        if internal_libs:
+            reward += weight
+
+    if weight := weights.get("external_lib_imported"):
+        # imports a third-party module
+        if parsed.ext_libs:
+            reward += weight
+
+    if weight := weights.get("internal_lib_used"):
+        # actually calls/uses an imported stdlib module
+        if any(lib in parsed.lib_usage for lib in internal_libs):
+            reward += weight
+
+    if weight := weights.get("external_lib_used"):
+        # actually calls/uses an imported third-party module
+        if any(lib in parsed.lib_usage for lib in parsed.ext_libs):
+            reward += weight
+
+    return reward
+
+
+def load_reward_profile(
+    profile: str,
+    config_file: str = "config/rewards.yaml",
+) -> dict[str, float]:
+    """
+    Load a named reward profile from `config_file` (see config/rewards.yaml).
+
+    Every key in the profile is validated against REWARD_COMPONENTS, so a typo'd
+    component name fails fast at startup instead of silently never contributing.
+
+    Returns the profile's {component_name: weight} mapping.
+    """
+    weights = load_yaml_config(config_file=config_file, key=profile)
+
+    unknown = sorted(set(weights) - REWARD_COMPONENTS)
+    if unknown:
+        raise ValueError(
+            f"Unknown reward component(s) {unknown} in profile '{profile}' of "
+            f"{config_file}. Available components: {sorted(REWARD_COMPONENTS)}"
+        )
+
+    return weights
 
 
 def make_library_reuse_reward(
-    reward_bits: RewardBit,
+    weights: dict[str, float],
 ) -> Callable[..., list[float]]:
     """
-    Build a reward function bound to `reward_bits`, for GRPOTrainer's `reward_funcs`.
+    Build a reward function bound to `weights`, for GRPOTrainer's `reward_funcs`.
 
     Returns a callable scoring each completion with the project's library-reuse
-    reward, restricted to the components switched on in `reward_bits`.
+    reward, restricted to the components present in `weights`.
     """
 
     def library_reuse_reward(
@@ -157,7 +155,7 @@ def make_library_reuse_reward(
                 compute_reward(
                     parsed=processed,
                     passed=processed.passed,
-                    reward_bits=reward_bits,
+                    weights=weights,
                 )
             )
 

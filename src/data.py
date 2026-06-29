@@ -89,6 +89,7 @@ def load_train_dataset(
 def load_eval_dataset(
     dataset_file: str | Path,
     system_prompt: str | None,
+    n: int | None = None,
 ) -> Dataset:
     """Load an evaluation dataset file and build chat prompts.
 
@@ -97,9 +98,17 @@ def load_eval_dataset(
     {prompt, inputs, expected_outputs, source} - no flattening needed, unlike the
     nested `ground_truth` schema of a skywork train split.
 
+    `n` truncates the dataset to at most that many rows (e.g. for a quick debug
+    smoke test) - leave as None to use the full dataset.
+
     Returns the dataset with its raw "prompt" column replaced by a chat-messages list.
     """
     dataset = datasets.load_dataset("json", data_files=str(dataset_file))["train"]
+
+    if n is not None:
+        dataset = dataset.select(range(min(n, len(dataset))))
+        logger.info(f"Truncated dataset to {len(dataset)} rows")
+
     dataset = dataset.map(
         lambda example: {"prompt": _build_messages(example["prompt"], system_prompt)},
     )

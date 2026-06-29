@@ -8,6 +8,11 @@ from src.utils.config import load_full_yaml, load_yaml_config
 from src.utils.log import log, log_header
 
 
+# model key (see config/models.yaml) used by --debug, to smoke-test the eval code
+# with a tiny, fast-to-load model instead of a full-size one
+DEBUG_MODEL_KEY = "qwen3-debug"
+
+
 # create the main argument parser
 parser = ArgumentParser()
 
@@ -15,10 +20,11 @@ parser.add_argument(
     "-m",
     "--model",
     type=str,
-    required=True,
+    default=None,
     help=(
         "Model key from models.yaml - either a base model, or a trained model "
-        "registered by register_model in src/utils/config.py."
+        "registered by register_model in src/utils/config.py. Not required if "
+        "--debug is set."
     ),
 )
 
@@ -62,6 +68,16 @@ parser.add_argument(
     help="Path to eval datasets config file.",
 )
 
+parser.add_argument(
+    "--debug",
+    action="store_true",
+    help=(
+        f"Run a tiny smoke test: defaults the model to '{DEBUG_MODEL_KEY}' (see "
+        "config/models.yaml) if --model isn't given, and truncates each dataset to "
+        "a handful of samples, to quickly check the eval code runs end-to-end."
+    ),
+)
+
 
 def eval_results_path(
     model: str,
@@ -81,12 +97,13 @@ def eval_results_path(
 
 
 def run_eval(
-    model: str,
+    model: str | None,
     datasets: list[str] | None = None,
     model_config: str = "config/models.yaml",
     decoding_profile: str = "greedy",
     decoding_config: str = "config/decoding.yaml",
     eval_datasets_config: str = "config/eval_datasets.yaml",
+    debug: bool = False,
 ) -> None:
     """
     Run evaluation of an untrained, pretrained, or trained model against one or more
@@ -101,15 +118,27 @@ def run_eval(
     `datasets` is a list of nice names looked up in `eval_datasets_config` (see
     config/eval_datasets.yaml). If not given, every dataset in that file is run.
 
+    If `debug` is set, src/eval/evaluate.py::evaluate_model truncates each dataset to
+    a handful of samples - useful to quickly check the eval code runs end-to-end.
+    `model` defaults to `DEBUG_MODEL_KEY` in that case, but an explicit `model` is
+    still respected, so a bigger model can be smoke-tested too. Without `debug`,
+    `model` is required.
+
     Resolves the model, decoding settings, and dataset files/output paths, then runs
     evaluation (see src/eval/evaluate.py::evaluate_model, which loads the model and
     handles generation, scoring, and saving itself) against each dataset, saving
     results under the paths returned by `eval_results_path`.
     """
+    if model is None:
+        if not debug:
+            raise ValueError("--model is required unless --debug is set.")
+        model = DEBUG_MODEL_KEY
+
     model_settings = load_yaml_config(config_file=model_config, key=model)
     # prefer a trained checkpoint's path if one's registered, otherwise the base model
     model_name_or_path = model_settings["path"] or model_settings["base"]
     log(f"Model: {model_name_or_path}")
+    log(f"Debug: {debug}")
 
     decoding_settings = load_yaml_config(
         config_file=decoding_config, key=decoding_profile
@@ -131,6 +160,7 @@ def run_eval(
         dataset_files=dataset_files,
         decoding_settings=decoding_settings,
         output_paths=output_paths,
+        debug=debug,
     )
 
 
@@ -143,6 +173,7 @@ def main() -> None:
     log(f"Model: {args.model}")
     log(f"Datasets: {datasets or 'all'}")
     log(f"Decoding: {args.decoding_config} [{args.decoding_profile}]")
+    log(f"Debug: {args.debug}")
     log()
 
     run_eval(
@@ -152,6 +183,7 @@ def main() -> None:
         decoding_profile=args.decoding_profile,
         decoding_config=args.decoding_config,
         eval_datasets_config=args.eval_datasets_config,
+        debug=args.debug,
     )
 
     # --- summary ---

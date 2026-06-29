@@ -31,6 +31,14 @@ decoding_profiles=(
     "greedy"
 )
 
+# set true to run a tiny smoke test instead of full evaluation - truncates each
+# dataset to a handful of samples, to quickly check the eval code runs correctly
+# end-to-end (see the --debug flag in src/run_eval.py) before submitting a real job.
+# if `models` above is left empty, debug runs default to the tiny "qwen3-debug" model
+# (see DEBUG_MODEL_KEY in src/run_eval.py) - set an explicit model there to smoke-test
+# a bigger one instead
+debug=false
+
 ###############################################################################
 #                            submit jobs                                      #
 ###############################################################################
@@ -39,6 +47,25 @@ decoding_profiles=(
 datasets_flag=""
 if [ -n "$datasets" ]; then
     datasets_flag="-d $datasets"
+fi
+
+# build debug flag string
+debug_flag=""
+if [ "$debug" = true ]; then
+    debug_flag="--debug"
+fi
+
+# default to the tiny debug model if smoke-testing and no model was set, mirroring
+# run_eval.py's own --debug default (see DEBUG_MODEL_KEY in src/run_eval.py) - without
+# this, debug=true with an empty `models` array would silently submit nothing
+if [ "$debug" = true ] && [ ${#models[@]} -eq 0 ]; then
+    models=("qwen3-debug")
+fi
+
+# fail loudly instead of silently submitting nothing if `models` is empty
+if [ ${#models[@]} -eq 0 ]; then
+    echo "No models configured - uncomment/add at least one entry in the models array."
+    exit 1
 fi
 
 echo
@@ -68,7 +95,8 @@ source ./scripts/setup_job.sh
 run_eval \
     -m $model \
     $datasets_flag \
-    --decoding-profile $decoding_profile
+    --decoding-profile $decoding_profile \
+    $debug_flag
 
 echo "Eval complete for model: $model, decoding: $decoding_profile"
 EOF

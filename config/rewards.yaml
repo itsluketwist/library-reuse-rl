@@ -1,0 +1,15 @@
+# reward config - named profiles, each mapping reward component names (see
+# REWARD_COMPONENTS in src/grpo/rewards.py) to the weight they contribute when
+# satisfied. a component left out of a profile never contributes for that profile.
+
+full:
+  correct_format: 0.1
+  passes_syntax_check: 0.05
+  passed_tests: 1.0
+  internal_lib_imported: 0.05
+  external_lib_imported: 0.05
+  internal_lib_used: 0.05
+  external_lib_used: 0.05
+
+correctness_only:
+  passed_tests: 1.0
