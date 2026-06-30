@@ -42,15 +42,19 @@ def generate_responses(
 
     responses = []
     for prompt in prompts:
-        input_ids = tokenizer.apply_chat_template(
+        # return_dict=True also gives us the attention_mask - needed since Qwen has no
+        # dedicated pad token (pad_token_id == eos_token_id), so transformers can't
+        # safely infer it from input_ids alone and would otherwise warn/misbehave
+        model_inputs = tokenizer.apply_chat_template(
             prompt,
             add_generation_prompt=True,
             return_tensors="pt",
+            return_dict=True,
         ).to(model.device)
 
-        output_ids = model.generate(input_ids, **generation_kwargs)
+        output_ids = model.generate(**model_inputs, **generation_kwargs)
 
-        new_tokens = output_ids[0, input_ids.shape[-1] :]
+        new_tokens = output_ids[0, model_inputs["input_ids"].shape[-1] :]
         responses.append(tokenizer.decode(new_tokens, skip_special_tokens=True))
 
     return responses

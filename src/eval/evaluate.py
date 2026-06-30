@@ -3,6 +3,7 @@
 import dataclasses
 from pathlib import Path
 
+import torch
 from trl import ModelConfig
 
 from src.data import load_eval_dataset
@@ -59,6 +60,9 @@ def evaluate_model(
     log("*** Loading tokenizer and model ***")
     tokenizer = get_tokenizer(model_args)
     model = get_model(model_args, gradient_checkpointing=False)
+    # get_model leaves the model on CPU (no device_map is set, since eval doesn't use
+    # quantization) - training doesn't need this since the trainer places it on GPU itself
+    model = model.to("cuda" if torch.cuda.is_available() else "cpu")
     model.eval()
 
     for name, dataset_file in dataset_files.items():
