@@ -8,10 +8,12 @@ from radon.metrics import mi_visit
 from radon.raw import analyze
 
 
-# matches the closing tag of a reasoning block, e.g. </think>, wherever it appears
+# matches an opening or closing reasoning tag, e.g. <think>, </think>
+_REASONING_OPEN_TAG = re.compile(
+    r"<(?:think|thinking|reasoning|thought)>", re.IGNORECASE
+)
 _REASONING_CLOSE_TAG = re.compile(
-    r"</(?:think|thinking|reasoning|thought)>",
-    re.IGNORECASE,
+    r"</(?:think|thinking|reasoning|thought)>", re.IGNORECASE
 )
 
 
@@ -46,10 +48,14 @@ def strip_reasoning(
     Returns a (reasoning, answer) tuple.
     """
     match = _REASONING_CLOSE_TAG.search(response)
-    if not match:
-        return "", response
+    if match:
+        return response[: match.start()], response[match.end() :].strip()
 
-    return response[: match.start()], response[match.end() :].strip()
+    # open tag with no close tag means the model is still reasoning - no answer
+    if _REASONING_OPEN_TAG.search(response):
+        return response, ""
+
+    return "", response
 
 
 def select_code(
@@ -68,7 +74,7 @@ def select_code(
     if code_blocks:
         return max(code_blocks, key=lambda block: len(block.text.splitlines()))
 
-    return CodeBlock(language="python", text=answer)
+    return CodeBlock(language="python", text="")
 
 
 def code_metrics(

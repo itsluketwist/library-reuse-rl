@@ -1,8 +1,9 @@
 """Generate responses from a model for evaluation, one prompt at a time."""
 
+from copy import deepcopy
 from typing import Any
 
-from transformers import AutoModelForCausalLM, GenerationConfig, PreTrainedTokenizer
+from transformers import AutoModelForCausalLM, PreTrainedTokenizer
 
 
 def generate_responses(
@@ -27,17 +28,22 @@ def generate_responses(
     """
     do_sample = decoding_settings["temperature"] > 0
 
-    gen_config_kwargs: dict[str, Any] = {
-        "do_sample": do_sample,
-        "max_new_tokens": max_new_tokens,
-        "pad_token_id": tokenizer.pad_token_id or tokenizer.eos_token_id,
-    }
+    # start from the model's own generation config so model-specific token ids are
+    # preserved, then override only the fields we care about
+    generation_config = deepcopy(model.generation_config)
+    generation_config.do_sample = do_sample
+    generation_config.max_new_tokens = max_new_tokens
+    generation_config.pad_token_id = tokenizer.pad_token_id or tokenizer.eos_token_id
     if do_sample:
-        gen_config_kwargs["temperature"] = decoding_settings["temperature"]
-        gen_config_kwargs["top_p"] = decoding_settings["top_p"]
-        if decoding_settings.get("top_k") is not None:
-            gen_config_kwargs["top_k"] = decoding_settings["top_k"]
-    generation_config = GenerationConfig(**gen_config_kwargs)
+        generation_config.temperature = decoding_settings["temperature"]
+        generation_config.top_p = decoding_settings["top_p"]
+        generation_config.top_k = decoding_settings.get("top_k")
+    else:
+        # reset to neutral values so transformers doesn't warn about sampling
+        # params being set while do_sample=False
+        generation_config.temperature = 1.0
+        generation_config.top_p = 1.0
+        generation_config.top_k = None
 
     responses = []
     for prompt in prompts:
