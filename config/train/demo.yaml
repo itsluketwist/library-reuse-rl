@@ -6,11 +6,11 @@ dtype: bfloat16
 attn_implementation: sdpa  # sdpa, flash_attention_2
 
 # Data training arguments
-# the system prompt used to build training prompts (see src/data.py) - left blank by
-# default since our target models (e.g. qwen3) already emit <think> reasoning
-# natively, and src/response/parser.py's strip_reasoning looks for any </think>-style
-# closing tag regardless of source, so there's nothing to teach it via a system prompt
-system_prompt: null
+# when set, builds the system prompt from the expert-programmer preamble plus the
+# library list from this file (see src/prompts.py::build_system_prompt), and appends
+# a lib-version suffix (e.g. "-libv1") to the output path. set to null to train
+# without a system prompt (no library list, no suffix)
+libraries_requirements_file: setup/requirements/v1.txt
 
 # GRPO trainer config
 sync_ref_model: True

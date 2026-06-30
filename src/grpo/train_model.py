@@ -29,6 +29,7 @@ from trl import GRPOTrainer, ModelConfig, TrlParser, get_peft_config
 
 from src.data import load_train_dataset
 from src.models import get_model, get_tokenizer
+from src.prompts import build_system_prompt
 from src.utils.config import load_full_yaml
 
 from .config import GRPOConfig
@@ -82,9 +83,10 @@ def train_model_with_grpo(
     `seed` overrides the corresponding field parsed from `recipe_config`, so that -
     along with the model, dataset, and output path - it's resolved once by the caller
     (src/run_grpo.py) rather than duplicated in the recipe file. Every other training
-    hyperparameter, including `system_prompt` (used to build the dataset's prompts)
-    and the decoding settings used during rollout generation (temperature/top_p/top_k),
-    comes straight from `recipe_config`.
+    hyperparameter, including `libraries_requirements_file` (used to build the system
+    prompt via src/prompts.py::build_system_prompt - see src/grpo/config.py) and the
+    decoding settings used during rollout generation (temperature/top_p/top_k), comes
+    straight from `recipe_config`.
 
     `reward_profile` and `reward_weights` (see config/rewards.yaml and
     src/grpo/rewards.py) are recorded into train_results.json, alongside the rest of
@@ -140,9 +142,10 @@ def train_model_with_grpo(
     ###############
     # Load dataset
     ###############
+    system_prompt = build_system_prompt(training_args.libraries_requirements_file)
     dataset = load_train_dataset(
         dataset_dir=dataset_dir,
-        system_prompt=training_args.system_prompt,
+        system_prompt=system_prompt,
         train_n=DEBUG_TRAIN_SAMPLES if debug else None,
         val_n=DEBUG_VAL_SAMPLES if debug else None,
     )

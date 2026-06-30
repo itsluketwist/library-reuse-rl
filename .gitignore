@@ -173,6 +173,7 @@ output/archive
 data/raw
 data/skywork
 logs/*
+wandb/*
 
 # temporary ignore
 output/*

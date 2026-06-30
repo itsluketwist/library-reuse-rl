@@ -8,8 +8,9 @@ from trl import ModelConfig
 
 from src.data import load_eval_dataset
 from src.models import get_model, get_tokenizer
+from src.prompts import build_system_prompt
 from src.response.pipeline import process_response
-from src.utils.io import save_jsonl
+from src.utils.io import save_json
 from src.utils.log import log, log_header, log_timer
 
 from .generate import generate_responses
@@ -34,6 +35,7 @@ def evaluate_model(
     dataset_files: dict[str, str],
     decoding_settings: dict,
     output_paths: dict[str, Path],
+    libraries_requirements_file: str | None = None,
     debug: bool = False,
 ) -> None:
     """
@@ -48,9 +50,16 @@ def evaluate_model(
     reimplementing scoring), and saves one record per prompt to that dataset's
     `output_paths` entry.
 
+    `libraries_requirements_file` builds the system prompt the same way training does
+    (see src/prompts.py::build_system_prompt) - match this to the training run's
+    recipe config so the model is evaluated under the same conditions it trained on.
+    When None, no system prompt is used.
+
     If `debug` is set, each dataset is truncated to DEBUG_EVAL_SAMPLES rows, to
     quickly smoke-test that evaluation runs end-to-end.
     """
+    system_prompt = build_system_prompt(libraries_requirements_file)
+
     model_args = ModelConfig(
         model_name_or_path=model_name_or_path,
         dtype=EVAL_DTYPE,
@@ -71,7 +80,7 @@ def evaluate_model(
 
         dataset = load_eval_dataset(
             dataset_file=dataset_file,
-            system_prompt=None,
+            system_prompt=system_prompt,
             n=DEBUG_EVAL_SAMPLES if debug else None,
         )
 
@@ -95,17 +104,40 @@ def evaluate_model(
                 },
             )
             n_passed += processed.passed
+            # store reasoning/answer (already split from the raw response) rather
+            # than the full response string, to avoid duplicating information
             results.append(
                 {
                     "source": row["source"],
                     "prompt": row["prompt"],
-                    "response": response,
                     **dataclasses.asdict(processed),
                 }
             )
 
-        log(f"Passed {n_passed}/{len(results)}")
+        n_total = len(results)
+        n_valid_code = sum(1 for r in results if r.get("valid") is True)
+        n_parse_errors = sum(1 for r in results if r.get("valid") is False)
+
+        log(f"Passed {n_passed}/{n_total}")
+
+        output = {
+            "metadata": {
+                "model": model_name_or_path,
+                "dataset": name,
+                "dataset_file": dataset_file,
+                "decoding_settings": decoding_settings,
+                "debug": debug,
+            },
+            "analysis": {
+                "n_total": n_total,
+                "n_passed": n_passed,
+                "accuracy": n_passed / n_total if n_total > 0 else 0.0,
+                "n_valid_code": n_valid_code,
+                "n_parse_errors": n_parse_errors,
+            },
+            "results": results,
+        }
 
         output_path = output_paths[name]
-        save_jsonl(results, output_path)
+        save_json(output, output_path)
         log(f"Saved results to {output_path}")

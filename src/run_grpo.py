@@ -5,7 +5,7 @@ from pathlib import Path
 
 from src.grpo.rewards import load_reward_profile
 from src.grpo.train_model import train_model_with_grpo
-from src.utils.config import load_yaml_config, register_model
+from src.utils.config import load_full_yaml, load_yaml_config, register_model
 from src.utils.log import log, log_header
 
 
@@ -94,21 +94,38 @@ def trained_model_path(
     """
     Compute the output path a training run saves its trained model to.
 
-    The recipe config, reward profile, and seed are all part of the path (not just
-    the model and dataset) since each produces a genuinely different trained model -
-    this keeps every run's output uniquely and unambiguously named.
+    Output lives under output/{model}/ so all runs for the same base model stay
+    together. The recipe config, reward profile, and seed (when non-default) are
+    encoded in the run name. When the recipe sets libraries_requirements_file, a
+    lib-version suffix (e.g. "-libv1") is also appended, so runs with and without
+    the library prompt stay separate.
+
+    Reads `libraries_requirements_file` directly from the recipe yaml so the slurm
+    submission script (scripts/submit_grpo.sh) can compute this path before training
+    starts without needing to know the recipe's contents itself.
 
     This is deterministic, so a slurm submission script can compute the same path and
-    queue the post-training eval job (pointed at this path, rather than the original
-    base model) before training has even started running - see scripts/submit_grpo.sh.
+    queue the post-training eval job before training has even started - see
+    scripts/submit_grpo.sh.
 
     Returns the output directory path.
     """
+    recipe = load_full_yaml(recipe_config)
+    libraries_requirements_file = recipe.get("libraries_requirements_file")
+
     dataset_name = Path(dataset).name
     recipe_name = Path(recipe_config).stem
-    return Path("output") / (
-        f"{model}-{dataset_name}-{recipe_name}-{reward_profile}-seed{seed}"
+    # only include the seed when it differs from the default, to keep names short
+    seed_suffix = f"-seed{seed}" if seed != DEFAULT_SEED else ""
+    # append e.g. "-libv1" when a requirements file is set, so runs with and without
+    # the library prompt produce distinct output directories
+    lib_suffix = (
+        f"-lib{Path(libraries_requirements_file).stem}"
+        if libraries_requirements_file
+        else ""
     )
+    run_name = f"{dataset_name}-{recipe_name}-{reward_profile}{seed_suffix}{lib_suffix}"
+    return Path("output") / model / run_name
 
 
 def run_grpo(
@@ -179,13 +196,16 @@ def run_grpo(
         debug=debug,
     )
 
+    # use the path relative to output/ (e.g. "qwen3-8b/skywork-demo-full") as the
+    # registry key, so it stays unique across different base models
+    model_key = str(output_path.relative_to(Path("output")))
     register_model(
-        model_key=output_path.name,
+        model_key=model_key,
         base=model_settings["base"],
         path=str(output_path),
         config_file=model_config,
     )
-    log(f"Registered trained model '{output_path.name}' in {model_config}")
+    log(f"Registered trained model '{model_key}' in {model_config}")
 
 
 def main() -> None:

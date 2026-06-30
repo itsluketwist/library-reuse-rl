@@ -68,6 +68,19 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--libraries-requirements-file",
+    type=str,
+    default=None,
+    help=(
+        "Requirements file (see setup/requirements/) listing the libraries available "
+        "in the sandboxed environment. When set, builds the system prompt from the "
+        "expert-programmer preamble plus this library list (matching a training run's "
+        "recipe config), and appends a lib-version suffix (e.g. '-libv1') to the "
+        "output file name. When omitted, no system prompt is used."
+    ),
+)
+
+parser.add_argument(
     "--debug",
     action="store_true",
     help=(
@@ -82,17 +95,31 @@ def eval_results_path(
     model: str,
     dataset: str,
     decoding_profile: str,
+    libraries_requirements_file: str | None = None,
 ) -> Path:
     """
     Compute the output path an evaluation run saves its results to.
 
-    The decoding profile is part of the path (not just the model and dataset) since
-    different decoding settings produce genuinely different results - this keeps
-    every run's output uniquely and unambiguously named.
+    Output lives under output/{model}/eval/ so training and eval results for the same
+    model share a directory. The file name encodes the dataset and decoding profile
+    (which produce genuinely different results) but not the model name, since that is
+    already captured by the directory. When `libraries_requirements_file` is set, a
+    lib-version suffix (e.g. "-libv1") is appended to separate runs with and without
+    the library-list system prompt.
 
     Returns the output file path.
     """
-    return Path("output") / "eval" / f"{model}-{dataset}-{decoding_profile}.jsonl"
+    lib_suffix = (
+        f"-lib{Path(libraries_requirements_file).stem}"
+        if libraries_requirements_file
+        else ""
+    )
+    return (
+        Path("output")
+        / model
+        / "eval"
+        / f"{dataset}-{decoding_profile}{lib_suffix}.json"
+    )
 
 
 def run_eval(
@@ -102,6 +129,7 @@ def run_eval(
     decoding_profile: str = "greedy",
     decoding_config: str = "config/decoding.yaml",
     eval_datasets_config: str = "config/eval_datasets.yaml",
+    libraries_requirements_file: str | None = None,
     debug: bool = False,
 ) -> None:
     """
@@ -116,6 +144,11 @@ def run_eval(
 
     `datasets` is a list of nice names looked up in `eval_datasets_config` (see
     config/eval_datasets.yaml). If not given, every dataset in that file is run.
+
+    `libraries_requirements_file` builds the system prompt and adds a lib-version
+    suffix to output file names (see src/prompts.py::build_system_prompt and
+    eval_results_path) - set this to the same value as the training run's recipe
+    config so the model is evaluated under the conditions it was trained on.
 
     If `debug` is set, src/eval/evaluate.py::evaluate_model truncates each dataset to
     a handful of samples - useful to quickly check the eval code runs end-to-end.
@@ -137,6 +170,7 @@ def run_eval(
     # prefer a trained checkpoint's path if one's registered, otherwise the base model
     model_name_or_path = model_settings["path"] or model_settings["base"]
     log(f"Model: {model_name_or_path}")
+    log(f"Libraries requirements file: {libraries_requirements_file or 'none'}")
     log(f"Debug: {debug}")
 
     decoding_settings = load_yaml_config(
@@ -149,7 +183,10 @@ def run_eval(
     dataset_files = {name: available_datasets[name] for name in dataset_names}
     output_paths = {
         name: eval_results_path(
-            model=model, dataset=name, decoding_profile=decoding_profile
+            model=model,
+            dataset=name,
+            decoding_profile=decoding_profile,
+            libraries_requirements_file=libraries_requirements_file,
         )
         for name in dataset_names
     }
@@ -159,6 +196,7 @@ def run_eval(
         dataset_files=dataset_files,
         decoding_settings=decoding_settings,
         output_paths=output_paths,
+        libraries_requirements_file=libraries_requirements_file,
         debug=debug,
     )
 
@@ -172,6 +210,7 @@ def main() -> None:
     log(f"Model: {args.model}")
     log(f"Datasets: {datasets or 'all'}")
     log(f"Decoding: {args.decoding_config} [{args.decoding_profile}]")
+    log(f"Libraries requirements file: {args.libraries_requirements_file or 'none'}")
     log(f"Debug: {args.debug}")
     log()
 
@@ -182,6 +221,7 @@ def main() -> None:
         decoding_profile=args.decoding_profile,
         decoding_config=args.decoding_config,
         eval_datasets_config=args.eval_datasets_config,
+        libraries_requirements_file=args.libraries_requirements_file,
         debug=args.debug,
     )
 

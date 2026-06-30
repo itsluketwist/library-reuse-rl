@@ -51,6 +51,12 @@ reward_profile="full"
 eval_datasets=""
 eval_decoding_profile="greedy"
 
+# requirements file for the automatic post-training eval job - match this to
+# recipe_config's libraries_requirements_file (see config/train/demo.yaml) so the
+# trained model is evaluated on the same prompt it was trained on. leave empty ("")
+# to evaluate without a system prompt (no library list)
+eval_libraries_requirements_file="setup/requirements/v1.txt"
+
 ###############################################################################
 #                            submit jobs                                      #
 ###############################################################################
@@ -67,6 +73,12 @@ fi
 debug_flag=""
 if [ "$debug" = true ]; then
     debug_flag="--debug"
+fi
+
+# build the post-training eval job's libraries flag string
+eval_libraries_flag=""
+if [ -n "$eval_libraries_requirements_file" ]; then
+    eval_libraries_flag="--libraries-requirements-file $eval_libraries_requirements_file"
 fi
 
 # default to the tiny debug model if smoke-testing and no model was set, mirroring
@@ -158,7 +170,8 @@ source ./scripts/setup_job.sh
 run_eval \
     -m $trained_model_path \
     $eval_datasets_flag \
-    --decoding-profile $eval_decoding_profile
+    --decoding-profile $eval_decoding_profile \
+    $eval_libraries_flag
 
 echo "Eval complete for model: $trained_model_path"
 EOF

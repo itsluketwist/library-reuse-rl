@@ -95,6 +95,12 @@ The same flag is available as the `debug` setting in
 [`scripts/submit_grpo.sh`](scripts/submit_grpo.sh) and
 [`scripts/submit_eval.sh`](scripts/submit_eval.sh).
 
+Set `libraries_requirements_file` (training, in the recipe config) or
+`--libraries-requirements-file` (eval) to a requirements file from
+[`setup/requirements/`](setup/requirements/) to include the available libraries in the
+prompt, so the model knows what it can import and reuse - see
+[`src/prompts.py`](src/prompts.py).
+
 ## *rewards*
 
 GRPO training scores each response with a reward function built from named **reward
@@ -164,6 +170,7 @@ The actual reward logic lives in [`src/grpo/rewards.py`](src/grpo/rewards.py):
   - `eval/` - the evaluation loop itself (model/tokenizer loading, generation,
     scoring each response, saving results).
   - `models.py` - model/tokenizer loading, shared by training and evaluation.
+  - `prompts.py` - builds the system prompt from the available-libraries list.
   - `response/` - parses an LLM response into candidate code, sandboxes and runs it
     against a record's test cases, and computes a reward from the outcome.
   - `utils/` - shared config loading, logging, and I/O helpers.

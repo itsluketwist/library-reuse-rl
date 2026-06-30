@@ -12,9 +12,17 @@ class GRPOConfig(trl.GRPOConfig):
     Extra args this project's training loop reads, on top of trl's own GRPOConfig.
     """
 
-    system_prompt: Optional[str] = field(
+    libraries_requirements_file: Optional[str] = field(
         default=None,
-        metadata={"help": "The optional system prompt to use."},
+        metadata={
+            "help": (
+                "Requirements file (see setup/requirements/) listing the libraries "
+                "available in the sandboxed eval environment. When set, the system "
+                "prompt is built from the expert preamble plus this library list "
+                "(see src/prompts.py::build_system_prompt). When null, no system "
+                "prompt is used. Also appended to the output path as e.g. '-libv1'."
+            ),
+        },
     )
     chat_template: Optional[str] = field(
         default=None, metadata={"help": "The chat template to use."}
