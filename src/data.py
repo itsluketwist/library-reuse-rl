@@ -93,15 +93,15 @@ def load_eval_dataset(
 ) -> Dataset:
     """Load an evaluation dataset file and build chat prompts.
 
-    `dataset_file` must already be in the flat schema produced by
-    data/download_eval.py and data/download_skywork.py's val/test splits:
-    {prompt, inputs, expected_outputs, source} - no flattening needed, unlike the
-    nested `ground_truth` schema of a skywork train split.
+    Handles both the flat {prompt, inputs, expected_outputs, source} schema (from
+    data/download_eval.py) and the nested ground_truth schema (from
+    data/download_skywork.py), flattening the latter via _make_conversation.
 
     `n` truncates the dataset to at most that many rows (e.g. for a quick debug
     smoke test) - leave as None to use the full dataset.
 
-    Returns the dataset with its raw "prompt" column replaced by a chat-messages list.
+    Returns the dataset with its raw "prompt" column replaced by a chat-messages
+    list, and "inputs"/"expected_outputs" columns present at the top level.
     """
     dataset = datasets.load_dataset("json", data_files=str(dataset_file))["train"]
 
@@ -109,7 +109,14 @@ def load_eval_dataset(
         dataset = dataset.select(range(min(n, len(dataset))))
         logger.info(f"Truncated dataset to {len(dataset)} rows")
 
-    dataset = dataset.map(
-        lambda example: {"prompt": _build_messages(example["prompt"], system_prompt)},
-    )
+    if "ground_truth" in dataset.column_names:
+        dataset = dataset.map(
+            lambda example: _make_conversation(example, system_prompt=system_prompt),
+        )
+    else:
+        dataset = dataset.map(
+            lambda example: {
+                "prompt": _build_messages(example["prompt"], system_prompt)
+            },
+        )
     return dataset
