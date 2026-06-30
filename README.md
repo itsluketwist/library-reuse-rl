@@ -81,15 +81,19 @@ On a slurm cluster, use the submission scripts in [`scripts/`](scripts/) instead
 configuration block at the top of each, then run e.g. `bash scripts/submit_grpo.sh`. This
 also takes care of automatically queuing a `run_eval` job once `run_grpo` finishes.
 
-Pass `--debug` to `run_grpo` to smoke-test the training code end-to-end: it truncates the
-train/val splits to a handful of samples, and defaults to the tiny `qwen3-debug` model
-(see [`config/models.yaml`](config/models.yaml)) if `-m`/`--model` isn't given.
+Pass `--debug` to either command to smoke-test the code end-to-end: it truncates the
+dataset(s) to a handful of samples, and defaults to the tiny `qwen3-debug` model (see
+[`config/models.yaml`](config/models.yaml)) if `-m`/`--model` isn't given.
 
 ```shell
 run_grpo -d data/skywork --debug
+
+run_eval --debug
 ```
 
-The same flag is available as the `debug` setting in [`scripts/submit_grpo.sh`](scripts/submit_grpo.sh).
+The same flag is available as the `debug` setting in
+[`scripts/submit_grpo.sh`](scripts/submit_grpo.sh) and
+[`scripts/submit_eval.sh`](scripts/submit_eval.sh).
 
 ## *rewards*
 

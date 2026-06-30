@@ -37,7 +37,7 @@ decoding_profiles=(
 # if `models` above is left empty, debug runs default to the tiny "qwen3-debug" model
 # (see DEBUG_MODEL_KEY in src/run_eval.py) - set an explicit model there to smoke-test
 # a bigger one instead
-debug=false
+debug=true
 
 ###############################################################################
 #                            submit jobs                                      #

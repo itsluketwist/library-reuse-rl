@@ -16,7 +16,7 @@ from .generate import generate_responses
 
 # settings used to load the model for generation - matching config/train/demo.yaml's
 # model arguments, since eval isn't driven by its own recipe file
-EVAL_TORCH_DTYPE = "bfloat16"
+EVAL_DTYPE = "bfloat16"
 EVAL_ATTN_IMPLEMENTATION = "sdpa"
 
 # matches config/train/demo.yaml's max_completion_length - the cap on how many tokens
@@ -52,7 +52,7 @@ def evaluate_model(
     """
     model_args = ModelConfig(
         model_name_or_path=model_name_or_path,
-        torch_dtype=EVAL_TORCH_DTYPE,
+        dtype=EVAL_DTYPE,
         attn_implementation=EVAL_ATTN_IMPLEMENTATION,
     )
 
