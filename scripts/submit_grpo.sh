@@ -18,7 +18,7 @@ CPU_MEMORY="96G"                 # cpu memory allocation
 
 # the base models to train (see config/models.yaml)
 models=(
-    # "qwen3-8b"
+    "qwen3-8b"
 )
 
 # training dataset directories (each containing train/val/test.jsonl) — one set of
@@ -40,7 +40,7 @@ seed=42
 # if `models` below is left empty, debug runs default to the tiny "qwen3-debug" model
 # (see DEBUG_MODEL_KEY in src/run_grpo.py) - set an explicit model there to smoke-test
 # a bigger one instead
-debug=true
+debug=false
 
 # reward profile to use for this run (see config/rewards.yaml)
 reward_profile="full"

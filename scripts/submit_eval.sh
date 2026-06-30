@@ -18,8 +18,7 @@ CPU_MEMORY="96G"                 # cpu memory allocation
 
 # the models to evaluate (untrained or pretrained, see config/models.yaml)
 models=(
-    # "qwen2.5-coder-7b"
-    # "qwen3-8b"
+    "qwen3-8b"
 )
 
 # comma-separated eval dataset names from config/eval_datasets.yaml, all evaluated
@@ -43,7 +42,7 @@ libraries_requirements_file="setup/requirements/v1.txt"
 # if `models` above is left empty, debug runs default to the tiny "qwen3-debug" model
 # (see DEBUG_MODEL_KEY in src/run_eval.py) - set an explicit model there to smoke-test
 # a bigger one instead
-debug=true
+debug=false
 
 ###############################################################################
 #                            submit jobs                                      #
