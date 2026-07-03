@@ -21,10 +21,6 @@ from .generate import generate_responses
 EVAL_DTYPE = "bfloat16"
 EVAL_ATTN_IMPLEMENTATION = "sdpa"
 
-# matches config/train/demo.yaml's max_completion_length - the cap on how many tokens
-# a response is allowed to generate
-DEFAULT_MAX_NEW_TOKENS = 2048
-
 # sample count used by --debug mode (src/run_eval.py) - just enough to smoke-test
 # generation and scoring end-to-end without waiting on a full dataset
 DEBUG_EVAL_SAMPLES = 4
@@ -89,12 +85,11 @@ def evaluate_model(
                 tokenizer=tokenizer,
                 prompts=dataset["prompt"],
                 decoding_settings=decoding_settings,
-                max_new_tokens=DEFAULT_MAX_NEW_TOKENS,
             )
 
         results = []
         n_passed = 0
-        for row, response in zip(dataset, responses):
+        for row, (response, stop_reason) in zip(dataset, responses):
             processed = process_response(
                 response=response,
                 record={
@@ -103,19 +98,21 @@ def evaluate_model(
                 },
             )
             n_passed += processed.passed
-            # store reasoning/answer (already split from the raw response) rather
-            # than the full response string, to avoid duplicating information
+            # store idx (original row number in the dataset file) to identify the
+            # problem without repeating the full prompt text in every result
             results.append(
                 {
-                    "source": row["source"],
-                    "prompt": row["prompt"],
+                    "idx": row["idx"],
+                    "stop_reason": stop_reason,
                     **dataclasses.asdict(processed),
                 }
             )
 
         n_total = len(results)
         n_valid_code = sum(1 for r in results if r.get("valid") is True)
-        n_parse_errors = sum(1 for r in results if r.get("valid") is False)
+        n_overflow = sum(1 for r in results if r.get("stop_reason") == "length")
+        n_reasoning = sum(1 for r in results if r.get("reasoning"))
+        n_answer = sum(1 for r in results if r.get("answer"))
 
         log(f"Passed {n_passed}/{n_total}")
 
@@ -124,6 +121,7 @@ def evaluate_model(
                 "model": model_name_or_path,
                 "dataset": name,
                 "dataset_file": dataset_file,
+                "system_prompt": system_prompt,
                 "decoding_settings": decoding_settings,
                 "debug": debug,
             },
@@ -131,8 +129,10 @@ def evaluate_model(
                 "n_total": n_total,
                 "n_passed": n_passed,
                 "accuracy": n_passed / n_total if n_total > 0 else 0.0,
+                "n_reasoning": n_reasoning,
+                "n_answer": n_answer,
+                "n_overflow": n_overflow,
                 "n_valid_code": n_valid_code,
-                "n_parse_errors": n_parse_errors,
             },
             "results": results,
         }

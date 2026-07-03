@@ -105,6 +105,9 @@ def load_eval_dataset(
     """
     dataset = datasets.load_dataset("json", data_files=str(dataset_file))["train"]
 
+    # add idx before any truncation so it matches the original file's row number
+    dataset = dataset.add_column("idx", list(range(len(dataset))))
+
     if n is not None:
         dataset = dataset.select(range(min(n, len(dataset))))
         logger.info(f"Truncated dataset to {len(dataset)} rows")

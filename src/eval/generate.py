@@ -11,20 +11,20 @@ def generate_responses(
     tokenizer: PreTrainedTokenizer,
     prompts: list[list[dict]],
     decoding_settings: dict[str, Any],
-    max_new_tokens: int,
-) -> list[str]:
+) -> list[tuple[str, str]]:
     """
     Generate one response per prompt from `model`.
 
     `prompts` is a list of chat-messages lists, as produced by
     src/data.py::load_eval_dataset. `decoding_settings` is a decoding profile dict
-    (see config/decoding.yaml) with "temperature"/"top_p"/"top_k" - a temperature of
-    0 (the "greedy" profile) is treated as greedy decoding.
+    (see config/decoding.yaml) with "temperature"/"top_p"/"top_k"/"max_new_tokens" -
+    a temperature of 0 (the "greedy" profile) is treated as greedy decoding.
 
     Generates one prompt at a time rather than batching, to keep this simple - no
     padding/attention-mask handling needed across prompts of different lengths.
 
-    Returns one generated response string per prompt.
+    Returns a list of (response, stop_reason) tuples, where stop_reason is "eos"
+    if the model stopped naturally or "length" if it hit the token cap.
     """
     do_sample = decoding_settings["temperature"] > 0
 
@@ -32,7 +32,7 @@ def generate_responses(
     # preserved, then override only the fields we care about
     generation_config = deepcopy(model.generation_config)
     generation_config.do_sample = do_sample
-    generation_config.max_new_tokens = max_new_tokens
+    generation_config.max_new_tokens = decoding_settings["max_new_tokens"]
     generation_config.pad_token_id = tokenizer.pad_token_id or tokenizer.eos_token_id
     if do_sample:
         generation_config.temperature = decoding_settings["temperature"]
@@ -56,9 +56,19 @@ def generate_responses(
             return_dict=True,
         ).to(model.device)
 
-        output_ids = model.generate(**model_inputs, generation_config=generation_config)
+        output_ids = model.generate(
+            **model_inputs,
+            generation_config=generation_config,
+            use_model_defaults=False,
+        )
 
         new_tokens = output_ids[0, model_inputs["input_ids"].shape[-1] :]
-        responses.append(tokenizer.decode(new_tokens, skip_special_tokens=True))
+        response = tokenizer.decode(new_tokens, skip_special_tokens=True)
+        stop_reason = (
+            "length"
+            if len(new_tokens) >= decoding_settings["max_new_tokens"]
+            else "eos"
+        )
+        responses.append((response, stop_reason))
 
     return responses

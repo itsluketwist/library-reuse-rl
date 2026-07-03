@@ -8,12 +8,15 @@ from radon.metrics import mi_visit
 from radon.raw import analyze
 
 
-# matches an opening or closing reasoning tag, e.g. <think>, </think>
+# matches the opening reasoning tag at the very start of a string (with optional
+# surrounding whitespace), used to strip it from the extracted reasoning block
 _REASONING_OPEN_TAG = re.compile(
-    r"<(?:think|thinking|reasoning|thought)>", re.IGNORECASE
+    r"^\s*<(?:think|thinking|reasoning|thought)>\s*",
+    re.IGNORECASE,
 )
 _REASONING_CLOSE_TAG = re.compile(
-    r"</(?:think|thinking|reasoning|thought)>", re.IGNORECASE
+    r"</(?:think|thinking|reasoning|thought)>",
+    re.IGNORECASE,
 )
 
 
@@ -42,18 +45,21 @@ def strip_reasoning(
     Split a response into its reasoning preamble and answer.
 
     Looks for the first closing reasoning tag (e.g. </think>) and treats everything
-    before it as reasoning, everything after as the answer. If no closing tag is
-    found, the whole response is treated as the answer (no reasoning preamble).
+    before it as reasoning, everything after as the answer. The opening tag (e.g.
+    <think>) is stripped from the start of the reasoning so it contains only the
+    model's thoughts. If no closing tag is found, the whole response is the answer
+    (empty reasoning).
 
     Returns a (reasoning, answer) tuple.
     """
     match = _REASONING_CLOSE_TAG.search(response)
     if match:
-        return response[: match.start()], response[match.end() :].strip()
+        reasoning = _REASONING_OPEN_TAG.sub("", response[: match.start()])
+        return reasoning, response[match.end() :].strip()
 
     # open tag with no close tag means the model is still reasoning - no answer
     if _REASONING_OPEN_TAG.search(response):
-        return response, ""
+        return _REASONING_OPEN_TAG.sub("", response), ""
 
     return "", response
 
@@ -115,7 +121,8 @@ def parse_response(
         reasoning=reasoning,
         answer=answer,
         code=block.text,
-        valid=block.valid,
+        # blank code means no code was produced - treat as missing rather than valid
+        valid=None if not block.text else block.valid,
         error=block.error,
         std_libs=block.std_libs,
         ext_libs=block.ext_libs,
