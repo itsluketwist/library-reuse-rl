@@ -18,6 +18,7 @@ CPU_MEMORY="96G"                 # cpu memory allocation
 
 # the models to evaluate (untrained or pretrained, see config/models.yaml)
 models=(
+    "qwen3-4b"
     "qwen3-8b"
 )
 
