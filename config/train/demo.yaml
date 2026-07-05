@@ -17,6 +17,7 @@ sync_ref_model: True
 ref_model_sync_steps: 64
 beta: 0.01
 bf16: true
+use_peft: true
 use_vllm: false
 # periodically check generalisation against the val split during training (do_eval is
 # derived automatically from eval_strategy by transformers, so it's not set directly)
@@ -24,9 +25,13 @@ eval_strategy: "steps"
 eval_steps: 100
 num_generations: 8
 num_iterations: 2
+# generation_batch_size controls how many prompts are expanded during rollout
+# (total simultaneous sequences = generation_batch_size × num_generations)
+# keep this small enough that the kv cache fits during generation
+generation_batch_size: 8
 per_device_eval_batch_size: 8
-per_device_train_batch_size: 16
-gradient_accumulation_steps: 2
+per_device_train_batch_size: 8
+gradient_accumulation_steps: 4
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
