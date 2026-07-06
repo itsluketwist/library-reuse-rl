@@ -113,20 +113,32 @@ for model in "${models[@]}"; do
     for training_dataset in "${training_datasets[@]}"; do
         dataset_name=$(basename "$training_dataset")
 
-        # call the actual trained_model_path function (rather than reimplementing its
-        # naming convention here in bash) so this can never drift out of sync with
-        # src/run_grpo.py - this also means the venv must be active before running
-        # this script, since it needs `python` and the `src` package on the path
-        trained_model_path=$(python -c "
-from src.run_grpo import trained_model_path
-print(trained_model_path(
-    model='$model',
-    dataset='$training_dataset',
-    recipe_config='$recipe_config',
-    reward_profile='$reward_profile',
-    seed=$seed,
-))
-")
+        # mirror src/run_grpo.py::trained_model_path's naming convention here in bash,
+        # since python/the venv aren't available on the submission node (only inside
+        # the sbatch job, after scripts/setup_job.sh runs) - keep in sync with that
+        # function if its naming convention ever changes
+        recipe_name="$(basename "$recipe_config")"
+        recipe_name="${recipe_name%.*}"
+
+        # only include the seed when it differs from run_grpo.py's DEFAULT_SEED (42),
+        # to keep names short
+        seed_suffix=""
+        if [ "$seed" -ne 42 ]; then
+            seed_suffix="-seed${seed}"
+        fi
+
+        # append e.g. "-libv1" when a libraries requirements file is set, matching the
+        # recipe's own libraries_requirements_file setting (kept in sync manually via
+        # eval_libraries_requirements_file above), so runs with and without the
+        # library prompt produce distinct output directories
+        lib_suffix=""
+        if [ -n "$eval_libraries_requirements_file" ]; then
+            lib_name="$(basename "$eval_libraries_requirements_file")"
+            lib_name="${lib_name%.*}"
+            lib_suffix="-lib${lib_name}"
+        fi
+
+        trained_model_path="output/${model}/${dataset_name}-${recipe_name}-${reward_profile}${seed_suffix}${lib_suffix}"
 
         echo "  Submitting: $dataset_name [$recipe_config]"
 

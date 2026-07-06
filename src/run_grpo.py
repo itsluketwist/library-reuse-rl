@@ -100,13 +100,10 @@ def trained_model_path(
     lib-version suffix (e.g. "-libv1") is also appended, so runs with and without
     the library prompt stay separate.
 
-    Reads `libraries_requirements_file` directly from the recipe yaml so the slurm
-    submission script (scripts/submit_grpo.sh) can compute this path before training
-    starts without needing to know the recipe's contents itself.
-
-    This is deterministic, so a slurm submission script can compute the same path and
-    queue the post-training eval job before training has even started - see
-    scripts/submit_grpo.sh.
+    This naming convention is deterministic, so scripts/submit_grpo.sh mirrors it in
+    bash (python/the venv aren't available on the submission node) to compute the same
+    path and queue the post-training eval job before training has even started - keep
+    that script in sync if this naming convention changes.
 
     Returns the output directory path.
     """
