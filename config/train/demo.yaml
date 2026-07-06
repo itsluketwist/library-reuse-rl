@@ -17,7 +17,7 @@ sync_ref_model: True
 ref_model_sync_steps: 64
 beta: 0.01
 bf16: true
-use_peft: true
+use_peft: false
 use_vllm: false
 # periodically check generalisation against the val split during training (do_eval is
 # derived automatically from eval_strategy by transformers, so it's not set directly)
