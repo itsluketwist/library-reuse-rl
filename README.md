@@ -56,6 +56,20 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
+FIXED VERSION
+```shell
+python3.11 -m venv .venv
+
+source .venv/bin/activate
+
+pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+
+pip install -r requirements_fixed.txt
+
+pip install -e .
+```
+
+
 Create the isolated venv used to run llm-generated code during evaluation.
 
 ```shell
