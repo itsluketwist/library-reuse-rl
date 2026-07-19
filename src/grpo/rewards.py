@@ -46,8 +46,9 @@ def compute_reward(
     if weight := weights.get("correct_format"):
         # response followed the expected think/answer shape - non-empty reasoning, a
         # non-empty answer, and a code fragment found in it. this is about response
-        # structure only, not whether the code itself is valid python.
-        if parsed.reasoning.strip() and parsed.answer.strip() and parsed.code.strip():
+        # structure only, not whether the code itself is valid python. answer and
+        # code are None when nothing was extracted, so truthiness covers both cases.
+        if parsed.reasoning.strip() and parsed.answer and parsed.code:
             reward += weight
 
     if weight := weights.get("passes_syntax_check"):

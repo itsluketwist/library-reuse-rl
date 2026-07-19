@@ -19,7 +19,9 @@ class ProcessedResponse(ParsedResponse):
     """
 
     passed: bool
-    output: str  # captured stdout, or an error message if evaluation failed
+    output: (
+        str | None
+    )  # captured stdout or error message, None if there was no code to run
 
 
 def process_response(
@@ -33,11 +35,18 @@ def process_response(
     Returns a ProcessedResponse with the parsed response's fields and the evaluation outcome.
     """
     parsed = parse_response(response=response)
-    passed, output = evaluate_record(
-        code=parsed.code,
-        record=record,
-        python_executable=python_executable,
-    )
+
+    # no code extracted means there is nothing to evaluate - the record fails
+    # without an output, rather than running the empty string against the tests
+    if parsed.code is None:
+        passed: bool = False
+        output: str | None = None
+    else:
+        passed, output = evaluate_record(
+            code=parsed.code,
+            record=record,
+            python_executable=python_executable,
+        )
 
     return ProcessedResponse(
         **vars(parsed),

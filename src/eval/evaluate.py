@@ -26,6 +26,17 @@ EVAL_ATTN_IMPLEMENTATION = "sdpa"
 DEBUG_EVAL_SAMPLES = 4
 
 
+def _average(
+    values: list[float],
+) -> float | None:
+    """
+    Average a list of numbers.
+
+    Returns the mean, or None if there are no values to average.
+    """
+    return sum(values) / len(values) if values else None
+
+
 def evaluate_model(
     model_name_or_path: str,
     dataset_files: dict[str, str],
@@ -114,6 +125,26 @@ def evaluate_model(
         n_reasoning = sum(1 for r in results if r.get("reasoning"))
         n_answer = sum(1 for r in results if r.get("answer"))
 
+        # averages computed over responses with valid code only, so missing or
+        # unparseable code doesn't skew the library and complexity numbers
+        valid_results = [r for r in results if r.get("valid") is True]
+        avg_std_libs = _average([len(r["std_libs"]) for r in valid_results])
+        avg_ext_libs = _average([len(r["ext_libs"]) for r in valid_results])
+        avg_ll = _average(
+            [
+                r["logical_lines"]
+                for r in valid_results
+                if r["logical_lines"] is not None
+            ]
+        )
+        avg_mi = _average(
+            [
+                r["maintainability_index"]
+                for r in valid_results
+                if r["maintainability_index"] is not None
+            ]
+        )
+
         log(f"Passed {n_passed}/{n_total}")
 
         output = {
@@ -133,6 +164,10 @@ def evaluate_model(
                 "n_answer": n_answer,
                 "n_overflow": n_overflow,
                 "n_valid_code": n_valid_code,
+                "avg_std_libs": avg_std_libs,
+                "avg_ext_libs": avg_ext_libs,
+                "avg_ll": avg_ll,
+                "avg_mi": avg_mi,
             },
             "results": results,
         }

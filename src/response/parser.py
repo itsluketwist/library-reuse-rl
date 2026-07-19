@@ -27,15 +27,17 @@ class ParsedResponse:
     """
 
     reasoning: str
-    answer: str
-    code: str  # the selected code fragment, may be empty if the answer had no code
+    answer: str | None  # None if no answer was extracted (e.g. reasoning overflow)
+    code: str | None  # None if no code fragment was found in the answer
     valid: bool | None  # whether the code fragment parsed as valid python
     error: str | None  # parse error message, only set if not valid
     std_libs: list[str]
     ext_libs: list[str]
     lib_usage: dict[str, list[dict]]
-    logical_lines: int | None  # None if the fragment failed to parse
-    maintainability_index: float | None  # None if the fragment failed to parse
+    logical_lines: int | None  # None if there was no code or it failed to parse
+    maintainability_index: (
+        float | None
+    )  # None if there was no code or it failed to parse
 
 
 def strip_reasoning(
@@ -71,8 +73,8 @@ def select_code(
     Select the code fragment to analyse from an answer.
 
     Picks the longest (by line count) fenced code block in the answer. If the answer
-    has no fenced code blocks, the whole answer is treated as a single python
-    fragment, since models sometimes respond with bare code and no markdown fences.
+    has no fenced code blocks, an empty fragment is returned - we only analyse code
+    the model explicitly presented as code.
 
     Returns the selected CodeBlock, already analysed for library usage.
     """
@@ -115,12 +117,19 @@ def parse_response(
     """
     reasoning, answer = strip_reasoning(response)
     block = select_code(answer)
-    logical_lines, maintainability_index = code_metrics(block.text)
+
+    # no code means there is nothing to measure - store missing metrics rather than
+    # scoring the empty string (radon gives empty code a perfect 100.0 index)
+    if block.text:
+        logical_lines, maintainability_index = code_metrics(block.text)
+    else:
+        logical_lines, maintainability_index = None, None
 
     return ParsedResponse(
         reasoning=reasoning,
-        answer=answer,
-        code=block.text,
+        # store None rather than empty strings when nothing was extracted
+        answer=answer or None,
+        code=block.text or None,
         # blank code means no code was produced - treat as missing rather than valid
         valid=None if not block.text else block.valid,
         error=block.error,

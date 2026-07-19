@@ -12,10 +12,10 @@ class TestStripReasoning:
     """Tests for strip_reasoning."""
 
     def test_with_think_tag(self):
-        """A <think>...</think> preamble is split off into reasoning."""
+        """A <think>...</think> preamble is split off into reasoning, tags stripped."""
         reasoning, answer = strip_reasoning("<think>working it out</think>the answer")
 
-        assert reasoning == "<think>working it out"
+        assert reasoning == "working it out"
         assert answer == "the answer"
 
     def test_with_alternate_tag_name(self):
@@ -54,12 +54,11 @@ print(add(1, 2))
 
         assert "def add" in block.text
 
-    def test_falls_back_to_whole_answer(self):
-        """A response with no fenced code blocks is treated as a single fragment."""
+    def test_no_fenced_blocks_gives_empty_fragment(self):
+        """An answer with no fenced code blocks yields an empty code fragment."""
         block = select_code("x = 1\nprint(x)")
 
-        assert block.text == "x = 1\nprint(x)"
-        assert block.valid is True
+        assert block.text == ""
 
 
 class TestLibraryUsage:
@@ -130,3 +129,15 @@ def total(values):
         assert parsed.ext_libs == ["numpy"]
         assert parsed.logical_lines == 3  # import + def + return
         assert parsed.maintainability_index is not None
+
+    def test_overflow_response(self):
+        """A response that never closes its reasoning tag has no answer or code."""
+        parsed = parse_response("<think>still working it out...")
+
+        assert parsed.reasoning == "still working it out..."
+        # nothing was extracted, so everything downstream of the answer is None
+        assert parsed.answer is None
+        assert parsed.code is None
+        assert parsed.valid is None
+        assert parsed.logical_lines is None
+        assert parsed.maintainability_index is None

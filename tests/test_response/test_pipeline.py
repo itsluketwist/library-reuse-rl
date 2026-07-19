@@ -42,3 +42,17 @@ print("wrong")
         )
 
         assert result.passed is False
+
+    def test_no_code_response(self):
+        """A response with no extracted code is not evaluated at all."""
+        record = {"inputs": ["hello\n"], "expected_outputs": ["hello\n"]}
+
+        result = process_response(
+            response="<think>ran out of tokens",
+            record=record,
+            python_executable=PYTHON,
+        )
+
+        assert result.code is None
+        assert result.passed is False
+        assert result.output is None
