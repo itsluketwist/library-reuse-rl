@@ -18,6 +18,7 @@ CPU_MEMORY="96G"                 # cpu memory allocation
 
 # the base models to train (see config/models.yaml)
 models=(
+    "qwen-debug"
     "qwen3-4b"
     "qwen3-8b"
 )
@@ -52,10 +53,11 @@ reward_profile="full"
 eval_datasets=""
 eval_decoding_profile="greedy"
 
-# requirements file for the automatic post-training eval job - match this to
+# requirements file for the automatic post-training eval jobs - match this to
 # recipe_config's libraries_requirements_file (see config/train/demo.yaml) so the
-# trained model is evaluated on the same prompt it was trained on. leave empty ("")
-# to evaluate without a system prompt (no library list)
+# trained model is evaluated on the same prompt it was trained on. two eval jobs
+# are submitted per training run: one with this file in the system prompt, and one
+# without any system prompt - leave empty ("") to only submit the no-prompt eval
 eval_libraries_requirements_file="setup/requirements/v1.txt"
 
 ###############################################################################
@@ -167,11 +169,27 @@ echo "RL training complete for model: $model, dataset: $dataset_name"
 EOF
 )
 
-        # submit eval job to run after training finishes successfully
-        sbatch --dependency=afterok:${train_job_id} <<EOF
+        # submit follow-up eval jobs to run after training finishes successfully -
+        # one with the library requirements in the system prompt, one without.
+        # results don't clash: run_eval adds a "-lib" suffix to output file names
+        # when a requirements file is set (see src/run_eval.py::eval_results_path)
+        for eval_variant in "with-libs" "no-libs"; do
+
+            # only the "with-libs" variant passes the libraries flag
+            variant_libraries_flag=""
+            if [ "$eval_variant" = "with-libs" ]; then
+                # skip the "with-libs" variant entirely when no requirements file
+                # is configured, since it would duplicate the "no-libs" job
+                if [ -z "$eval_libraries_requirements_file" ]; then
+                    continue
+                fi
+                variant_libraries_flag="$eval_libraries_flag"
+            fi
+
+            sbatch --dependency=afterok:${train_job_id} <<EOF
 #!/bin/bash -l
-#SBATCH --job-name=eval-${model}-${dataset_name}
-#SBATCH --output=logs/eval-${model}/${dataset_name}-%j.out
+#SBATCH --job-name=eval-${model}-${dataset_name}-${eval_variant}
+#SBATCH --output=logs/eval-${model}/${dataset_name}-${eval_variant}-%j.out
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu
 #SBATCH --gpus=1
@@ -184,12 +202,14 @@ run_eval \
     -m $trained_model_path \
     $eval_datasets_flag \
     --decoding-profile $eval_decoding_profile \
-    $eval_libraries_flag
+    $variant_libraries_flag
 
-echo "Eval complete for model: $trained_model_path"
+echo "Eval ($eval_variant) complete for model: $trained_model_path"
 EOF
 
-        echo "  Submitted train job $train_job_id (eval will follow on completion)"
+        done
+
+        echo "  Submitted train job $train_job_id (with-libs + no-libs evals will follow on completion)"
 
         # small delay between submissions to avoid scheduler overload
         sleep 0.5
