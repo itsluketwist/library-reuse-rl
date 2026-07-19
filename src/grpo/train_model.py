@@ -31,6 +31,7 @@ from src.data import load_train_dataset
 from src.models import get_model, get_tokenizer
 from src.prompts import build_system_prompt
 from src.utils.config import load_full_yaml
+from src.utils.log import log_gpu_memory
 
 from .config import GRPOConfig
 from .rewards import make_library_reuse_reward
@@ -63,6 +64,24 @@ class SaveTrainerStateCallback(TrainerCallback):
     ) -> None:
         if state.is_world_process_zero and state.global_step % args.save_steps == 0:
             state.save_to_json(os.path.join(args.output_dir, "trainer_state.json"))
+
+
+class LogGPUMemoryCallback(TrainerCallback):
+    """
+    Logs gpu memory usage after the first optimizer step - by then the policy and
+    reference models, optimizer states, and activation memory have all been
+    allocated, giving the truest picture of the run's steady-state memory use.
+    """
+
+    def on_step_end(
+        self,
+        args: TrainingArguments,
+        state: TrainerState,
+        control: TrainerControl,
+        **kwargs,
+    ) -> None:
+        if state.is_world_process_zero and state.global_step == 1:
+            log_gpu_memory("after first optimizer step")
 
 
 def train_model_with_grpo(
@@ -162,6 +181,10 @@ def train_model_with_grpo(
     model = get_model(
         model_args, gradient_checkpointing=training_args.gradient_checkpointing
     )
+    # log gpu memory now the model is loaded. note: without quantization the model
+    # is loaded on cpu and only moved to the gpu by the trainer, so this mostly
+    # shows the baseline free memory on the device before training claims it
+    log_gpu_memory("after model load")
 
     # Get the reward function, configured with this run's reward_weights
     reward_func = make_library_reuse_reward(reward_weights)
@@ -177,8 +200,15 @@ def train_model_with_grpo(
         eval_dataset=dataset["val"] if training_args.eval_strategy != "no" else None,
         peft_config=get_peft_config(model_args),
         processing_class=tokenizer,
-        callbacks=[SaveTrainerStateCallback()],
+        callbacks=[
+            SaveTrainerStateCallback(),
+            LogGPUMemoryCallback(),
+        ],
     )
+    # log again after trainer init - the trainer loads the reference model (needed
+    # since beta > 0), so this shows the memory left for optimizer states and
+    # activations before training actually starts
+    log_gpu_memory("after trainer init")
 
     ###############
     # Training loop

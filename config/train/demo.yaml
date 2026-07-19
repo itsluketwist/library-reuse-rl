@@ -25,13 +25,22 @@ eval_strategy: "steps"
 eval_steps: 100
 num_generations: 8
 num_iterations: 2
-# generation_batch_size controls how many prompts are expanded during rollout
-# (total simultaneous sequences = generation_batch_size × num_generations)
-# keep this small enough that the kv cache fits during generation
+# generation_batch_size is the number of completions (not prompts) generated per
+# rollout cycle - trl requires it to be divisible by both num_generations and the
+# global train batch size. 8 completions = one prompt's group generated at a time,
+# keeping the number of simultaneous kv caches during generation small
 generation_batch_size: 8
+# trl requires the global eval batch size to be divisible by num_generations,
+# so this cannot go below 8 on a single gpu
 per_device_eval_batch_size: 8
-per_device_train_batch_size: 8
-gradient_accumulation_steps: 4
+# completions per training micro-batch - this is the main memory lever: each
+# sequence can be up to max_completion_length tokens, and backprop over the
+# vocab-sized logits for every token is the biggest memory spike of the run.
+# kept small, with gradient accumulation raised to preserve the effective batch
+per_device_train_batch_size: 2
+# 2 x 16 = 32 completions per optimizer step (same effective batch as the old
+# 8 x 4, and still divisible by num_generations as trl requires)
+gradient_accumulation_steps: 16
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
