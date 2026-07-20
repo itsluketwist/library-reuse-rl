@@ -5,6 +5,7 @@ from pathlib import Path
 from src.prompts import (
     build_libraries_system_prompt,
     build_system_prompt,
+    library_prompt_suffix,
     load_requirements_libraries,
 )
 
@@ -68,6 +69,26 @@ class TestBuildLibrariesSystemPrompt:
         assert "numpy==2.4.6" in prompt
         assert "pandas==3.0.3" in prompt
 
+    def test_use_style_still_lists_every_library(self, tmp_path: Path):
+        """The "use" style still lists every library, alongside its stronger wording."""
+        requirements_file = _write_requirements(
+            tmp_path, ["numpy==2.4.6", "pandas==3.0.3"]
+        )
+
+        prompt = build_libraries_system_prompt(requirements_file, style="use")
+
+        assert "numpy==2.4.6" in prompt
+        assert "pandas==3.0.3" in prompt
+
+    def test_use_style_differs_from_lib_style(self, tmp_path: Path):
+        """The "use" style produces different wording to the default "lib" style."""
+        requirements_file = _write_requirements(tmp_path, ["numpy==2.4.6"])
+
+        lib_prompt = build_libraries_system_prompt(requirements_file, style="lib")
+        use_prompt = build_libraries_system_prompt(requirements_file, style="use")
+
+        assert lib_prompt != use_prompt
+
 
 class TestBuildSystemPrompt:
     """Tests for build_system_prompt."""
@@ -86,3 +107,34 @@ class TestBuildSystemPrompt:
 
         assert result is not None
         assert "numpy==2.4.6" in result
+
+    def test_style_is_passed_through_to_the_template(self, tmp_path: Path):
+        """The "use" style still produces different wording via build_system_prompt."""
+        requirements_file = _write_requirements(tmp_path, ["numpy==2.4.6"])
+
+        lib_result = build_system_prompt(
+            libraries_requirements_file=requirements_file, style="lib"
+        )
+        use_result = build_system_prompt(
+            libraries_requirements_file=requirements_file, style="use"
+        )
+
+        assert lib_result != use_result
+
+
+class TestLibraryPromptSuffix:
+    """Tests for library_prompt_suffix."""
+
+    def test_returns_empty_string_when_no_requirements_file(self):
+        """With libraries_requirements_file=None, there's nothing to suffix with."""
+        assert library_prompt_suffix(None) == ""
+
+    def test_defaults_to_lib_style_suffix(self):
+        """The default style produces a "-lib<stem>" suffix."""
+        assert library_prompt_suffix("setup/requirements/v1.txt") == "-libv1"
+
+    def test_use_style_produces_a_distinct_suffix(self):
+        """The "use" style produces a "-use<stem>" suffix, distinct from "lib"."""
+        assert (
+            library_prompt_suffix("setup/requirements/v1.txt", style="use") == "-usev1"
+        )

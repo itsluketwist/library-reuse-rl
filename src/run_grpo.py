@@ -5,6 +5,7 @@ from pathlib import Path
 
 from src.grpo.rewards import load_reward_profile
 from src.grpo.train_model import train_model_with_grpo
+from src.prompts import PromptStyle, library_prompt_suffix
 from src.utils.config import load_full_yaml, load_yaml_config, register_model
 from src.utils.log import log, log_header
 
@@ -74,6 +75,21 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--library-prompt-style",
+    type=str,
+    choices=["lib", "use"],
+    default="lib",
+    help=(
+        "Wording used for the library system prompt when the recipe's "
+        "libraries_requirements_file is set (see "
+        "src/prompts.py::build_system_prompt): 'lib' just lists the available "
+        "libraries, 'use' also pushes the model to prefer them over writing its own "
+        "implementations. Ignored when the recipe has no libraries_requirements_file. "
+        "Changes the output path suffix from e.g. '-libv1' to '-usev1'."
+    ),
+)
+
+parser.add_argument(
     "--debug",
     action="store_true",
     help=(
@@ -90,6 +106,7 @@ def trained_model_path(
     recipe_config: str,
     reward_profile: str,
     seed: int,
+    library_prompt_style: PromptStyle = "lib",
 ) -> Path:
     """
     Compute the output path a training run saves its trained model to.
@@ -97,8 +114,10 @@ def trained_model_path(
     Output lives under output/{model}/ so all runs for the same base model stay
     together. The recipe config, reward profile, and seed (when non-default) are
     encoded in the run name. When the recipe sets libraries_requirements_file, a
-    lib-version suffix (e.g. "-libv1") is also appended, so runs with and without
-    the library prompt stay separate.
+    suffix (e.g. "-libv1" or "-usev1", depending on `library_prompt_style`) is also
+    appended, so runs under different library system-prompt settings stay separate.
+    `library_prompt_style` is a CLI-level setting (see --library-prompt-style below),
+    not part of the recipe file, mirroring how `seed` overrides the recipe.
 
     This naming convention is deterministic, so scripts/submit_grpo.sh mirrors it in
     bash (python/the venv aren't available on the submission node) to compute the same
@@ -114,12 +133,8 @@ def trained_model_path(
     recipe_name = Path(recipe_config).stem
     # only include the seed when it differs from the default, to keep names short
     seed_suffix = f"-seed{seed}" if seed != DEFAULT_SEED else ""
-    # append e.g. "-libv1" when a requirements file is set, so runs with and without
-    # the library prompt produce distinct output directories
-    lib_suffix = (
-        f"-lib{Path(libraries_requirements_file).stem}"
-        if libraries_requirements_file
-        else ""
+    lib_suffix = library_prompt_suffix(
+        libraries_requirements_file, style=library_prompt_style
     )
     run_name = f"{dataset_name}-{recipe_name}-{reward_profile}{seed_suffix}{lib_suffix}"
     return Path("output") / model / run_name
@@ -133,6 +148,7 @@ def run_grpo(
     rewards_config: str = "config/rewards.yaml",
     seed: int = DEFAULT_SEED,
     recipe_config: str = "config/train/demo.yaml",
+    library_prompt_style: PromptStyle = "lib",
     debug: bool = False,
 ) -> None:
     """
@@ -141,6 +157,10 @@ def run_grpo(
     `dataset` is a directory containing train/val/test.jsonl files (e.g. data/skywork)
     - training runs against its train.jsonl, and uses val.jsonl for periodic
     evaluation if the recipe at `recipe_config` switches that on.
+
+    `library_prompt_style` overrides the recipe's library_prompt_style the same way
+    `seed` overrides its seed field (see src/grpo/config.py::GRPOConfig) - only takes
+    effect when the recipe sets libraries_requirements_file.
 
     If `debug` is set, src/grpo/train_model.py::train_model_with_grpo truncates the
     dataset to a handful of samples - useful to quickly check the training code runs
@@ -171,6 +191,7 @@ def run_grpo(
     log(f"Reward profile '{reward_profile}': {reward_weights}")
     log(f"Seed: {seed}")
     log(f"Recipe: {recipe_config}")
+    log(f"Library prompt style: {library_prompt_style}")
     log(f"Debug: {debug}")
 
     output_path = trained_model_path(
@@ -179,6 +200,7 @@ def run_grpo(
         recipe_config=recipe_config,
         reward_profile=reward_profile,
         seed=seed,
+        library_prompt_style=library_prompt_style,
     )
     log(f"Output model path: {output_path}")
 
@@ -190,6 +212,7 @@ def run_grpo(
         reward_weights=reward_weights,
         seed=seed,
         recipe_config=recipe_config,
+        library_prompt_style=library_prompt_style,
         debug=debug,
     )
 
@@ -215,6 +238,7 @@ def main() -> None:
     log(f"Recipe: {args.recipe_config}")
     log(f"Reward: {args.rewards_config} [{args.reward_profile}]")
     log(f"Seed: {args.seed}")
+    log(f"Library prompt style: {args.library_prompt_style}")
     log(f"Debug: {args.debug}")
     log()
 
@@ -226,6 +250,7 @@ def main() -> None:
         rewards_config=args.rewards_config,
         seed=args.seed,
         recipe_config=args.recipe_config,
+        library_prompt_style=args.library_prompt_style,
         debug=args.debug,
     )
 

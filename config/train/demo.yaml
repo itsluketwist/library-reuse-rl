@@ -6,10 +6,11 @@ dtype: bfloat16
 attn_implementation: sdpa  # sdpa, flash_attention_2
 
 # Data training arguments
-# when set, builds the system prompt from the expert-programmer preamble plus the
-# library list from this file (see src/prompts.py::build_system_prompt), and appends
-# a lib-version suffix (e.g. "-libv1") to the output path. set to null to train
-# without a system prompt (no library list, no suffix)
+# when set, builds the system prompt listing the libraries from this file (see
+# src/prompts.py::build_system_prompt), worded according to the run's
+# --library-prompt-style CLI flag (see src/run_grpo.py), and appends a matching
+# suffix (e.g. "-libv1") to the output path. set to null to train without a system
+# prompt (no library list, no suffix)
 libraries_requirements_file: setup/requirements/v1.txt
 
 # GRPO trainer config

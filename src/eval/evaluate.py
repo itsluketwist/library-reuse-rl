@@ -8,7 +8,7 @@ from trl import ModelConfig
 
 from src.data import load_eval_dataset
 from src.models import get_model, get_tokenizer
-from src.prompts import build_system_prompt
+from src.prompts import PromptStyle, build_system_prompt
 from src.response.pipeline import process_response
 from src.utils.io import save_json
 from src.utils.log import log, log_header, log_timer
@@ -43,6 +43,7 @@ def evaluate_model(
     decoding_settings: dict,
     output_paths: dict[str, Path],
     libraries_requirements_file: str | None = None,
+    prompt_style: PromptStyle = "lib",
     debug: bool = False,
 ) -> None:
     """
@@ -57,15 +58,16 @@ def evaluate_model(
     reimplementing scoring), and saves one record per prompt to that dataset's
     `output_paths` entry.
 
-    `libraries_requirements_file` builds the system prompt the same way training does
-    (see src/prompts.py::build_system_prompt) - match this to the training run's
-    recipe config so the model is evaluated under the same conditions it trained on.
-    When None, no system prompt is used.
+    `libraries_requirements_file` and `prompt_style` build the system prompt the same
+    way training does (see src/prompts.py::build_system_prompt) - match these to the
+    training run's recipe config so the model is evaluated under the same conditions
+    it trained on. When `libraries_requirements_file` is None, no system prompt is
+    used and `prompt_style` is ignored.
 
     If `debug` is set, each dataset is truncated to DEBUG_EVAL_SAMPLES rows, to
     quickly smoke-test that evaluation runs end-to-end.
     """
-    system_prompt = build_system_prompt(libraries_requirements_file)
+    system_prompt = build_system_prompt(libraries_requirements_file, style=prompt_style)
 
     model_args = ModelConfig(
         model_name_or_path=model_name_or_path,
@@ -153,6 +155,7 @@ def evaluate_model(
                 "dataset": name,
                 "dataset_file": dataset_file,
                 "system_prompt": system_prompt,
+                "prompt_style": prompt_style if libraries_requirements_file else None,
                 "decoding_settings": decoding_settings,
                 "debug": debug,
             },

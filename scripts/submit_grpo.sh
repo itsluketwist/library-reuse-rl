@@ -18,7 +18,7 @@ CPU_MEMORY="96G"                 # cpu memory allocation
 
 # the base models to train (see config/models.yaml)
 models=(
-    "qwen-debug"
+    # "qwen3-debug"
     "qwen3-4b"
     "qwen3-8b"
 )
@@ -32,6 +32,15 @@ training_datasets=(
 # grpo training recipe - hyperparameters, including the decoding settings used to
 # generate responses during rollout (see config/train/demo.yaml)
 recipe_config="config/train/demo.yaml"
+
+# wording used for the library system prompt during training, when recipe_config's
+# libraries_requirements_file is set (see src/prompts.py::PromptStyle): "lib" just
+# lists the available libraries, "use" also pushes the model to prefer them over
+# writing its own implementations. passed straight through to run_grpo's
+# --library-prompt-style flag (see src/run_grpo.py) - not part of the recipe file,
+# so switching this doesn't need a second recipe file
+library_prompt_style="lib"
+# library_prompt_style="use"
 
 # random seed for training
 seed=42
@@ -55,9 +64,10 @@ eval_decoding_profile="greedy"
 
 # requirements file for the automatic post-training eval jobs - match this to
 # recipe_config's libraries_requirements_file (see config/train/demo.yaml) so the
-# trained model is evaluated on the same prompt it was trained on. two eval jobs
-# are submitted per training run: one with this file in the system prompt, and one
-# without any system prompt - leave empty ("") to only submit the no-prompt eval
+# trained model is evaluated on the same library list it was trained on. three eval
+# jobs are submitted per training run: one with this file under the "lib" prompt
+# style, one under the "use" style (see src/prompts.py::PromptStyle), and one with
+# no system prompt at all - leave empty ("") to only submit the no-prompt eval
 eval_libraries_requirements_file="setup/requirements/v1.txt"
 
 ###############################################################################
@@ -106,6 +116,7 @@ echo "Training ${#models[@]} models x ${#training_datasets[@]} datasets"
 echo "  Recipe: $recipe_config"
 echo "  Seed: $seed"
 echo "  Reward profile: $reward_profile"
+echo "  Library prompt style: $library_prompt_style"
 echo "  Post-training eval datasets: ${eval_datasets:-all} [$eval_decoding_profile]"
 echo
 
@@ -129,15 +140,17 @@ for model in "${models[@]}"; do
             seed_suffix="-seed${seed}"
         fi
 
-        # append e.g. "-libv1" when a libraries requirements file is set, matching the
-        # recipe's own libraries_requirements_file setting (kept in sync manually via
-        # eval_libraries_requirements_file above), so runs with and without the
-        # library prompt produce distinct output directories
+        # append e.g. "-libv1"/"-usev1" when a libraries requirements file is set,
+        # matching the recipe's own libraries_requirements_file (kept in sync
+        # manually via eval_libraries_requirements_file above - it's read from the
+        # recipe file, unlike library_prompt_style, which is passed straight to
+        # run_grpo below) so runs under different library system-prompt settings
+        # produce distinct output directories
         lib_suffix=""
         if [ -n "$eval_libraries_requirements_file" ]; then
             lib_name="$(basename "$eval_libraries_requirements_file")"
             lib_name="${lib_name%.*}"
-            lib_suffix="-lib${lib_name}"
+            lib_suffix="-${library_prompt_style}${lib_name}"
         fi
 
         trained_model_path="output/${model}/${dataset_name}-${recipe_name}-${reward_profile}${seed_suffix}${lib_suffix}"
@@ -162,6 +175,7 @@ run_grpo \
     -d $training_dataset \
     --recipe-config $recipe_config \
     -s $seed \
+    --library-prompt-style $library_prompt_style \
     $reward_profile_flag \
     $debug_flag
 
@@ -170,20 +184,28 @@ EOF
 )
 
         # submit follow-up eval jobs to run after training finishes successfully -
-        # one with the library requirements in the system prompt, one without.
-        # results don't clash: run_eval adds a "-lib" suffix to output file names
-        # when a requirements file is set (see src/run_eval.py::eval_results_path)
-        for eval_variant in "with-libs" "no-libs"; do
+        # one under each library prompt style ("lib"/"use"), one with no system
+        # prompt at all. results don't clash: run_eval adds a distinct suffix to
+        # output file names per (requirements file, style) combination (see
+        # src/run_eval.py::eval_results_path / src/prompts.py::library_prompt_suffix)
+        for eval_variant in "with-libs" "with-uses" "no-libs"; do
 
-            # only the "with-libs" variant passes the libraries flag
+            # "with-libs"/"with-uses" pass the requirements file plus their prompt
+            # style; "no-libs" passes neither, leaving both flags empty
             variant_libraries_flag=""
-            if [ "$eval_variant" = "with-libs" ]; then
-                # skip the "with-libs" variant entirely when no requirements file
-                # is configured, since it would duplicate the "no-libs" job
+            variant_style_flag=""
+            if [ "$eval_variant" != "no-libs" ]; then
+                # skip these variants entirely when no requirements file is
+                # configured, since they'd duplicate the "no-libs" job
                 if [ -z "$eval_libraries_requirements_file" ]; then
                     continue
                 fi
                 variant_libraries_flag="$eval_libraries_flag"
+                if [ "$eval_variant" = "with-libs" ]; then
+                    variant_style_flag="--prompt-style lib"
+                else
+                    variant_style_flag="--prompt-style use"
+                fi
             fi
 
             sbatch --dependency=afterok:${train_job_id} <<EOF
@@ -202,14 +224,15 @@ run_eval \
     -m $trained_model_path \
     $eval_datasets_flag \
     --decoding-profile $eval_decoding_profile \
-    $variant_libraries_flag
+    $variant_libraries_flag \
+    $variant_style_flag
 
 echo "Eval ($eval_variant) complete for model: $trained_model_path"
 EOF
 
         done
 
-        echo "  Submitted train job $train_job_id (with-libs + no-libs evals will follow on completion)"
+        echo "  Submitted train job $train_job_id (with-libs + with-uses + no-libs evals will follow on completion)"
 
         # small delay between submissions to avoid scheduler overload
         sleep 0.5

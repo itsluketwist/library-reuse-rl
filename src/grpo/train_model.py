@@ -29,7 +29,7 @@ from trl import GRPOTrainer, ModelConfig, TrlParser, get_peft_config
 
 from src.data import load_train_dataset
 from src.models import get_model, get_tokenizer
-from src.prompts import build_system_prompt
+from src.prompts import PromptStyle, build_system_prompt
 from src.utils.config import load_full_yaml
 from src.utils.log import log_gpu_memory
 
@@ -92,6 +92,7 @@ def train_model_with_grpo(
     reward_weights: dict[str, float],
     seed: int,
     recipe_config: str = "config/train/demo.yaml",
+    library_prompt_style: PromptStyle = "lib",
     debug: bool = False,
 ) -> None:
     """
@@ -99,13 +100,14 @@ def train_model_with_grpo(
     `dataset_dir` (see src/data.py::load_train_dataset), saving the trained model to
     `output_dir`.
 
-    `seed` overrides the corresponding field parsed from `recipe_config`, so that -
-    along with the model, dataset, and output path - it's resolved once by the caller
-    (src/run_grpo.py) rather than duplicated in the recipe file. Every other training
-    hyperparameter, including `libraries_requirements_file` (used to build the system
-    prompt via src/prompts.py::build_system_prompt - see src/grpo/config.py) and the
-    decoding settings used during rollout generation (temperature/top_p/top_k), comes
-    straight from `recipe_config`.
+    `seed` and `library_prompt_style` override the corresponding fields parsed from
+    `recipe_config`, so that - along with the model, dataset, and output path -
+    they're resolved once by the caller (src/run_grpo.py) rather than duplicated in
+    the recipe file. Every other training hyperparameter, including
+    `libraries_requirements_file` (used to build the system prompt via
+    src/prompts.py::build_system_prompt - see src/grpo/config.py) and the decoding
+    settings used during rollout generation (temperature/top_p/top_k), comes straight
+    from `recipe_config`.
 
     `reward_profile` and `reward_weights` (see config/rewards.yaml and
     src/grpo/rewards.py) are recorded into train_results.json, alongside the rest of
@@ -122,6 +124,7 @@ def train_model_with_grpo(
     model_args.model_name_or_path = model_name_or_path
     training_args.output_dir = str(output_dir)
     training_args.seed = seed
+    training_args.library_prompt_style = library_prompt_style
 
     set_seed(training_args.seed)
 
@@ -161,7 +164,10 @@ def train_model_with_grpo(
     ###############
     # Load dataset
     ###############
-    system_prompt = build_system_prompt(training_args.libraries_requirements_file)
+    system_prompt = build_system_prompt(
+        training_args.libraries_requirements_file,
+        style=training_args.library_prompt_style,
+    )
     dataset = load_train_dataset(
         dataset_dir=dataset_dir,
         system_prompt=system_prompt,

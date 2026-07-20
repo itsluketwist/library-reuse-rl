@@ -4,6 +4,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 from src.eval import evaluate_model
+from src.prompts import PromptStyle, library_prompt_suffix
 from src.utils.config import load_full_yaml, load_yaml_config
 from src.utils.log import log, log_header
 
@@ -73,10 +74,24 @@ parser.add_argument(
     default=None,
     help=(
         "Requirements file (see setup/requirements/) listing the libraries available "
-        "in the sandboxed environment. When set, builds the system prompt from the "
-        "expert-programmer preamble plus this library list (matching a training run's "
-        "recipe config), and appends a lib-version suffix (e.g. '-libv1') to the "
-        "output file name. When omitted, no system prompt is used."
+        "in the sandboxed environment. When set, builds the system prompt listing "
+        "those libraries (matching a training run's recipe config), and appends a "
+        "lib-version suffix (e.g. '-libv1') to the output file name. When omitted, "
+        "no system prompt is used and --prompt-style is ignored."
+    ),
+)
+
+parser.add_argument(
+    "--prompt-style",
+    type=str,
+    choices=["lib", "use"],
+    default="lib",
+    help=(
+        "Wording used for the library system prompt when "
+        "--libraries-requirements-file is set (see "
+        "src/prompts.py::build_system_prompt): 'lib' just lists the available "
+        "libraries, 'use' also pushes the model to prefer them over writing its own "
+        "implementations. Changes the output suffix from e.g. '-libv1' to '-usev1'."
     ),
 )
 
@@ -96,6 +111,7 @@ def eval_results_path(
     dataset: str,
     decoding_profile: str,
     libraries_requirements_file: str | None = None,
+    prompt_style: PromptStyle = "lib",
 ) -> Path:
     """
     Compute the output path an evaluation run saves its results to.
@@ -104,16 +120,13 @@ def eval_results_path(
     model share a directory. The file name encodes the dataset and decoding profile
     (which produce genuinely different results) but not the model name, since that is
     already captured by the directory. When `libraries_requirements_file` is set, a
-    lib-version suffix (e.g. "-libv1") is appended to separate runs with and without
-    the library-list system prompt.
+    suffix (e.g. "-libv1" or "-usev1", depending on `prompt_style`) is appended to
+    separate runs under different library system-prompt settings (see
+    src/prompts.py::library_prompt_suffix).
 
     Returns the output file path.
     """
-    lib_suffix = (
-        f"-lib{Path(libraries_requirements_file).stem}"
-        if libraries_requirements_file
-        else ""
-    )
+    lib_suffix = library_prompt_suffix(libraries_requirements_file, style=prompt_style)
     return (
         Path("output")
         / model
@@ -130,6 +143,7 @@ def run_eval(
     decoding_config: str = "config/decoding.yaml",
     eval_datasets_config: str = "config/eval_datasets.yaml",
     libraries_requirements_file: str | None = None,
+    prompt_style: PromptStyle = "lib",
     debug: bool = False,
 ) -> None:
     """
@@ -145,10 +159,10 @@ def run_eval(
     `datasets` is a list of nice names looked up in `eval_datasets_config` (see
     config/eval_datasets.yaml). If not given, every dataset in that file is run.
 
-    `libraries_requirements_file` builds the system prompt and adds a lib-version
-    suffix to output file names (see src/prompts.py::build_system_prompt and
-    eval_results_path) - set this to the same value as the training run's recipe
-    config so the model is evaluated under the conditions it was trained on.
+    `libraries_requirements_file` and `prompt_style` build the system prompt and add
+    a matching suffix to output file names (see src/prompts.py::build_system_prompt
+    and eval_results_path) - set these to the same values as the training run's
+    recipe config so the model is evaluated under the conditions it was trained on.
 
     If `debug` is set, src/eval/evaluate.py::evaluate_model truncates each dataset to
     a handful of samples - useful to quickly check the eval code runs end-to-end.
@@ -171,6 +185,7 @@ def run_eval(
     model_name_or_path = model_settings["path"] or model_settings["base"]
     log(f"Model: {model_name_or_path}")
     log(f"Libraries requirements file: {libraries_requirements_file or 'none'}")
+    log(f"Prompt style: {prompt_style}")
     log(f"Debug: {debug}")
 
     decoding_settings = load_yaml_config(
@@ -187,6 +202,7 @@ def run_eval(
             dataset=name,
             decoding_profile=decoding_profile,
             libraries_requirements_file=libraries_requirements_file,
+            prompt_style=prompt_style,
         )
         for name in dataset_names
     }
@@ -197,6 +213,7 @@ def run_eval(
         decoding_settings=decoding_settings,
         output_paths=output_paths,
         libraries_requirements_file=libraries_requirements_file,
+        prompt_style=prompt_style,
         debug=debug,
     )
 
@@ -211,6 +228,7 @@ def main() -> None:
     log(f"Datasets: {datasets or 'all'}")
     log(f"Decoding: {args.decoding_config} [{args.decoding_profile}]")
     log(f"Libraries requirements file: {args.libraries_requirements_file or 'none'}")
+    log(f"Prompt style: {args.prompt_style}")
     log(f"Debug: {args.debug}")
     log()
 
@@ -222,6 +240,7 @@ def main() -> None:
         decoding_config=args.decoding_config,
         eval_datasets_config=args.eval_datasets_config,
         libraries_requirements_file=args.libraries_requirements_file,
+        prompt_style=args.prompt_style,
         debug=args.debug,
     )
 

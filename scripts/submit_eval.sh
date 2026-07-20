@@ -18,7 +18,7 @@ CPU_MEMORY="96G"                 # cpu memory allocation
 
 # the models to evaluate (untrained or pretrained, see config/models.yaml)
 models=(
-    "qwen-debug"
+    # "qwen3-debug"
     "qwen3-4b"
     "qwen3-8b"
 )
@@ -35,8 +35,16 @@ decoding_profiles=(
 # requirements file - match this to the training run's recipe config (see
 # libraries_requirements_file in config/train/demo.yaml) so the model being evaluated
 # sees the same prompt it was trained on. leave empty ("") to evaluate without a
-# system prompt (no library list)
+# system prompt (no library list) - prompt_style below is ignored in that case
+# libraries_requirements_file=""
 libraries_requirements_file="setup/requirements/v1.txt"
+
+# "lib" just lists the available libraries in the system prompt (a neutral
+# baseline); "use" also pushes the model to prefer them over writing its own
+# implementations (see src/prompts.py::PromptStyle). only used when
+# libraries_requirements_file above is set
+prompt_style="lib"
+prompt_style="use"
 
 # set true to run a tiny smoke test instead of full evaluation - truncates each
 # dataset to a handful of samples, to quickly check the eval code runs correctly
@@ -62,10 +70,12 @@ if [ "$debug" = true ]; then
     debug_flag="--debug"
 fi
 
-# build libraries-requirements-file flag string
+# build libraries-requirements-file and prompt-style flag strings
 libraries_flag=""
+style_flag=""
 if [ -n "$libraries_requirements_file" ]; then
     libraries_flag="--libraries-requirements-file $libraries_requirements_file"
+    style_flag="--prompt-style $prompt_style"
 fi
 
 # default to the tiny debug model if smoke-testing and no model was set, mirroring
@@ -110,6 +120,7 @@ run_eval \
     $datasets_flag \
     --decoding-profile $decoding_profile \
     $libraries_flag \
+    $style_flag \
     $debug_flag
 
 echo "Eval complete for model: $model, decoding: $decoding_profile"
