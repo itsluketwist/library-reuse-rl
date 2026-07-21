@@ -41,12 +41,12 @@ eval_decoding_profiles:
   default:
     temperature: 1.0
     top_p: 1.0
-    top_k: null
+    top_k: 0  # disabled
     max_new_tokens: 8192
   greedy:
     temperature: 0.0
     top_p: 1.0
-    top_k: null
+    top_k: 0  # disabled
     max_new_tokens: 8192
   qwen3:
     temperature: 0.6
