@@ -18,20 +18,44 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
 ]
-requires-python = ">=3.11"
+requires-python = "==3.12.13"
 dependencies = [
+    "datasets",
+    "huggingface_hub",
+    "Jupyter",
+    "llm-codegen-research",
     "pre-commit",
     "pytest",
+    "pyyaml",
+    "radon",
+    "torch==2.8.0",
+    "torchaudio",
+    "torchvision",
+    "tqdm",
+    "transformers<5.0.0",
+    "trl>=0.20,<=0.28.0",
     "types-PyYAML",
     "uv",
+    "vllm==0.10.2",
+    "wandb",
 ]
 
 [project.scripts]
 run_grpo = "src.run_grpo:main"
 run_eval = "src.run_eval:main"
 
-[tool.uv]
-# without this, uv pins every package also mirrored on the pytorch index (eg.
-# requests, numpy) to the old version found there, which drags trl down to an
-# ancient release that predates GRPOConfig.
-index-strategy = "unsafe-best-match"
+# torch/vllm need cuda wheels that only exist on the pytorch index, not pypi.org. marking
+# the index "explicit" scopes it to just the packages named in [tool.uv.sources] below, so
+# uv never considers it for anything else - this is what used to fail (see the git history
+# of requirements_fixed.txt): pip/uv resolving *every* package against the pytorch index and
+# picking up stale versions mirrored there (eg. requests, numpy), which dragged trl down to
+# an ancient release that predates GRPOConfig.
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }
+torchvision = { index = "pytorch-cu126" }
+torchaudio = { index = "pytorch-cu126" }
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
