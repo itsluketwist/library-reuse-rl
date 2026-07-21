@@ -1,95 +1,85 @@
-# Model arguments
-# model_name_or_path/model_revision are set by
-# src/grpo/train_model.py::train_model_with_grpo from the model registry
-# (config/models.yaml), not from this file.
+# GRPO recipe - shared by training (src/grpo/train_model.py) and inference
+# (src/run_eval.py), via eval_decoding_profiles below.
+
+# ==============================================================================
+# hyperparameters - the dials actually varied between experiments
+# ==============================================================================
+
+libraries_requirements_file: setup/requirements/v1.txt  # system prompt library list, see src/prompts.py
+
+num_train_epochs: 1
+
+num_generations: 16  # rollouts per prompt (GRPO group size)
+generation_batch_size: 16  # must match num_generations - one prompt's group per cycle
+num_iterations: 1  # mu in the GRPO paper (reuse count) - kept at 1, see gradient_accumulation_steps
+
+per_device_train_batch_size: 2  # completions per micro-batch - main memory lever
+gradient_accumulation_steps: 32  # 4 prompts x 16 rollouts per optimizer step
+
+learning_rate: 1.0e-06
+adam_beta2: 0.99
+weight_decay: 0.1
+max_grad_norm: 0.2
+lr_scheduler_type: cosine_with_min_lr
+lr_scheduler_kwargs:
+  min_lr_rate: 0.1
+warmup_steps: 0.02  # ~2% of ~2198 steps (deprecated warmup_ratio alias, transformers>=4.57)
+
+rollout_decoding_profile: default  # which eval_decoding_profiles entry rollouts sample with
+
+# ==============================================================================
+# evaluation
+# ==============================================================================
+
+eval_strategy: "steps"  # periodic held-out eval during training
+eval_steps: 500
+per_device_eval_batch_size: 16  # must be divisible by num_generations
+
+# named decoding profiles, shared by training rollouts (see rollout_decoding_profile
+# above) and run_eval.py (--decoding-profile/--decoding-config)
+eval_decoding_profiles:
+  default:
+    temperature: 1.0
+    top_p: 1.0
+    top_k: null
+    max_new_tokens: 8192
+  greedy:
+    temperature: 0.0
+    top_p: 1.0
+    top_k: null
+    max_new_tokens: 8192
+  qwen3:
+    temperature: 0.6
+    top_p: 0.95
+    top_k: 20
+    max_new_tokens: 8192
+
+# ==============================================================================
+# settings - mechanism/plumbing flags that rarely change between runs
+# ==============================================================================
+
 dtype: bfloat16
 attn_implementation: sdpa  # sdpa, flash_attention_2
+bf16: true
 
-# Data training arguments
-# when set, builds the system prompt listing the libraries from this file (see
-# src/prompts.py::build_system_prompt), worded according to the run's
-# --library-prompt-style CLI flag (see src/run_grpo.py), and appends a matching
-# suffix (e.g. "-libv1") to the output path. set to null to train without a system
-# prompt (no library list, no suffix)
-libraries_requirements_file: setup/requirements/v1.txt
-
-# GRPO trainer config
 sync_ref_model: True
 ref_model_sync_steps: 64
-beta: 0.01
-bf16: true
+
 use_vllm: true
-# "colocate" shares the single training gpu with vllm's engine (no separate gpu
-# available for a standalone vllm server, since jobs only request one gpu - see
-# scripts/submit_grpo.sh). vllm_gpu_memory_utilization is the fraction of that gpu's
-# memory reserved for vllm's kv cache, left at trl's default (0.3) as a starting point
-vllm_mode: colocate
-# periodically check generalisation against the val split during training (do_eval is
-# derived automatically from eval_strategy by transformers, so it's not set directly)
-eval_strategy: "steps"
-eval_steps: 500
-num_generations: 8
-num_iterations: 2
-# generation_batch_size is the number of completions (not prompts) generated per
-# rollout cycle - trl requires it to be divisible by both num_generations and the
-# global train batch size. 8 completions = one prompt's group generated at a time,
-# keeping the number of simultaneous kv caches during generation small
-generation_batch_size: 8
-# trl requires the global eval batch size to be divisible by num_generations,
-# so this cannot go below 8 on a single gpu
-per_device_eval_batch_size: 8
-# completions per training micro-batch - this is the main memory lever: each
-# sequence can be up to max_completion_length tokens, and backprop over the
-# vocab-sized logits for every token is the biggest memory spike of the run.
-# kept small, with gradient accumulation raised to preserve the effective batch
-per_device_train_batch_size: 2
-# 2 x 16 = 32 completions per optimizer step (same effective batch as the old
-# 8 x 4, and still divisible by num_generations as trl requires)
-gradient_accumulation_steps: 16
+vllm_mode: colocate  # single gpu, no separate vllm server (see scripts/submit_grpo.sh)
+
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
 
-learning_rate: 1.0e-06
-adam_beta1: 0.9
-adam_beta2: 0.99
-weight_decay: 0.1
-max_grad_norm: 0.2
 log_completions: false
 log_level: info
 logging_first_step: true
 logging_steps: 10
 logging_strategy: steps
-lr_scheduler_type: cosine_with_min_lr
-lr_scheduler_kwargs:
-  min_lr_rate: 0.1
-
-num_train_epochs: 1
-
-## generation config
-# sampling parameters used during rollout generation (previously the "random"
-# decoding profile in config/decoding.yaml - training has its own copy here since
-# RL training, unlike eval, needs sampling diversity baked into its hyperparameters,
-# not swapped out per run)
-temperature: 1.0
-top_p: 1.0
-top_k: null
-max_completion_length: 8192
-
 report_to:
 - wandb
-reward_weights:
-- 1.0
-save_strategy: "no"
-# save_strategy: "no" means no periodic checkpoint-XXXX saves during training - only
-# the final model, saved unconditionally at the end of train_model_with_grpo
-# (trainer.save_model()) regardless of this setting. save_steps below is used only by
-# SaveTrainerStateCallback's periodic trainer_state.json dump (see
-# src/grpo/train_model.py), not for checkpointing the model itself
-save_steps: 500
+
+save_strategy: "no"  # only the final model is saved (see train_model_with_grpo)
+save_steps: 500  # cadence for SaveTrainerStateCallback's trainer_state.json dump only
 save_total_limit: 1
-# warmup_ratio is deprecated in transformers>=4.57 (aliases into warmup_steps, which
-# now accepts either an absolute step count or, as here, a <1 ratio of total steps -
-# see transformers/training_args.py::get_warmup_steps) - ~2% of the 4397 training
-# steps, i.e. ~88 steps
-warmup_steps: 0.02

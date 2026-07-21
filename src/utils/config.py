@@ -19,18 +19,29 @@ def _load_yaml(config_file: str) -> dict[str, Any]:
 def load_yaml_config(
     config_file: str,
     key: str,
+    section: str | None = None,
 ) -> dict[str, Any]:
-    """Load a specific key from a yaml config file.
+    """Load a specific key from a yaml config file, optionally nested under a section.
+
+    `section`, when given, is looked up first (e.g. "eval_decoding_profiles" in
+    config/train/demo.yaml, which shares that file with training's own top-level
+    keys), and `key` is then looked up inside it rather than at the top level.
 
     Returns the config dict for the given key.
-    Raises KeyError if the key is not found.
+    Raises KeyError if the section or key is not found.
     """
     config = _load_yaml(config_file=config_file)
+
+    if section is not None:
+        if section not in config:
+            raise KeyError(f"section '{section}' not found in {config_file}")
+        config = config[section]
 
     if key in config:
         return config[key]
 
-    raise KeyError(f"key '{key}' not found in {config_file}")
+    where = f"section '{section}' of {config_file}" if section else config_file
+    raise KeyError(f"key '{key}' not found in {where}")
 
 
 def load_full_yaml(config_file: str) -> dict[str, Any]:

@@ -51,14 +51,19 @@ parser.add_argument(
     "--decoding-profile",
     type=str,
     default="greedy",
-    help="Decoding profile name within the decoding config file.",
+    help="Decoding profile name within the decoding config file's eval_decoding_profiles section.",
 )
 
 parser.add_argument(
     "--decoding-config",
     type=str,
-    default="config/decoding.yaml",
-    help="Path to decoding config file.",
+    default="config/train/demo.yaml",
+    help=(
+        "Path to decoding config file - defaults to the training recipe file, which "
+        "also carries eval's decoding profiles (see its eval_decoding_profiles "
+        "section), so training and inference share exactly one place for sampling "
+        "settings."
+    ),
 )
 
 parser.add_argument(
@@ -69,26 +74,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--libraries-requirements-file",
-    type=str,
-    default=None,
-    help=(
-        "Requirements file (see setup/requirements/) listing the libraries available "
-        "in the sandboxed environment. When set, builds the system prompt listing "
-        "those libraries (matching a training run's recipe config), and appends a "
-        "lib-version suffix (e.g. '-libv1') to the output file name. When omitted, "
-        "no system prompt is used and --prompt-style is ignored."
-    ),
-)
-
-parser.add_argument(
     "--prompt-style",
     type=str,
     choices=["lib", "use"],
     default="lib",
     help=(
-        "Wording used for the library system prompt when "
-        "--libraries-requirements-file is set (see "
+        "Wording used for the library system prompt, when the recipe file's "
+        "libraries_requirements_file is set (see "
         "src/prompts.py::build_system_prompt): 'lib' just lists the available "
         "libraries, 'use' also pushes the model to prefer them over writing its own "
         "implementations. Changes the output suffix from e.g. '-libv1' to '-usev1'."
@@ -140,9 +132,8 @@ def run_eval(
     datasets: list[str] | None = None,
     model_config: str = "config/models.yaml",
     decoding_profile: str = "greedy",
-    decoding_config: str = "config/decoding.yaml",
+    decoding_config: str = "config/train/demo.yaml",
     eval_datasets_config: str = "config/eval_datasets.yaml",
-    libraries_requirements_file: str | None = None,
     prompt_style: PromptStyle = "lib",
     debug: bool = False,
 ) -> None:
@@ -159,10 +150,11 @@ def run_eval(
     `datasets` is a list of nice names looked up in `eval_datasets_config` (see
     config/eval_datasets.yaml). If not given, every dataset in that file is run.
 
-    `libraries_requirements_file` and `prompt_style` build the system prompt and add
-    a matching suffix to output file names (see src/prompts.py::build_system_prompt
-    and eval_results_path) - set these to the same values as the training run's
-    recipe config so the model is evaluated under the conditions it was trained on.
+    The system prompt's libraries_requirements_file is read straight from
+    `decoding_config` (the same recipe file training uses - see
+    src/prompts.py::build_system_prompt and eval_results_path), so the model is
+    always evaluated under the library list it was trained on. `prompt_style` is
+    still a free choice, since it isn't part of the recipe file either.
 
     If `debug` is set, src/eval/evaluate.py::evaluate_model truncates each dataset to
     a handful of samples - useful to quickly check the eval code runs end-to-end.
@@ -184,12 +176,17 @@ def run_eval(
     # prefer a trained checkpoint's path if one's registered, otherwise the base model
     model_name_or_path = model_settings["path"] or model_settings["base"]
     log(f"Model: {model_name_or_path}")
-    log(f"Libraries requirements file: {libraries_requirements_file or 'none'}")
     log(f"Prompt style: {prompt_style}")
     log(f"Debug: {debug}")
 
+    recipe = load_full_yaml(decoding_config)
+    libraries_requirements_file = recipe.get("libraries_requirements_file")
+    log(f"Libraries requirements file: {libraries_requirements_file or 'none'}")
+
     decoding_settings = load_yaml_config(
-        config_file=decoding_config, key=decoding_profile
+        config_file=decoding_config,
+        key=decoding_profile,
+        section="eval_decoding_profiles",
     )
     log(f"Decoding profile '{decoding_profile}': {decoding_settings}")
 
@@ -227,7 +224,6 @@ def main() -> None:
     log(f"Model: {args.model}")
     log(f"Datasets: {datasets or 'all'}")
     log(f"Decoding: {args.decoding_config} [{args.decoding_profile}]")
-    log(f"Libraries requirements file: {args.libraries_requirements_file or 'none'}")
     log(f"Prompt style: {args.prompt_style}")
     log(f"Debug: {args.debug}")
     log()
@@ -239,7 +235,6 @@ def main() -> None:
         decoding_profile=args.decoding_profile,
         decoding_config=args.decoding_config,
         eval_datasets_config=args.eval_datasets_config,
-        libraries_requirements_file=args.libraries_requirements_file,
         prompt_style=args.prompt_style,
         debug=args.debug,
     )

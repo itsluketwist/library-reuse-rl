@@ -23,8 +23,9 @@ def generate_responses(
     Generate one response per prompt from `model`, EVAL_BATCH_SIZE prompts at a time.
 
     `prompts` is a list of chat-messages lists, as produced by
-    src/data.py::load_eval_dataset. `decoding_settings` is a decoding profile dict
-    (see config/decoding.yaml) with "temperature"/"top_p"/"top_k"/"max_new_tokens" -
+    src/data.py::load_eval_dataset. `decoding_settings` is a decoding profile dict (see
+    eval_decoding_profiles in config/train/demo.yaml) with
+    "temperature"/"top_p"/"top_k"/"max_new_tokens" -
     a temperature of 0 (the "greedy" profile) is treated as greedy decoding.
 
     Prompts within a batch have different lengths, so they're left-padded (padding on

@@ -151,9 +151,23 @@ def train_model_with_grpo(
     """
     metrics_dir = Path(metrics_dir)
     metrics_dir.mkdir(parents=True, exist_ok=True)
+    recipe = load_full_yaml(recipe_config)
+    # allow_extra_keys=True since recipe also carries rollout_decoding_profile and
+    # eval_decoding_profiles (for run_eval.py) that GRPOConfig/ModelConfig don't
+    # recognise - training and inference share one recipe file
     training_args, model_args = TrlParser((GRPOConfig, ModelConfig)).parse_dict(
-        load_full_yaml(recipe_config)
+        recipe, allow_extra_keys=True
     )
+
+    # rollouts and eval sample with the same decoding profile - see
+    # rollout_decoding_profile/eval_decoding_profiles in config/train/demo.yaml
+    rollout_decoding = recipe["eval_decoding_profiles"][
+        recipe["rollout_decoding_profile"]
+    ]
+    training_args.temperature = rollout_decoding["temperature"]
+    training_args.top_p = rollout_decoding["top_p"]
+    training_args.top_k = rollout_decoding["top_k"]
+    training_args.max_completion_length = rollout_decoding["max_new_tokens"]
 
     model_args.model_name_or_path = model_name_or_path
     training_args.output_dir = str(output_dir)

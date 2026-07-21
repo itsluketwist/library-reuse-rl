@@ -76,11 +76,12 @@ The same flag is available as the `debug` setting in
 [`scripts/submit_grpo.sh`](scripts/submit_grpo.sh) and
 [`scripts/submit_eval.sh`](scripts/submit_eval.sh).
 
-Set `libraries_requirements_file` (training, in the recipe config) or
-`--libraries-requirements-file` (eval) to a requirements file from
+Set `libraries_requirements_file` in the recipe config
+([`config/train/demo.yaml`](config/train/demo.yaml)) to a requirements file from
 [`setup/requirements/`](setup/requirements/) to include the available libraries in the
 prompt, so the model knows what it can import and reuse - see
-[`src/prompts.py`](src/prompts.py).
+[`src/prompts.py`](src/prompts.py). `run_eval` reads this straight from the same
+recipe file too, so training and evaluation always agree on it.
 
 ## *rewards*
 

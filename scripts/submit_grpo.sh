@@ -67,14 +67,6 @@ reward_profile="full"
 eval_datasets=""
 eval_decoding_profile="greedy"
 
-# requirements file for the automatic post-training eval jobs - match this to
-# recipe_config's libraries_requirements_file (see config/train/demo.yaml) so the
-# trained model is evaluated on the same library list it was trained on. three eval
-# jobs are submitted per training run: one with this file under the "lib" prompt
-# style, one under the "use" style (see src/prompts.py::PromptStyle), and one with
-# no system prompt at all - leave empty ("") to only submit the no-prompt eval
-eval_libraries_requirements_file="setup/requirements/v1.txt"
-
 ###############################################################################
 #                            submit jobs                                      #
 ###############################################################################
@@ -91,12 +83,6 @@ fi
 debug_flag=""
 if [ "$debug" = true ]; then
     debug_flag="--debug"
-fi
-
-# build the post-training eval job's libraries flag string
-eval_libraries_flag=""
-if [ -n "$eval_libraries_requirements_file" ]; then
-    eval_libraries_flag="--libraries-requirements-file $eval_libraries_requirements_file"
 fi
 
 # default to the tiny debug model if smoke-testing and no model was set, mirroring
@@ -131,39 +117,11 @@ for model in "${models[@]}"; do
     for training_dataset in "${training_datasets[@]}"; do
         dataset_name=$(basename "$training_dataset")
 
-        # mirror src/run_grpo.py::trained_model_path's naming convention here in bash,
-        # since python/the venv aren't available on the submission node (only inside
-        # the sbatch job, after scripts/setup_job.sh runs) - keep in sync with that
-        # function and its model_key computation in run_grpo() if the convention
-        # ever changes
-        recipe_name="$(basename "$recipe_config")"
-        recipe_name="${recipe_name%.*}"
-
-        # only include the seed when it differs from run_grpo.py's DEFAULT_SEED (42),
-        # to keep names short
-        seed_suffix=""
-        if [ "$seed" -ne 42 ]; then
-            seed_suffix="-seed${seed}"
-        fi
-
-        # append e.g. "-libv1"/"-usev1" when a libraries requirements file is set,
-        # matching the recipe's own libraries_requirements_file (kept in sync
-        # manually via eval_libraries_requirements_file above - it's read from the
-        # recipe file, unlike library_prompt_style, which is passed straight to
-        # run_grpo below) so runs under different library system-prompt settings
-        # produce distinct output directories
-        lib_suffix=""
-        if [ -n "$eval_libraries_requirements_file" ]; then
-            lib_name="$(basename "$eval_libraries_requirements_file")"
-            lib_name="${lib_name%.*}"
-            lib_suffix="-${library_prompt_style}${lib_name}"
-        fi
-
-        # this is the registry key run_grpo.py registers the trained model under
-        # (see model_key in run_grpo()) - not a filesystem path, so it must NOT be
-        # prefixed with OUTPUT_BASE (that's where the files live; run_eval's -m looks
-        # models up by this key in config/models.yaml, which stores the real path)
-        model_key="${model}/${dataset_name}-${recipe_name}-${reward_profile}${seed_suffix}${lib_suffix}"
+        # registry key this run's trained model gets registered under (see
+        # config/models.yaml) - generated once here and reused for the dependent eval
+        # jobs' --model below, so nothing needs to reconstruct run_grpo's naming
+        # convention just to find the model it just trained
+        run_id="${model}-$(uuidgen | tr '[:upper:]' '[:lower:]' | cut -c1-4)"
 
         echo "  Submitting: $dataset_name [$recipe_config]"
 
@@ -187,6 +145,7 @@ run_grpo \
     -s $seed \
     --library-prompt-style $library_prompt_style \
     --output-root ${OUTPUT_BASE} \
+    --run-id $run_id \
     $reward_profile_flag \
     $debug_flag
 
@@ -194,29 +153,17 @@ echo "RL training complete for model: $model, dataset: $dataset_name"
 EOF
 )
 
-        # submit follow-up eval jobs to run after training finishes successfully -
-        # one under each library prompt style ("lib"/"use"), one with no system
-        # prompt at all. results don't clash: run_eval adds a distinct suffix to
-        # output file names per (requirements file, style) combination (see
-        # src/run_eval.py::eval_results_path / src/prompts.py::library_prompt_suffix)
-        for eval_variant in "with-libs" "with-uses" "no-libs"; do
-
-            # "with-libs"/"with-uses" pass the requirements file plus their prompt
-            # style; "no-libs" passes neither, leaving both flags empty
-            variant_libraries_flag=""
-            variant_style_flag=""
-            if [ "$eval_variant" != "no-libs" ]; then
-                # skip these variants entirely when no requirements file is
-                # configured, since they'd duplicate the "no-libs" job
-                if [ -z "$eval_libraries_requirements_file" ]; then
-                    continue
-                fi
-                variant_libraries_flag="$eval_libraries_flag"
-                if [ "$eval_variant" = "with-libs" ]; then
-                    variant_style_flag="--prompt-style lib"
-                else
-                    variant_style_flag="--prompt-style use"
-                fi
+        # submit follow-up eval jobs to run after training finishes successfully - one
+        # per library prompt style ("lib"/"use" - see src/prompts.py::PromptStyle).
+        # libraries_requirements_file itself isn't passed here: run_eval always reads
+        # it straight from the recipe file, so it automatically matches this training
+        # run. results don't clash: run_eval adds a distinct suffix to output file
+        # names per style (see src/run_eval.py::eval_results_path)
+        for eval_variant in "with-libs" "with-uses"; do
+            if [ "$eval_variant" = "with-libs" ]; then
+                variant_style_flag="--prompt-style lib"
+            else
+                variant_style_flag="--prompt-style use"
             fi
 
             sbatch --dependency=afterok:${train_job_id} <<EOF
@@ -232,18 +179,17 @@ EOF
 source ./scripts/setup_job.sh
 
 run_eval \
-    -m $model_key \
+    -m $run_id \
     $eval_datasets_flag \
     --decoding-profile $eval_decoding_profile \
-    $variant_libraries_flag \
     $variant_style_flag
 
-echo "Eval ($eval_variant) complete for model: $model_key"
+echo "Eval ($eval_variant) complete for model: $run_id"
 EOF
 
         done
 
-        echo "  Submitted train job $train_job_id (with-libs + with-uses + no-libs evals will follow on completion)"
+        echo "  Submitted train job $train_job_id (with-libs + with-uses evals will follow on completion)"
 
         # small delay between submissions to avoid scheduler overload
         sleep 0.5

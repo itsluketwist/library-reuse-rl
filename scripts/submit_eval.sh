@@ -27,22 +27,17 @@ models=(
 # within a single job per model - leave empty to evaluate every dataset in that file
 datasets=""
 
-# decoding profiles to evaluate with (from config/decoding.yaml)
+# decoding profiles to evaluate with (from eval_decoding_profiles in the training
+# recipe file, config/train/demo.yaml - shared between training and inference)
 decoding_profiles=(
     "greedy"
 )
 
-# requirements file - match this to the training run's recipe config (see
-# libraries_requirements_file in config/train/demo.yaml) so the model being evaluated
-# sees the same prompt it was trained on. leave empty ("") to evaluate without a
-# system prompt (no library list) - prompt_style below is ignored in that case
-# libraries_requirements_file=""
-libraries_requirements_file="setup/requirements/v1.txt"
-
-# "lib" just lists the available libraries in the system prompt (a neutral
-# baseline); "use" also pushes the model to prefer them over writing its own
-# implementations (see src/prompts.py::PromptStyle). only used when
-# libraries_requirements_file above is set
+# wording used for the library system prompt (see src/prompts.py::PromptStyle) -
+# libraries_requirements_file itself always comes from the recipe file's own setting
+# (config/train/demo.yaml), not a flag here, so eval always matches what a model was
+# trained on. "lib" just lists the available libraries; "use" also pushes the model
+# to prefer them over writing its own implementations
 prompt_style="lib"
 prompt_style="use"
 
@@ -70,13 +65,7 @@ if [ "$debug" = true ]; then
     debug_flag="--debug"
 fi
 
-# build libraries-requirements-file and prompt-style flag strings
-libraries_flag=""
-style_flag=""
-if [ -n "$libraries_requirements_file" ]; then
-    libraries_flag="--libraries-requirements-file $libraries_requirements_file"
-    style_flag="--prompt-style $prompt_style"
-fi
+style_flag="--prompt-style $prompt_style"
 
 # default to the tiny debug model if smoke-testing and no model was set, mirroring
 # run_eval.py's own --debug default (see DEBUG_MODEL_KEY in src/run_eval.py) - without
@@ -119,7 +108,6 @@ run_eval \
     -m $model \
     $datasets_flag \
     --decoding-profile $decoding_profile \
-    $libraries_flag \
     $style_flag \
     $debug_flag
 

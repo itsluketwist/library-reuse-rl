@@ -1,5 +1,6 @@
 """The command-line entry point and orchestration for RL training with GRPO."""
 
+import uuid
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -26,6 +27,19 @@ parser.add_argument(
     type=str,
     default=None,
     help="Model key from models.yaml. Not required if --debug is set.",
+)
+
+parser.add_argument(
+    "--run-id",
+    type=str,
+    default=None,
+    help=(
+        "Registry key (see config/models.yaml) this run's trained model is "
+        "registered under. Generated automatically if not given - "
+        "scripts/submit_grpo.sh always passes one explicitly, generated once in "
+        "bash and reused for the dependent eval job's --model, so eval doesn't need "
+        "to recompute this run's naming convention to find it."
+    ),
 )
 
 parser.add_argument(
@@ -133,10 +147,9 @@ def trained_model_path(
     `library_prompt_style` is a CLI-level setting (see --library-prompt-style below),
     not part of the recipe file, mirroring how `seed` overrides the recipe.
 
-    This naming convention is deterministic, so scripts/submit_grpo.sh mirrors it in
-    bash (python/the venv aren't available on the submission node) to compute the same
-    path and queue the post-training eval job before training has even started - keep
-    that script in sync if this naming convention changes.
+    This is purely a human-readable directory name - the registry key a trained model
+    is looked up by (see run_id in run_grpo()) is independent of it, so nothing needs
+    to reconstruct this naming convention just to find a model again.
 
     Returns the output directory path.
     """
@@ -165,6 +178,7 @@ def run_grpo(
     library_prompt_style: PromptStyle = "lib",
     debug: bool = False,
     output_root: str = "output",
+    run_id: str | None = None,
 ) -> None:
     """
     Run GRPO RL training for the given model and dataset.
@@ -189,13 +203,17 @@ def run_grpo(
     config/rewards.yaml and src/grpo/rewards.py) selecting which reward components
     count, and saves the trained output under the path returned by
     `trained_model_path`. Once training finishes, registers the trained model in
-    `model_config` under that output path's name, so eval can look it up by name just
-    like a base model.
+    `model_config` under `run_id` (generated if not given - see --run-id), separately
+    from the human-readable directory it's actually saved to, so eval can look it up
+    by that id just like a base model is looked up by name.
     """
     if model is None:
         if not debug:
             raise ValueError("--model is required unless --debug is set.")
         model = DEBUG_MODEL_KEY
+
+    if run_id is None:
+        run_id = f"{model}-{uuid.uuid4().hex[:4]}"
 
     model_settings = load_yaml_config(config_file=model_config, key=model)
     reward_weights = load_reward_profile(
@@ -247,16 +265,13 @@ def run_grpo(
         debug=debug,
     )
 
-    # use the path relative to output/ (e.g. "qwen3-8b/skywork-demo-full") as the
-    # registry key, so it stays unique across different base models
-    model_key = str(output_path.relative_to(Path(output_root)))
     register_model(
-        model_key=model_key,
+        model_key=run_id,
         base=model_settings["base"],
         path=str(output_path),
         config_file=model_config,
     )
-    log(f"Registered trained model '{model_key}' in {model_config}")
+    log(f"Registered trained model '{run_id}' ({output_path}) in {model_config}")
 
 
 def main() -> None:
@@ -272,6 +287,7 @@ def main() -> None:
     log(f"Library prompt style: {args.library_prompt_style}")
     log(f"Debug: {args.debug}")
     log(f"Output root: {args.output_root}")
+    log(f"Run id: {args.run_id or '(generated)'}")
     log()
 
     run_grpo(
@@ -283,6 +299,7 @@ def main() -> None:
         seed=args.seed,
         recipe_config=args.recipe_config,
         library_prompt_style=args.library_prompt_style,
+        run_id=args.run_id,
         debug=args.debug,
         output_root=args.output_root,
     )
