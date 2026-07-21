@@ -17,15 +17,6 @@ echo "Total memory: $(free -h | awk '/^Mem:/ {print $2}')"
 echo "Available memory: $(free -h | awk '/^Mem:/ {print $7}')"
 echo
 
-echo "Loading modules..."
-# no python module - uv fetches its own 3.12.12 build (pinned in pyproject.toml),
-# independent of the HPC's module system (see py312-test/ for how this was verified)
-module load cudnn/8.7.0.84-11.8-gcc-13.2.0
-module load cuda/12.2.1-gcc-13.2.0
-echo "Modules loaded:"
-module list
-echo
-
 echo "Loading virtual environment..."
 source .venv/bin/activate
 echo

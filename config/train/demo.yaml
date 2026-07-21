@@ -18,12 +18,16 @@ sync_ref_model: True
 ref_model_sync_steps: 64
 beta: 0.01
 bf16: true
-use_peft: false
-use_vllm: false
+use_vllm: true
+# "colocate" shares the single training gpu with vllm's engine (no separate gpu
+# available for a standalone vllm server, since jobs only request one gpu - see
+# scripts/submit_grpo.sh). vllm_gpu_memory_utilization is the fraction of that gpu's
+# memory reserved for vllm's kv cache, left at trl's default (0.3) as a starting point
+vllm_mode: colocate
 # periodically check generalisation against the val split during training (do_eval is
 # derived automatically from eval_strategy by transformers, so it's not set directly)
 eval_strategy: "steps"
-eval_steps: 100
+eval_steps: 500
 num_generations: 8
 num_iterations: 2
 # generation_batch_size is the number of completions (not prompts) generated per
@@ -51,7 +55,7 @@ adam_beta1: 0.9
 adam_beta2: 0.99
 weight_decay: 0.1
 max_grad_norm: 0.2
-log_completions: true
+log_completions: false
 log_level: info
 logging_first_step: true
 logging_steps: 10
@@ -76,7 +80,16 @@ report_to:
 - wandb
 reward_weights:
 - 1.0
-save_strategy: "steps"
-save_steps: 100
+save_strategy: "no"
+# save_strategy: "no" means no periodic checkpoint-XXXX saves during training - only
+# the final model, saved unconditionally at the end of train_model_with_grpo
+# (trainer.save_model()) regardless of this setting. save_steps below is used only by
+# SaveTrainerStateCallback's periodic trainer_state.json dump (see
+# src/grpo/train_model.py), not for checkpointing the model itself
+save_steps: 500
 save_total_limit: 1
-warmup_ratio: 0.0001
+# warmup_ratio is deprecated in transformers>=4.57 (aliases into warmup_steps, which
+# now accepts either an absolute step count or, as here, a <1 ratio of total steps -
+# see transformers/training_args.py::get_warmup_steps) - ~2% of the 4397 training
+# steps, i.e. ~88 steps
+warmup_steps: 0.02

@@ -31,6 +31,7 @@ from src.data import load_train_dataset
 from src.models import get_model, get_tokenizer
 from src.prompts import PromptStyle, build_system_prompt
 from src.utils.config import load_full_yaml
+from src.utils.io import load_json, save_json
 from src.utils.log import log_gpu_memory
 
 from .config import GRPOConfig
@@ -50,10 +51,15 @@ DEBUG_VAL_SAMPLES = 4
 
 class SaveTrainerStateCallback(TrainerCallback):
     """
-    Periodically overwrites output_dir/trainer_state.json with the training history so
-    far, on the same cadence as checkpointing (`save_steps`) - so if a run crashes, the
-    metric history up to the last save isn't lost along with it.
+    Periodically overwrites metrics_dir/trainer_state.json with the training history
+    so far, on the same cadence as checkpointing (`save_steps`) - so if a run crashes,
+    the metric history up to the last save isn't lost along with it. Written to
+    metrics_dir (tracked in the repo) rather than output_dir (scratch storage, for the
+    large model files) since this is small and worth keeping alongside the code.
     """
+
+    def __init__(self, metrics_dir: str | Path) -> None:
+        self.metrics_dir = metrics_dir
 
     def on_step_end(
         self,
@@ -63,7 +69,7 @@ class SaveTrainerStateCallback(TrainerCallback):
         **kwargs,
     ) -> None:
         if state.is_world_process_zero and state.global_step % args.save_steps == 0:
-            state.save_to_json(os.path.join(args.output_dir, "trainer_state.json"))
+            state.save_to_json(os.path.join(self.metrics_dir, "trainer_state.json"))
 
 
 class LogGPUMemoryCallback(TrainerCallback):
@@ -84,10 +90,31 @@ class LogGPUMemoryCallback(TrainerCallback):
             log_gpu_memory("after first optimizer step")
 
 
+def _save_metrics_json(
+    metrics_dir: str | Path,
+    split: str,
+    metrics: dict,
+) -> None:
+    """
+    Write metrics_dir/{split}_results.json, updating metrics_dir/all_results.json too.
+
+    Mirrors what trainer.save_metrics() does, except targeting metrics_dir (tracked in
+    the repo) instead of output_dir (scratch storage) - see train_model_with_grpo.
+    """
+    metrics_dir = Path(metrics_dir)
+    save_json(metrics, metrics_dir / f"{split}_results.json")
+
+    all_results_path = metrics_dir / "all_results.json"
+    all_metrics = load_json(all_results_path) if all_results_path.exists() else {}
+    all_metrics.update(metrics)
+    save_json(all_metrics, all_results_path)
+
+
 def train_model_with_grpo(
     model_name_or_path: str,
     dataset_dir: str | Path,
     output_dir: str | Path,
+    metrics_dir: str | Path,
     reward_profile: str,
     reward_weights: dict[str, float],
     seed: int,
@@ -98,7 +125,12 @@ def train_model_with_grpo(
     """
     Run GRPO training for `model_name_or_path` against the skywork-format dataset at
     `dataset_dir` (see src/data.py::load_train_dataset), saving the trained model to
-    `output_dir`.
+    `output_dir` and its training metrics/logs to `metrics_dir`.
+
+    `output_dir` is expected to be large (model weights, checkpoints) and typically
+    points at scratch storage, while `metrics_dir` is small (json metrics files,
+    trainer_state.json) and typically stays in the repo - see src/run_grpo.py, which
+    computes both.
 
     `seed` and `library_prompt_style` override the corresponding fields parsed from
     `recipe_config`, so that - along with the model, dataset, and output path -
@@ -112,11 +144,13 @@ def train_model_with_grpo(
     `reward_profile` and `reward_weights` (see config/rewards.yaml and
     src/grpo/rewards.py) are recorded into train_results.json, alongside the rest of
     the run's training metrics, so the exact reward function used to produce a
-    trained model stays recoverable from its output directory.
+    trained model stays recoverable from its metrics directory.
 
     If `debug` is set, the train/val splits are truncated to DEBUG_TRAIN_SAMPLES /
     DEBUG_VAL_SAMPLES rows, to quickly smoke-test that training runs end-to-end.
     """
+    metrics_dir = Path(metrics_dir)
+    metrics_dir.mkdir(parents=True, exist_ok=True)
     training_args, model_args = TrlParser((GRPOConfig, ModelConfig)).parse_dict(
         load_full_yaml(recipe_config)
     )
@@ -207,7 +241,7 @@ def train_model_with_grpo(
         peft_config=get_peft_config(model_args),
         processing_class=tokenizer,
         callbacks=[
-            SaveTrainerStateCallback(),
+            SaveTrainerStateCallback(metrics_dir=metrics_dir),
             LogGPUMemoryCallback(),
         ],
     )
@@ -230,11 +264,11 @@ def train_model_with_grpo(
     metrics["train_samples"] = len(dataset["train"])
     trainer.log_metrics("train", metrics)
     # added after log_metrics (rather than before) since its formatting only handles
-    # scalar metric values - save_metrics, called next, just does a plain json.dump,
-    # so this still lands in train_results.json alongside the rest of the run's metrics
+    # scalar metric values - _save_metrics_json, called next, just does a plain
+    # json.dump, so this still lands in train_results.json alongside the run's metrics
     metrics["reward_profile"] = {"name": reward_profile, "weights": reward_weights}
-    trainer.save_metrics("train", metrics)
-    trainer.save_state()
+    _save_metrics_json(metrics_dir, "train", metrics)
+    trainer.state.save_to_json(metrics_dir / "trainer_state.json")
 
     ##################################
     # Save model and create model card
@@ -262,7 +296,7 @@ def train_model_with_grpo(
         metrics = trainer.evaluate()
         metrics["eval_samples"] = len(dataset["val"])
         trainer.log_metrics("eval", metrics)
-        trainer.save_metrics("eval", metrics)
+        _save_metrics_json(metrics_dir, "eval", metrics)
 
     #############
     # push to hub

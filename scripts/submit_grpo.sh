@@ -12,6 +12,11 @@ echo ">>> Submitting train jobs to slurm >>>"
 GPU_CONSTRAINT="h200"            # e.g., h200, b200, a100, l40s — use | for OR
 CPU_MEMORY="96G"                 # cpu memory allocation
 
+# trained models (checkpoints) are large - save them to scratch storage rather than
+# the repo's own (quota-limited) filesystem. passed through to run_grpo's
+# --output-root flag (see src/run_grpo.py::trained_model_path)
+OUTPUT_BASE="/scratch/users/$USER/library-reuse-rl"
+
 ###############################################################################
 #                          rl training configuration                          #
 ###############################################################################
@@ -129,7 +134,8 @@ for model in "${models[@]}"; do
         # mirror src/run_grpo.py::trained_model_path's naming convention here in bash,
         # since python/the venv aren't available on the submission node (only inside
         # the sbatch job, after scripts/setup_job.sh runs) - keep in sync with that
-        # function if its naming convention ever changes
+        # function and its model_key computation in run_grpo() if the convention
+        # ever changes
         recipe_name="$(basename "$recipe_config")"
         recipe_name="${recipe_name%.*}"
 
@@ -153,7 +159,11 @@ for model in "${models[@]}"; do
             lib_suffix="-${library_prompt_style}${lib_name}"
         fi
 
-        trained_model_path="output/${model}/${dataset_name}-${recipe_name}-${reward_profile}${seed_suffix}${lib_suffix}"
+        # this is the registry key run_grpo.py registers the trained model under
+        # (see model_key in run_grpo()) - not a filesystem path, so it must NOT be
+        # prefixed with OUTPUT_BASE (that's where the files live; run_eval's -m looks
+        # models up by this key in config/models.yaml, which stores the real path)
+        model_key="${model}/${dataset_name}-${recipe_name}-${reward_profile}${seed_suffix}${lib_suffix}"
 
         echo "  Submitting: $dataset_name [$recipe_config]"
 
@@ -176,6 +186,7 @@ run_grpo \
     --recipe-config $recipe_config \
     -s $seed \
     --library-prompt-style $library_prompt_style \
+    --output-root ${OUTPUT_BASE} \
     $reward_profile_flag \
     $debug_flag
 
@@ -221,13 +232,13 @@ EOF
 source ./scripts/setup_job.sh
 
 run_eval \
-    -m $trained_model_path \
+    -m $model_key \
     $eval_datasets_flag \
     --decoding-profile $eval_decoding_profile \
     $variant_libraries_flag \
     $variant_style_flag
 
-echo "Eval ($eval_variant) complete for model: $trained_model_path"
+echo "Eval ($eval_variant) complete for model: $model_key"
 EOF
 
         done

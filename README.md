@@ -21,56 +21,23 @@ optionally reward library imports/usage on top of plain correctness (see
 
 ## *installation*
 
-The project was built using Python 3.11, any other version does not guarantee reproducibility of the experiments.
-Check if you have it installed with the command below, otherwise download and install it from
-[here](https://www.python.org/downloads/).
+The project was built using Python, and is managed with `uv`, ensure it is installed or get it from [*uv docs*](https://docs.astral.sh/uv/getting-started/installation/).
 
-```shell
-python3.11 --version
-```
-
-Now clone the repository code:
+Clone the repository code:
 
 ```shell
 git clone https://github.com/itsluketwist/library-reuse-rl
+cd library-reuse-rl
 ```
 
-If on a compatible HPC, you can load the exact modules used:
+Install the project:
 
 ```shell
-module load python/3.11.6-gcc-13.2.0
-module load cudnn/8.7.0.84-11.8-gcc-13.2.0
-module load cuda/12.2.1-gcc-13.2.0
-```
-
-Now create a virtual environment and install the requirements (`requirements.txt` already
-points pip at the correct PyTorch index, so no extra pip config is needed):
-
-```shell
-python3.11 -m venv .venv
-
+uv sync --locked
 source .venv/bin/activate
-
-pip install -r requirements.txt
-
-pip install -e .
 ```
 
-FIXED VERSION
-```shell
-python3.11 -m venv .venv
-
-source .venv/bin/activate
-
-pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu121
-
-pip install -r requirements_fixed.txt
-
-pip install -e .
-```
-
-
-Create the isolated venv used to run llm-generated code during evaluation.
+Create the isolated venv used to run llm-generated code during evaluation:
 
 ```shell
 bash setup/setup_eval_venv.sh v1
@@ -199,9 +166,8 @@ pytest tests/
 # run linting
 pre-commit run --all-files
 
-# update dependency lockfiles (--emit-index-url keeps the PyTorch index in
-# requirements.txt, so `pip install -r requirements.txt` doesn't need its own pip config)
-uv pip compile requirements.in --output-file requirements.txt --upgrade --emit-index-url
+# update dependency lockfile (uv.lock) after changing pyproject.toml
+uv lock --upgrade
 ```
 
 ## *paper*

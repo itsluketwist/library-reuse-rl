@@ -45,6 +45,17 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--output-root",
+    type=str,
+    default="output",
+    help=(
+        "Base directory trained models are saved under (see trained_model_path). "
+        "Defaults to the local 'output' directory - scripts/submit_grpo.sh instead "
+        "points this at scratch storage, since checkpoints are large."
+    ),
+)
+
+parser.add_argument(
     "-rp",
     "--reward-profile",
     type=str,
@@ -107,15 +118,18 @@ def trained_model_path(
     reward_profile: str,
     seed: int,
     library_prompt_style: PromptStyle = "lib",
+    output_root: str = "output",
 ) -> Path:
     """
     Compute the output path a training run saves its trained model to.
 
-    Output lives under output/{model}/ so all runs for the same base model stay
-    together. The recipe config, reward profile, and seed (when non-default) are
-    encoded in the run name. When the recipe sets libraries_requirements_file, a
-    suffix (e.g. "-libv1" or "-usev1", depending on `library_prompt_style`) is also
-    appended, so runs under different library system-prompt settings stay separate.
+    Output lives under output_root/{model}/ so all runs for the same base model stay
+    together - output_root defaults to the local "output" directory, but
+    scripts/submit_grpo.sh points it at scratch storage instead, since checkpoints are
+    large. The recipe config, reward profile, and seed (when non-default) are encoded
+    in the run name. When the recipe sets libraries_requirements_file, a suffix (e.g.
+    "-libv1" or "-usev1", depending on `library_prompt_style`) is also appended, so
+    runs under different library system-prompt settings stay separate.
     `library_prompt_style` is a CLI-level setting (see --library-prompt-style below),
     not part of the recipe file, mirroring how `seed` overrides the recipe.
 
@@ -137,7 +151,7 @@ def trained_model_path(
         libraries_requirements_file, style=library_prompt_style
     )
     run_name = f"{dataset_name}-{recipe_name}-{reward_profile}{seed_suffix}{lib_suffix}"
-    return Path("output") / model / run_name
+    return Path(output_root) / model / run_name
 
 
 def run_grpo(
@@ -150,6 +164,7 @@ def run_grpo(
     recipe_config: str = "config/train/demo.yaml",
     library_prompt_style: PromptStyle = "lib",
     debug: bool = False,
+    output_root: str = "output",
 ) -> None:
     """
     Run GRPO RL training for the given model and dataset.
@@ -201,13 +216,29 @@ def run_grpo(
         reward_profile=reward_profile,
         seed=seed,
         library_prompt_style=library_prompt_style,
+        output_root=output_root,
     )
     log(f"Output model path: {output_path}")
+
+    # metrics/logs always stay in the repo's own "output" tree, regardless of
+    # output_root - only the (large) model weights/checkpoints go to scratch. when
+    # output_root is left at its "output" default, this is the same path as
+    # output_path, so everything lands in one place, matching the old behaviour
+    metrics_path = trained_model_path(
+        model=model,
+        dataset=dataset,
+        recipe_config=recipe_config,
+        reward_profile=reward_profile,
+        seed=seed,
+        library_prompt_style=library_prompt_style,
+    )
+    log(f"Metrics path: {metrics_path}")
 
     train_model_with_grpo(
         model_name_or_path=model_settings["base"],
         dataset_dir=dataset,
         output_dir=output_path,
+        metrics_dir=metrics_path,
         reward_profile=reward_profile,
         reward_weights=reward_weights,
         seed=seed,
@@ -218,7 +249,7 @@ def run_grpo(
 
     # use the path relative to output/ (e.g. "qwen3-8b/skywork-demo-full") as the
     # registry key, so it stays unique across different base models
-    model_key = str(output_path.relative_to(Path("output")))
+    model_key = str(output_path.relative_to(Path(output_root)))
     register_model(
         model_key=model_key,
         base=model_settings["base"],
@@ -240,6 +271,7 @@ def main() -> None:
     log(f"Seed: {args.seed}")
     log(f"Library prompt style: {args.library_prompt_style}")
     log(f"Debug: {args.debug}")
+    log(f"Output root: {args.output_root}")
     log()
 
     run_grpo(
@@ -252,6 +284,7 @@ def main() -> None:
         recipe_config=args.recipe_config,
         library_prompt_style=args.library_prompt_style,
         debug=args.debug,
+        output_root=args.output_root,
     )
 
     # --- summary ---
