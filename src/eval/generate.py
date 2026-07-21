@@ -93,7 +93,6 @@ def generate_responses(
             output_ids = model.generate(
                 **model_inputs,
                 generation_config=generation_config,
-                use_model_defaults=False,
             )
 
             input_length = model_inputs["input_ids"].shape[-1]
