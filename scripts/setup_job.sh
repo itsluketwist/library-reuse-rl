@@ -33,6 +33,10 @@ echo
 # which causes oom errors on long-sequence training even when total memory is available
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
+# unique port per job, so two grpo jobs landing on the same node don't race for the
+# same default vllm rendezvous port
+export MASTER_PORT=$((20000 + ${SLURM_JOB_ID:-$$} % 10000))
+
 echo "Environment setup, checking CUDA versions..."
 
 nvidia-debugdump -l

@@ -60,7 +60,7 @@ eval_decoding_profiles:
 # ==============================================================================
 
 dtype: bfloat16
-attn_implementation: sdpa  # sdpa, flash_attention_2
+attn_implementation: flash_attention_2  # sdpa, flash_attention_2
 bf16: true
 
 sync_ref_model: True

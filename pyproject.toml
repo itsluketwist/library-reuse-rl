@@ -21,6 +21,7 @@ classifiers = [
 requires-python = "==3.12.13"
 dependencies = [
     "datasets",
+    "flash-attn==2.8.3.post1 ; sys_platform == 'linux'",
     "huggingface_hub",
     "Jupyter",
     "llm-codegen-research",
@@ -54,6 +55,9 @@ run_eval = "src.run_eval:main"
 torch = { index = "pytorch-cu126" }
 torchvision = { index = "pytorch-cu126" }
 torchaudio = { index = "pytorch-cu126" }
+
+[tool.uv]
+no-build-isolation-package = ["flash-attn"]
 
 [[tool.uv.index]]
 name = "pytorch-cu126"
