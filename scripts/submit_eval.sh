@@ -37,9 +37,11 @@ decoding_profiles=(
 # libraries_requirements_file itself always comes from the recipe file's own setting
 # (config/train/demo.yaml), not a flag here, so eval always matches what a model was
 # trained on. "lib" just lists the available libraries; "use" also pushes the model
-# to prefer them over writing its own implementations
+# to prefer them over writing its own implementations; "base" skips the system prompt
+# entirely, ignoring the recipe file's setting (see src/prompts.py::build_system_prompt)
 prompt_style="lib"
 prompt_style="use"
+prompt_style="base"
 
 # set true to run a tiny smoke test instead of full evaluation - truncates each
 # dataset to a handful of samples, to quickly check the eval code runs correctly
@@ -84,6 +86,7 @@ echo
 echo "Evaluating ${#models[@]} models x ${#decoding_profiles[@]} decoding profiles"
 echo "  Datasets: ${datasets:-all}"
 echo "  Decoding profiles: ${decoding_profiles[*]}"
+echo "  Prompt style: $prompt_style"
 echo
 
 for model in "${models[@]}"; do

@@ -76,14 +76,16 @@ parser.add_argument(
 parser.add_argument(
     "--prompt-style",
     type=str,
-    choices=["lib", "use"],
+    choices=["lib", "use", "base"],
     default="lib",
     help=(
         "Wording used for the library system prompt, when the recipe file's "
         "libraries_requirements_file is set (see "
         "src/prompts.py::build_system_prompt): 'lib' just lists the available "
         "libraries, 'use' also pushes the model to prefer them over writing its own "
-        "implementations. Changes the output suffix from e.g. '-libv1' to '-usev1'."
+        "implementations. Changes the output suffix from e.g. '-libv1' to '-usev1'. "
+        "'base' skips the system prompt entirely, regardless of "
+        "libraries_requirements_file."
     ),
 )
 
@@ -154,7 +156,8 @@ def run_eval(
     `decoding_config` (the same recipe file training uses - see
     src/prompts.py::build_system_prompt and eval_results_path), so the model is
     always evaluated under the library list it was trained on. `prompt_style` is
-    still a free choice, since it isn't part of the recipe file either.
+    still a free choice, since it isn't part of the recipe file either - setting it to
+    "base" forces no system prompt at all, regardless of the recipe file.
 
     If `debug` is set, src/eval/evaluate.py::evaluate_model truncates each dataset to
     a handful of samples - useful to quickly check the eval code runs end-to-end.

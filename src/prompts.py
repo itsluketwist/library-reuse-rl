@@ -4,13 +4,13 @@ from pathlib import Path
 from typing import Literal
 
 
-# the two system prompt templates a requirements file can be built into - pinned
-# version specs (e.g. "numpy==2.4.6") let the model infer which APIs are available.
-# "lib" is a neutral baseline that just states what's installed; "use" also pushes
-# the model to actually reach for those libraries instead of writing its own
-# implementations. training/eval can be run under either (or both) as separate
-# conditions - see scripts/submit_grpo.sh and scripts/submit_eval.sh
-PromptStyle = Literal["lib", "use"]
+# the system prompt styles training/eval can be run under (see scripts/submit_grpo.sh
+# and scripts/submit_eval.sh) - pinned version specs (e.g. "numpy==2.4.6") let the
+# model infer which APIs are available. "lib" is a neutral baseline that just states
+# what's installed; "use" also pushes the model to actually reach for those libraries
+# instead of writing its own implementations; "base" skips the system prompt entirely,
+# regardless of whether a requirements file is configured (see build_system_prompt)
+PromptStyle = Literal["lib", "use", "base"]
 
 _SYSTEM_PROMPT_TEMPLATES: dict[PromptStyle, str] = {
     "lib": (
@@ -59,7 +59,8 @@ def build_libraries_system_prompt(
     Lists the libraries in `requirements_file` (see setup/requirements/) so the model
     knows what it is able to import and reuse. `style` selects the wording (see
     _SYSTEM_PROMPT_TEMPLATES): "lib" just lists the libraries, "use" also pushes the
-    model to prefer them over writing its own implementations.
+    model to prefer them over writing its own implementations. "base" isn't a valid
+    wording here - build_system_prompt filters it out before ever calling this.
 
     Returns the system prompt string.
     """
@@ -76,11 +77,13 @@ def build_system_prompt(
 
     When `libraries_requirements_file` is given, the prompt lists the available
     libraries under the given `style` (see build_libraries_system_prompt). When None,
-    no system prompt is used and `style` is ignored.
+    or when `style` is "base", no system prompt is used - "base" always wins, even if
+    a requirements file is configured, so it's a way to force no system prompt without
+    having to unset that setting elsewhere.
 
     Returns the system prompt string, or None.
     """
-    if libraries_requirements_file is None:
+    if style == "base" or libraries_requirements_file is None:
         return None
 
     return build_libraries_system_prompt(libraries_requirements_file, style=style)
@@ -100,9 +103,9 @@ def library_prompt_suffix(
     paths. scripts/submit_grpo.sh mirrors this formula in bash, since python isn't
     available on the slurm submission node - keep the two in sync if it changes.
 
-    Returns "" when no requirements file is set.
+    Returns "" when no requirements file is set, or when `style` is "base".
     """
-    if libraries_requirements_file is None:
+    if style == "base" or libraries_requirements_file is None:
         return ""
 
     return f"-{style}{Path(libraries_requirements_file).stem}"
