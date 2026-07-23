@@ -61,23 +61,11 @@ debug=false
 # reward profile to use for this run (see config/rewards.yaml)
 reward_profile="full"
 
-# comma-separated eval dataset names from config/eval_datasets.yaml, and the decoding
-# profile, used for the automatic post-training eval job - leave eval_datasets empty
-# to evaluate every dataset in that file
-eval_datasets=""
-eval_decoding_profile="greedy"
-
 ###############################################################################
 #                            submit jobs                                      #
 ###############################################################################
 
 reward_profile_flag="--reward-profile $reward_profile"
-
-# build eval-datasets flag string
-eval_datasets_flag=""
-if [ -n "$eval_datasets" ]; then
-    eval_datasets_flag="-d $eval_datasets"
-fi
 
 # build debug flag string
 debug_flag=""
@@ -108,7 +96,6 @@ echo "  Recipe: $recipe_config"
 echo "  Seed: $seed"
 echo "  Reward profile: $reward_profile"
 echo "  Library prompt style: $library_prompt_style"
-echo "  Post-training eval datasets: ${eval_datasets:-all} [$eval_decoding_profile]"
 echo
 
 for model in "${models[@]}"; do
@@ -118,14 +105,12 @@ for model in "${models[@]}"; do
         dataset_name=$(basename "$training_dataset")
 
         # registry key this run's trained model gets registered under (see
-        # config/models.yaml) - generated once here and reused for the dependent eval
-        # jobs' --model below, so nothing needs to reconstruct run_grpo's naming
-        # convention just to find the model it just trained
+        # config/models.yaml), so it can be looked up later without reconstructing
+        # run_grpo's naming convention
         run_id="${model}-$(uuidgen | tr '[:upper:]' '[:lower:]' | cut -c1-4)"
 
         echo "  Submitting: $dataset_name [$recipe_config]"
 
-        # submit train job and capture the job id so eval can depend on it
         train_job_id=$(sbatch --parsable <<EOF
 #!/bin/bash -l
 #SBATCH --job-name=train-${model}-${dataset_name}
@@ -135,8 +120,16 @@ for model in "${models[@]}"; do
 #SBATCH --gpus=1
 #SBATCH --mem=${CPU_MEMORY}
 #SBATCH --constraint=${GPU_CONSTRAINT}
+#SBATCH --time=2-00:00:00
+#SBATCH --requeue
+#SBATCH --signal=B:USR1@120
 
 source ./scripts/setup_job.sh
+
+# training resumes from its last checkpoint automatically (see get_last_checkpoint in
+# src/grpo/train_model.py), so requeue this same job instead of losing progress if
+# slurm is about to hit the time limit - --signal warns this script 120s early
+trap 'echo "time limit approaching - requeuing $SLURM_JOB_ID"; scontrol requeue $SLURM_JOB_ID; exit 0' USR1
 
 run_grpo \
     -m $model \
@@ -147,49 +140,14 @@ run_grpo \
     --output-root ${OUTPUT_BASE} \
     --run-id $run_id \
     $reward_profile_flag \
-    $debug_flag
+    $debug_flag &
+wait $!
 
 echo "RL training complete for model: $model, dataset: $dataset_name"
 EOF
 )
 
-        # submit follow-up eval jobs to run after training finishes successfully - one
-        # per library prompt style ("lib"/"use" - see src/prompts.py::PromptStyle).
-        # libraries_requirements_file itself isn't passed here: run_eval always reads
-        # it straight from the recipe file, so it automatically matches this training
-        # run. results don't clash: run_eval adds a distinct suffix to output file
-        # names per style (see src/run_eval.py::eval_results_path)
-        for eval_variant in "with-libs" "with-uses"; do
-            if [ "$eval_variant" = "with-libs" ]; then
-                variant_style_flag="--prompt-style lib"
-            else
-                variant_style_flag="--prompt-style use"
-            fi
-
-            sbatch --dependency=afterok:${train_job_id} <<EOF
-#!/bin/bash -l
-#SBATCH --job-name=eval-${model}-${dataset_name}-${eval_variant}
-#SBATCH --output=logs/eval-${model}/${dataset_name}-${eval_variant}-%j.out
-#SBATCH --partition=gpu
-#SBATCH --gres=gpu
-#SBATCH --gpus=1
-#SBATCH --mem=${CPU_MEMORY}
-#SBATCH --constraint=${GPU_CONSTRAINT}
-
-source ./scripts/setup_job.sh
-
-run_eval \
-    -m $run_id \
-    $eval_datasets_flag \
-    --decoding-profile $eval_decoding_profile \
-    $variant_style_flag
-
-echo "Eval ($eval_variant) complete for model: $run_id"
-EOF
-
-        done
-
-        echo "  Submitted train job $train_job_id (with-libs + with-uses evals will follow on completion)"
+        echo "  Submitted train job $train_job_id"
 
         # small delay between submissions to avoid scheduler overload
         sleep 0.5

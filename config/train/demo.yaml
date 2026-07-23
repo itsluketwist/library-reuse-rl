@@ -9,12 +9,12 @@ libraries_requirements_file: setup/requirements/v1.txt  # system prompt library 
 
 num_train_epochs: 1
 
-num_generations: 16  # rollouts per prompt (GRPO group size)
-generation_batch_size: 16  # must match num_generations - one prompt's group per cycle
+num_generations: 8  # rollouts per prompt (GRPO group size)
+generation_batch_size: 8  # must match num_generations - one prompt's group per cycle
 num_iterations: 1  # mu in the GRPO paper (reuse count) - kept at 1, see gradient_accumulation_steps
 
 per_device_train_batch_size: 2  # completions per micro-batch - main memory lever
-gradient_accumulation_steps: 32  # 4 prompts x 16 rollouts per optimizer step
+gradient_accumulation_steps: 32  # 8 prompts x 8 rollouts per optimizer step
 
 beta: 0.01  # kl penalty coefficient
 learning_rate: 1.0e-06
@@ -68,6 +68,7 @@ ref_model_sync_steps: 64
 
 use_vllm: true
 vllm_mode: colocate  # single gpu, no separate vllm server (see scripts/submit_grpo.sh)
+vllm_gpu_memory_utilization: 0.4  # trl default is 0.3 - nudged up a bit for more rollout kv cache
 
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
@@ -81,6 +82,7 @@ logging_strategy: steps
 report_to:
 - wandb
 
-save_strategy: "no"  # only the final model is saved (see train_model_with_grpo)
-save_steps: 500  # cadence for SaveTrainerStateCallback's trainer_state.json dump only
+save_strategy: "steps"  # so a run cancelled by the slurm time limit can resume (see
+# train_model_with_grpo/get_last_checkpoint) instead of losing all progress
+save_steps: 50  # frequent enough to land at least a few checkpoints within one job's walltime
 save_total_limit: 1
