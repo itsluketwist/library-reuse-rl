@@ -3,11 +3,9 @@
 import dataclasses
 from pathlib import Path
 
-import torch
-from trl import ModelConfig
+from vllm import LLM
 
 from src.data import load_eval_dataset
-from src.models import get_model, get_tokenizer
 from src.prompts import PromptStyle, build_system_prompt
 from src.response.pipeline import process_response
 from src.utils.io import save_json
@@ -16,10 +14,10 @@ from src.utils.log import log, log_header, log_timer
 from .generate import generate_responses
 
 
-# settings used to load the model for generation - matching config/train/demo.yaml's
-# model arguments, since eval isn't driven by its own recipe file
+# dtype used to load the model for generation - matching config/train/demo.yaml's
+# model arguments, since eval isn't driven by its own recipe file. no attention-
+# implementation setting here (unlike training) - vllm picks its own backend
 EVAL_DTYPE = "bfloat16"
-EVAL_ATTN_IMPLEMENTATION = "sdpa"
 
 # sample count used by --debug mode (src/run_eval.py) - just enough to smoke-test
 # generation and scoring end-to-end without waiting on a full dataset
@@ -69,18 +67,8 @@ def evaluate_model(
     """
     system_prompt = build_system_prompt(libraries_requirements_file, style=prompt_style)
 
-    model_args = ModelConfig(
-        model_name_or_path=model_name_or_path,
-        dtype=EVAL_DTYPE,
-        attn_implementation=EVAL_ATTN_IMPLEMENTATION,
-    )
-
-    log("*** Loading tokenizer and model ***")
-    tokenizer = get_tokenizer(model_args)
-    model = get_model(model_args, gradient_checkpointing=False)
-    # get_model leaves the model on CPU by default
-    model = model.to("cuda" if torch.cuda.is_available() else "cpu")
-    model.eval()
+    log("*** Loading model ***")
+    llm = LLM(model=model_name_or_path, dtype=EVAL_DTYPE)
 
     for name, dataset_file in dataset_files.items():
         log_header(f"DATASET: {name}")
@@ -94,8 +82,7 @@ def evaluate_model(
 
         with log_timer("generation"):
             responses = generate_responses(
-                model=model,
-                tokenizer=tokenizer,
+                llm=llm,
                 prompts=dataset["prompt"],
                 decoding_settings=decoding_settings,
             )
