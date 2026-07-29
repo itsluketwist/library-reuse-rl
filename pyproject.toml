@@ -34,10 +34,10 @@ dependencies = [
     "torchvision",
     "tqdm",
     "transformers==5.14.1",
-   "trl==1.9.2",
+    "trl==1.2.0",
     "types-PyYAML",
     "uv",
-    "vllm==0.25.1",
+    "vllm==0.11.0",
     "wandb",
 ]
 
