@@ -29,6 +29,8 @@ datasets=""
 # decoding profiles to evaluate with (eval_decoding_profiles in config/train/demo.yaml)
 decoding_profiles=(
     "greedy"
+    "default"
+    "qwen3"
 )
 
 # system prompt wordings to evaluate with, one job per entry (src/prompts.py::PromptStyle)
