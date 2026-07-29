@@ -29,12 +29,10 @@ else
 fi
 echo
 
-# use expandable memory segments to prevent pytorch cuda allocator fragmentation,
-# which causes oom errors on long-sequence training even when total memory is available
+# reduce cuda allocator fragmentation (helps avoid oom on long sequences)
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-# unique port per job, so two grpo jobs landing on the same node don't race for the
-# same default vllm rendezvous port
+# unique port per job, so co-located jobs don't race for the same vllm port
 export MASTER_PORT=$((20000 + ${SLURM_JOB_ID:-$$} % 10000))
 
 echo "Environment setup, checking CUDA versions..."

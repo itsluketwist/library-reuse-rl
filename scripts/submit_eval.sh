@@ -23,32 +23,22 @@ models=(
     "qwen3-8b"
 )
 
-# comma-separated eval dataset names from config/eval_datasets.yaml, all evaluated
-# within a single job per model - leave empty to evaluate every dataset in that file
+# comma-separated eval dataset names (config/eval_datasets.yaml) - empty means all
 datasets=""
 
-# decoding profiles to evaluate with (from eval_decoding_profiles in the training
-# recipe file, config/train/demo.yaml - shared between training and inference)
+# decoding profiles to evaluate with (eval_decoding_profiles in config/train/demo.yaml)
 decoding_profiles=(
     "greedy"
 )
 
-# wording used for the library system prompt (see src/prompts.py::PromptStyle) -
-# libraries_requirements_file itself always comes from the recipe file's own setting
-# (config/train/demo.yaml), not a flag here, so eval always matches what a model was
-# trained on. "lib" just lists the available libraries; "use" also pushes the model
-# to prefer them over writing its own implementations; "base" skips the system prompt
-# entirely, ignoring the recipe file's setting (see src/prompts.py::build_system_prompt)
-prompt_style="lib"
-prompt_style="use"
-prompt_style="base"
+# system prompt wordings to evaluate with, one job per entry (src/prompts.py::PromptStyle)
+prompt_styles=(
+    "lib"
+    "use"
+    "base"
+)
 
-# set true to run a tiny smoke test instead of full evaluation - truncates each
-# dataset to a handful of samples, to quickly check the eval code runs correctly
-# end-to-end (see the --debug flag in src/run_eval.py) before submitting a real job.
-# if `models` above is left empty, debug runs default to the tiny "qwen3-debug" model
-# (see DEBUG_MODEL_KEY in src/run_eval.py) - set an explicit model there to smoke-test
-# a bigger one instead
+# true = tiny smoke test instead of full evaluation (see --debug in src/run_eval.py)
 debug=false
 
 ###############################################################################
@@ -67,11 +57,7 @@ if [ "$debug" = true ]; then
     debug_flag="--debug"
 fi
 
-style_flag="--prompt-style $prompt_style"
-
-# default to the tiny debug model if smoke-testing and no model was set, mirroring
-# run_eval.py's own --debug default (see DEBUG_MODEL_KEY in src/run_eval.py) - without
-# this, debug=true with an empty `models` array would silently submit nothing
+# default to the tiny debug model if smoke-testing with no model set
 if [ "$debug" = true ] && [ ${#models[@]} -eq 0 ]; then
     models=("qwen3-debug")
 fi
@@ -83,22 +69,23 @@ if [ ${#models[@]} -eq 0 ]; then
 fi
 
 echo
-echo "Evaluating ${#models[@]} models x ${#decoding_profiles[@]} decoding profiles"
+echo "Evaluating ${#models[@]} models x ${#decoding_profiles[@]} decoding profiles x ${#prompt_styles[@]} prompt styles"
 echo "  Datasets: ${datasets:-all}"
 echo "  Decoding profiles: ${decoding_profiles[*]}"
-echo "  Prompt style: $prompt_style"
+echo "  Prompt styles: ${prompt_styles[*]}"
 echo
 
 for model in "${models[@]}"; do
     echo "Submitting jobs for $model"
 
     for decoding_profile in "${decoding_profiles[@]}"; do
-        echo "  Submitting: [$decoding_profile]"
+        for prompt_style in "${prompt_styles[@]}"; do
+            echo "  Submitting: [$decoding_profile] [$prompt_style]"
 
-        sbatch <<EOF
+            sbatch <<EOF
 #!/bin/bash -l
-#SBATCH --job-name=eval-${model}-${decoding_profile}
-#SBATCH --output=logs/eval-${model}/${decoding_profile}-%j.out
+#SBATCH --job-name=eval-${model}-${decoding_profile}-${prompt_style}
+#SBATCH --output=logs/eval-${model}/${decoding_profile}-${prompt_style}-%j.out
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu
 #SBATCH --gpus=1
@@ -111,14 +98,15 @@ run_eval \
     -m $model \
     $datasets_flag \
     --decoding-profile $decoding_profile \
-    $style_flag \
+    --prompt-style $prompt_style \
     $debug_flag
 
-echo "Eval complete for model: $model, decoding: $decoding_profile"
+echo "Eval complete for model: $model, decoding: $decoding_profile, prompt style: $prompt_style"
 EOF
 
-        # small delay between submissions to avoid scheduler overload
-        sleep 0.5
+            # small delay between submissions to avoid scheduler overload
+            sleep 0.5
+        done
     done
 
     echo

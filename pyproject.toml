@@ -37,7 +37,7 @@ dependencies = [
     "trl==1.2.0",
     "types-PyYAML",
     "uv",
-    "vllm==0.11.0",
+    "vllm==0.18.0",
     "wandb",
 ]
 

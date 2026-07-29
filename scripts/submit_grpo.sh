@@ -12,9 +12,7 @@ echo ">>> Submitting train jobs to slurm >>>"
 GPU_CONSTRAINT="h200"            # e.g., h200, b200, a100, l40s — use | for OR
 CPU_MEMORY="96G"                 # cpu memory allocation
 
-# trained models (checkpoints) are large - save them to scratch storage rather than
-# the repo's own (quota-limited) filesystem. passed through to run_grpo's
-# --output-root flag (see src/run_grpo.py::trained_model_path)
+# checkpoints are large - use scratch storage, not the repo's own filesystem
 OUTPUT_BASE="/scratch/users/$USER/library-reuse-rl"
 
 ###############################################################################
@@ -38,24 +36,14 @@ training_datasets=(
 # generate responses during rollout (see config/train/demo.yaml)
 recipe_config="config/train/demo.yaml"
 
-# wording used for the library system prompt during training, when recipe_config's
-# libraries_requirements_file is set (see src/prompts.py::PromptStyle): "lib" just
-# lists the available libraries, "use" also pushes the model to prefer them over
-# writing its own implementations. passed straight through to run_grpo's
-# --library-prompt-style flag (see src/run_grpo.py) - not part of the recipe file,
-# so switching this doesn't need a second recipe file
+# system prompt wording during training (see src/prompts.py::PromptStyle)
 library_prompt_style="lib"
 # library_prompt_style="use"
 
 # random seed for training
 seed=42
 
-# set true to run a tiny smoke test instead of full training - truncates the dataset
-# to a handful of samples, to quickly check the training code runs correctly
-# end-to-end (see the --debug flag in src/run_grpo.py) before submitting a real job.
-# if `models` below is left empty, debug runs default to the tiny "qwen3-debug" model
-# (see DEBUG_MODEL_KEY in src/run_grpo.py) - set an explicit model there to smoke-test
-# a bigger one instead
+# true = tiny smoke test instead of full training (see --debug in src/run_grpo.py)
 debug=false
 
 # reward profile to use for this run (see config/rewards.yaml)
@@ -73,9 +61,7 @@ if [ "$debug" = true ]; then
     debug_flag="--debug"
 fi
 
-# default to the tiny debug model if smoke-testing and no model was set, mirroring
-# run_grpo.py's own --debug default (see DEBUG_MODEL_KEY in src/run_grpo.py) - without
-# this, debug=true with an empty `models` array would silently submit nothing
+# default to the tiny debug model if smoke-testing with no model set
 if [ "$debug" = true ] && [ ${#models[@]} -eq 0 ]; then
     models=("qwen3-debug")
 fi
@@ -104,9 +90,7 @@ for model in "${models[@]}"; do
     for training_dataset in "${training_datasets[@]}"; do
         dataset_name=$(basename "$training_dataset")
 
-        # registry key this run's trained model gets registered under (see
-        # config/models.yaml), so it can be looked up later without reconstructing
-        # run_grpo's naming convention
+        # registry key this run's trained model gets registered under (config/models.yaml)
         run_id="${model}-$(uuidgen | tr '[:upper:]' '[:lower:]' | cut -c1-4)"
 
         echo "  Submitting: $dataset_name [$recipe_config]"
@@ -126,9 +110,7 @@ for model in "${models[@]}"; do
 
 source ./scripts/setup_job.sh
 
-# training resumes from its last checkpoint automatically (see get_last_checkpoint in
-# src/grpo/train_model.py), so requeue this same job instead of losing progress if
-# slurm is about to hit the time limit - --signal warns this script 120s early
+# requeue on the time-limit warning signal - training resumes from its last checkpoint
 trap 'echo "time limit approaching - requeuing $SLURM_JOB_ID"; scontrol requeue $SLURM_JOB_ID; exit 0' USR1
 
 run_grpo \
