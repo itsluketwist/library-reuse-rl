@@ -175,6 +175,7 @@ data/skywork
 logs/*
 wandb/*
 output/*debug/*
+unsloth_compiled_cache/
 
 # temporary ignore
 CLAUDE.md
