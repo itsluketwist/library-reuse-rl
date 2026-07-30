@@ -133,14 +133,16 @@ def trained_model_path(
     output_root: str = "output",
 ) -> Path:
     """
-    Compute the directory a training run saves its output to, named by `run_id` - the
-    registry key the model is later looked up by (see run_grpo) - so the folder on disk
-    matches the registry entry.
+    Compute the directory a training run saves its model adapter and checkpoints to,
+    named by `run_id` - the registry key the model is later looked up by (see run_grpo)
+    - so the folder on disk matches the registry entry.
 
     output_root defaults to the local "output" directory, but scripts/submit_grpo.sh
-    points it at scratch storage instead, since adapters/checkpoints live there. The run
-    id is short and non-descriptive, so the knobs behind it are recorded in the registry
-    entry's "properties" instead of the folder name (see src/utils/config.py).
+    points it at scratch storage instead, since these adapter/checkpoint files are large.
+    Training metrics go elsewhere (output/grpo/{run_id}, see run_grpo), so only the big
+    binary artifacts land here. The run id is short and non-descriptive, so the knobs
+    behind it are recorded in the registry entry's "properties" instead of the folder
+    name (see src/utils/config.py).
 
     Returns the output directory path.
     """
@@ -208,14 +210,15 @@ def run_grpo(
     log(f"Library prompt style: {library_prompt_style}")
     log(f"Debug: {debug}")
 
+    # the adapter and its checkpoints are large, so they go under output_root -
+    # scripts/submit_grpo.sh points that at scratch storage (see trained_model_path)
     output_path = trained_model_path(run_id=run_id, output_root=output_root)
-    log(f"Output model path: {output_path}")
+    log(f"Adapter output path: {output_path}")
 
-    # metrics/logs always stay in the repo's own "output" tree, regardless of
-    # output_root - only the (large) model weights/checkpoints go to scratch. when
-    # output_root is left at its "output" default, this is the same path as
-    # output_path, so everything lands in one place, matching the old behaviour
-    metrics_path = trained_model_path(run_id=run_id)
+    # training metrics (loss, rewards over time, periodic held-out eval - see
+    # src/grpo/train_model.py) are small and worth keeping in the repo, under
+    # output/grpo/{run_id}, separate from the large adapter/checkpoints on scratch
+    metrics_path = Path("output") / "grpo" / run_id
     log(f"Metrics path: {metrics_path}")
 
     train_model_with_grpo(

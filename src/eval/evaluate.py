@@ -80,23 +80,17 @@ def evaluate_model(
     system_prompt = build_system_prompt(libraries_requirements_file, style=prompt_style)
 
     log("*** Loading model ***")
-    # load the base model once; when an adapter is given, enable lora and size the
-    # adapter slot to that adapter's own rank (see _adapter_rank), then apply it per
-    # generation via a LoRARequest - otherwise the base model runs on its own
+    llm_kwargs = {"model": base, "dtype": EVAL_DTYPE, "enforce_eager": debug}
+
     if adapter_path is not None:
-        llm = LLM(
-            model=base,
-            dtype=EVAL_DTYPE,
-            enable_lora=True,
-            max_lora_rank=max_lora_rank,
-        )
+        llm = LLM(**llm_kwargs, enable_lora=True, max_lora_rank=max_lora_rank)
         lora_request = LoRARequest(
             lora_name="trained-adapter",
             lora_int_id=1,
             lora_path=adapter_path,
         )
     else:
-        llm = LLM(model=base, dtype=EVAL_DTYPE)
+        llm = LLM(**llm_kwargs)
         lora_request = None
 
     for name, dataset_file in dataset_files.items():

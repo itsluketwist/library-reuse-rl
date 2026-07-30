@@ -123,13 +123,13 @@ def eval_results_path(
     """
     Compute the output path an evaluation run saves its results to.
 
-    Output lives under output/{model}/eval/ so training and eval results for the same
-    model share a directory. The file name encodes the dataset and decoding profile
-    (which produce genuinely different results) but not the model name, since that is
-    already captured by the directory. When `libraries_requirements_file` is set, a
-    suffix (e.g. "-libv1" or "-usev1", depending on `prompt_style`) is appended to
-    separate runs under different library system-prompt settings (see
-    src/prompts.py::library_prompt_suffix).
+    Output lives under output/eval/{model}/ so all eval-job results for a model are
+    grouped together, separate from training's own output/grpo tree (see
+    src/run_grpo.py). The file name encodes the dataset and decoding profile (which
+    produce genuinely different results) but not the model name, since that is already
+    captured by the directory. When `libraries_requirements_file` is set, a suffix (e.g.
+    "-libv1" or "-usev1", depending on `prompt_style`) is appended to separate runs under
+    different library system-prompt settings (see src/prompts.py::library_prompt_suffix).
 
     `adapter_override` is the --adapter path when one is given: since that applies an
     arbitrary adapter under the base model's --model key, its directory name is appended
@@ -144,8 +144,8 @@ def eval_results_path(
     )
     return (
         Path("output")
-        / model
         / "eval"
+        / model
         / f"{dataset}-{decoding_profile}{lib_suffix}{adapter_suffix}.json"
     )
 

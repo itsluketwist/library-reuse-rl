@@ -191,6 +191,10 @@ def train_model_with_grpo(
     training_args.seed = seed
     training_args.library_prompt_style = library_prompt_style
 
+    if debug:
+        training_args.logging_steps = 1
+        training_args.save_steps = 1
+
     set_seed(training_args.seed)
 
     ###############

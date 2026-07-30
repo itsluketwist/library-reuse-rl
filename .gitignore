@@ -174,7 +174,11 @@ data/raw
 data/skywork
 logs/*
 wandb/*
-output/*debug/*
+# debug smoke-test runs are throwaway - real runs' metrics (output/grpo, output/eval)
+# are small json and stay committed. debug run ids/keys contain "debug" (see
+# DEBUG_MODEL_KEY in src/run_grpo.py / src/run_eval.py)
+output/grpo/*debug*/
+output/eval/*debug*/
 unsloth_compiled_cache/
 
 # temporary ignore
