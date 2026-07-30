@@ -14,8 +14,18 @@
 
 """The GRPO training loop, wired to this project's reward and dataset format."""
 
+# unsloth patches trl's GRPOConfig/GRPOTrainer in place the moment it's imported, so it
+# must be imported before trl (directly below, and transitively via .config's
+# GRPOConfig subclass) - see src/models.py for the full explanation. the "isort: split"
+# below stops isort reordering this above/below the other imports.
+import unsloth  # noqa: F401
+
+
+# isort: split
+
 import logging
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -28,7 +38,7 @@ from transformers.training_args import TrainingArguments
 from trl import GRPOTrainer, ModelConfig, TrlParser, get_peft_config
 
 from src.data import load_train_dataset
-from src.models import get_model, get_tokenizer
+from src.models import get_model_and_tokenizer
 from src.prompts import PromptStyle, build_system_prompt
 from src.utils.config import load_full_yaml
 from src.utils.io import load_json, save_json
@@ -169,6 +179,13 @@ def train_model_with_grpo(
     training_args.top_k = rollout_decoding["top_k"]
     training_args.max_completion_length = rollout_decoding["max_new_tokens"]
 
+    # unsloth-only model-loading settings (see src/models.py::get_model_and_tokenizer) -
+    # read straight off the recipe dict rather than added as GRPOConfig fields, same as
+    # rollout_decoding_profile/eval_decoding_profiles above, since trl's trainer never
+    # needs to know about them
+    max_seq_length = recipe["max_seq_length"]
+    gpu_memory_utilization = recipe["gpu_memory_utilization"]
+
     model_args.model_name_or_path = model_name_or_path
     training_args.output_dir = str(output_dir)
     training_args.seed = seed
@@ -223,21 +240,22 @@ def train_model_with_grpo(
         val_n=DEBUG_VAL_SAMPLES if debug else None,
     )
 
-    ################
-    # Load tokenizer
-    ################
-    tokenizer = get_tokenizer(model_args, chat_template=training_args.chat_template)
-
-    ##############
-    # Load model #
-    ##############
+    ##########################
+    # Load model and tokenizer
+    ##########################
     logger.info("*** Loading model ***")
-    model = get_model(
-        model_args, gradient_checkpointing=training_args.gradient_checkpointing
+    model, tokenizer = get_model_and_tokenizer(
+        model_args,
+        max_seq_length=max_seq_length,
+        gpu_memory_utilization=gpu_memory_utilization,
+        use_vllm=training_args.use_vllm,
+        gradient_checkpointing=training_args.gradient_checkpointing,
+        chat_template=training_args.chat_template,
     )
-    # log gpu memory now the model is loaded. note: without quantization the model
-    # is loaded on cpu and only moved to the gpu by the trainer, so this mostly
-    # shows the baseline free memory on the device before training claims it
+    # log gpu memory now the model is loaded. unlike a plain transformers load, unsloth
+    # places the model (and, when use_vllm is on, its colocated vllm engine) onto the
+    # gpu straight away rather than leaving that to the trainer, so this reading
+    # already reflects most of the run's steady-state model memory
     log_gpu_memory("after model load")
 
     # Get the reward function, configured with this run's reward_weights
@@ -301,6 +319,12 @@ def train_model_with_grpo(
         # Restore k,v cache for fast inference
         trainer.model.config.use_cache = True
         trainer.model.config.save_pretrained(training_args.output_dir)
+
+        # the last periodic checkpoint (kept around so a cancelled run could resume -
+        # see save_strategy/save_steps in config/train/demo.yaml) is now redundant with
+        # the save_model call above, so drop it to avoid a duplicate copy on scratch
+        for checkpoint_dir in Path(training_args.output_dir).glob("checkpoint-*"):
+            shutil.rmtree(checkpoint_dir)
 
     ##########
     # Evaluate
