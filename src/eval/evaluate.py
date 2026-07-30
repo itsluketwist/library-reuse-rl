@@ -24,6 +24,9 @@ EVAL_DTYPE = "bfloat16"
 # generation and scoring end-to-end without waiting on a full dataset
 DEBUG_EVAL_SAMPLES = 4
 
+# generation length cap for --debug runs
+DEBUG_MAX_NEW_TOKENS = 512
+
 
 def _average(
     values: list[float],
@@ -78,6 +81,14 @@ def evaluate_model(
     quickly smoke-test that evaluation runs end-to-end.
     """
     system_prompt = build_system_prompt(libraries_requirements_file, style=prompt_style)
+
+    # cap generation length for a debug smoke test so it finishes quickly (copy rather
+    # than mutate the shared decoding_settings dict) - see DEBUG_MAX_NEW_TOKENS
+    if debug:
+        decoding_settings = {
+            **decoding_settings,
+            "max_new_tokens": DEBUG_MAX_NEW_TOKENS,
+        }
 
     log("*** Loading model ***")
     llm_kwargs = {"model": base, "dtype": EVAL_DTYPE, "enforce_eager": debug}
