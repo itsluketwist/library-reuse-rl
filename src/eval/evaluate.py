@@ -106,7 +106,7 @@ def evaluate_model(
         with log_timer("generation"):
             responses = generate_responses(
                 llm=llm,
-                prompts=dataset["prompt"],
+                prompts=list(dataset["prompt"]),
                 decoding_settings=decoding_settings,
                 lora_request=lora_request,
             )
