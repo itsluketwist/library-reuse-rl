@@ -4,6 +4,7 @@ import dataclasses
 from pathlib import Path
 
 from vllm import LLM
+from vllm.lora.request import LoRARequest
 
 from src.data import load_eval_dataset
 from src.prompts import PromptStyle, build_system_prompt
@@ -36,17 +37,28 @@ def _average(
 
 
 def evaluate_model(
-    model_name_or_path: str,
+    base: str,
+    adapter_path: str | None,
     dataset_files: dict[str, str],
     decoding_settings: dict,
     output_paths: dict[str, Path],
+    max_lora_rank: int | None = None,
     libraries_requirements_file: str | None = None,
     prompt_style: PromptStyle = "lib",
     debug: bool = False,
 ) -> None:
     """
-    Generate responses from `model_name_or_path` against each dataset in
-    `dataset_files`, analyse them with the response pipeline, and save results.
+    Generate responses from the `base` model (optionally with a trained lora adapter
+    from `adapter_path`) against each dataset in `dataset_files`, analyse them with the
+    response pipeline, and save results.
+
+    `base` is always loaded as the vllm model; when `adapter_path` is given, that lora
+    adapter is applied on top for every generation (see src/eval/generate.py), otherwise
+    the base model runs alone. Since training saves adapters rather than merged models
+    (see src/grpo/train_model.py), this is how a trained model is evaluated.
+    `max_lora_rank` sizes vllm's adapter slot and should be at least the adapter's rank
+    (it comes from the training recipe's lora_r, see src/run_eval.py) - only used when
+    `adapter_path` is set.
 
     `dataset_files` and `output_paths` are both keyed by dataset name (see
     config/eval_datasets.yaml) - the model is loaded once and reused across every
@@ -68,7 +80,24 @@ def evaluate_model(
     system_prompt = build_system_prompt(libraries_requirements_file, style=prompt_style)
 
     log("*** Loading model ***")
-    llm = LLM(model=model_name_or_path, dtype=EVAL_DTYPE)
+    # load the base model once; when an adapter is given, enable lora and size the
+    # adapter slot to that adapter's own rank (see _adapter_rank), then apply it per
+    # generation via a LoRARequest - otherwise the base model runs on its own
+    if adapter_path is not None:
+        llm = LLM(
+            model=base,
+            dtype=EVAL_DTYPE,
+            enable_lora=True,
+            max_lora_rank=max_lora_rank,
+        )
+        lora_request = LoRARequest(
+            lora_name="trained-adapter",
+            lora_int_id=1,
+            lora_path=adapter_path,
+        )
+    else:
+        llm = LLM(model=base, dtype=EVAL_DTYPE)
+        lora_request = None
 
     for name, dataset_file in dataset_files.items():
         log_header(f"DATASET: {name}")
@@ -85,6 +114,7 @@ def evaluate_model(
                 llm=llm,
                 prompts=dataset["prompt"],
                 decoding_settings=decoding_settings,
+                lora_request=lora_request,
             )
 
         results = []
@@ -138,7 +168,8 @@ def evaluate_model(
 
         output = {
             "metadata": {
-                "model": model_name_or_path,
+                "base": base,
+                "adapter": adapter_path,
                 "dataset": name,
                 "dataset_file": dataset_file,
                 "system_prompt": system_prompt,

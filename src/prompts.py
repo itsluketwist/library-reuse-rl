@@ -97,11 +97,9 @@ def library_prompt_suffix(
     Compute the output-path suffix for a run's library system-prompt setting, e.g.
     "-libv1" or "-usev1" for requirements file "v1.txt" under each style.
 
-    Shared by src/run_eval.py::eval_results_path and
-    src/run_grpo.py::trained_model_path so runs under different (file, style)
-    combinations - including no requirements file at all - land in distinct output
-    paths. scripts/submit_grpo.sh mirrors this formula in bash, since python isn't
-    available on the slurm submission node - keep the two in sync if it changes.
+    Used by src/run_eval.py::eval_results_path so eval runs under different (file,
+    style) combinations - including no requirements file at all - land in distinct
+    output paths.
 
     Returns "" when no requirements file is set, or when `style` is "base".
     """

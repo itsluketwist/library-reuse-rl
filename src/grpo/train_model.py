@@ -308,16 +308,21 @@ def train_model_with_grpo(
     # Align the model's generation config with the tokenizer's eos token
     # to avoid unbounded generation in the transformers `pipeline()` function
     trainer.model.generation_config.eos_token_id = tokenizer.eos_token_id
+    # the model is lora-wrapped (see src/models.py), so this writes just the adapter
+    # (adapter_config.json + adapter_model.safetensors), not a full merged model - eval
+    # reloads the base and applies this adapter on top (see src/eval/evaluate.py)
     trainer.save_model(training_args.output_dir)
-    logger.info(f"Model saved to {training_args.output_dir}")
+    logger.info(f"Adapter saved to {training_args.output_dir}")
 
     # Save everything else on main process
     kwargs = {"tags": ["library-reuse-rl"]}
     if trainer.accelerator.is_main_process:
         trainer.create_model_card(**kwargs)
-        # Restore k,v cache for fast inference
+        # re-enable the kv cache (disabled for gradient checkpointing in src/models.py)
+        # so the held-out eval below generates with fast caching. nothing to save back
+        # out here - the adapter is already written above, and it carries no full-model
+        # config for use_cache to live in
         trainer.model.config.use_cache = True
-        trainer.model.config.save_pretrained(training_args.output_dir)
 
         # the last periodic checkpoint (kept around so a cancelled run could resume -
         # see save_strategy/save_steps in config/training.yaml) is now redundant with

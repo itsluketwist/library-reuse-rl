@@ -29,6 +29,18 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--adapter",
+    type=str,
+    default=None,
+    help=(
+        "Path to a trained lora adapter directory to apply on top of the model's base "
+        "at eval time. Overrides the adapter registered for --model (if any). Leave "
+        "unset to evaluate the model's registered adapter, or the base model alone if "
+        "it has none."
+    ),
+)
+
+parser.add_argument(
     "-d",
     "--datasets",
     type=str,
@@ -106,6 +118,7 @@ def eval_results_path(
     decoding_profile: str,
     libraries_requirements_file: str | None = None,
     prompt_style: PromptStyle = "lib",
+    adapter_override: str | None = None,
 ) -> Path:
     """
     Compute the output path an evaluation run saves its results to.
@@ -118,14 +131,22 @@ def eval_results_path(
     separate runs under different library system-prompt settings (see
     src/prompts.py::library_prompt_suffix).
 
+    `adapter_override` is the --adapter path when one is given: since that applies an
+    arbitrary adapter under the base model's --model key, its directory name is appended
+    to the filename so the run doesn't overwrite the base model's own results. Registered
+    (non-override) runs need no such suffix, as their --model key is already unique.
+
     Returns the output file path.
     """
     lib_suffix = library_prompt_suffix(libraries_requirements_file, style=prompt_style)
+    adapter_suffix = (
+        f"-adapter-{Path(adapter_override).name}" if adapter_override else ""
+    )
     return (
         Path("output")
         / model
         / "eval"
-        / f"{dataset}-{decoding_profile}{lib_suffix}.json"
+        / f"{dataset}-{decoding_profile}{lib_suffix}{adapter_suffix}.json"
     )
 
 
@@ -137,6 +158,7 @@ def run_eval(
     decoding_config: str = "config/training.yaml",
     eval_datasets_config: str = "config/eval_datasets.yaml",
     prompt_style: PromptStyle = "lib",
+    adapter: str | None = None,
     debug: bool = False,
 ) -> None:
     """
@@ -147,7 +169,13 @@ def run_eval(
     base models (with a blank "path") and trained models (registered by register_model
     in src/utils/config.py once training produces one) - this is what lets the
     post-training eval job (queued by scripts/submit_grpo.sh) point at the model a
-    training run just produced, by name, the same way it points at a base model.
+    training run just produced, by name, the same way it points at a base model. Training
+    saves lora adapters (not merged models), so a trained entry's "path" is an adapter
+    directory: eval always loads the entry's "base" and applies that adapter on top.
+
+    `adapter` overrides which adapter is applied: given a path, it is used instead of the
+    entry's registered "path" (e.g. to try an adapter on a base-model key). When neither
+    is set, the base model is evaluated on its own.
 
     `datasets` is a list of nice names looked up in `eval_datasets_config` (see
     config/eval_datasets.yaml). If not given, every dataset in that file is run.
@@ -176,15 +204,22 @@ def run_eval(
         model = DEBUG_MODEL_KEY
 
     model_settings = load_yaml_config(config_file=model_config, key=model)
-    # prefer a trained checkpoint's path if one's registered, otherwise the base model
-    model_name_or_path = model_settings["path"] or model_settings["base"]
-    log(f"Model: {model_name_or_path}")
+    # always load the base model; apply an adapter on top if one is given - the --adapter
+    # override wins, else the entry's registered adapter path, else base model alone
+    base = model_settings["base"]
+    adapter_path = adapter or model_settings["path"] or None
+    log(f"Base: {base}")
+    log(f"Adapter: {adapter_path or 'none'}")
     log(f"Prompt style: {prompt_style}")
     log(f"Debug: {debug}")
 
     recipe = load_full_yaml(decoding_config)
     libraries_requirements_file = recipe.get("libraries_requirements_file")
     log(f"Libraries requirements file: {libraries_requirements_file or 'none'}")
+
+    # size vllm's adapter slot from the recipe's training rank (see config/training.yaml)
+    # - assumes the adapter being evaluated was trained under this same recipe
+    max_lora_rank = recipe.get("lora_r")
 
     decoding_settings = load_yaml_config(
         config_file=decoding_config,
@@ -203,15 +238,18 @@ def run_eval(
             decoding_profile=decoding_profile,
             libraries_requirements_file=libraries_requirements_file,
             prompt_style=prompt_style,
+            adapter_override=adapter,
         )
         for name in dataset_names
     }
 
     evaluate_model(
-        model_name_or_path=model_name_or_path,
+        base=base,
+        adapter_path=adapter_path,
         dataset_files=dataset_files,
         decoding_settings=decoding_settings,
         output_paths=output_paths,
+        max_lora_rank=max_lora_rank,
         libraries_requirements_file=libraries_requirements_file,
         prompt_style=prompt_style,
         debug=debug,
@@ -225,6 +263,7 @@ def main() -> None:
     # --- startup banner ---
     log_header("EVALUATION")
     log(f"Model: {args.model}")
+    log(f"Adapter: {args.adapter or '(registered)'}")
     log(f"Datasets: {datasets or 'all'}")
     log(f"Decoding: {args.decoding_config} [{args.decoding_profile}]")
     log(f"Prompt style: {args.prompt_style}")
@@ -239,6 +278,7 @@ def main() -> None:
         decoding_config=args.decoding_config,
         eval_datasets_config=args.eval_datasets_config,
         prompt_style=args.prompt_style,
+        adapter=args.adapter,
         debug=args.debug,
     )
 

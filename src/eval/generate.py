@@ -3,6 +3,7 @@
 from typing import Any
 
 from vllm import LLM, SamplingParams
+from vllm.lora.request import LoRARequest
 
 
 def _stop_reason(finish_reason: str) -> str:
@@ -23,6 +24,7 @@ def generate_responses(
     llm: LLM,
     prompts: list[list[dict]],
     decoding_settings: dict[str, Any],
+    lora_request: LoRARequest | None = None,
 ) -> list[tuple[str, str]]:
     """
     Generate one response per prompt from `llm`.
@@ -33,6 +35,9 @@ def generate_responses(
     "temperature"/"top_p"/"top_k"/"max_new_tokens" - a temperature of 0 (the "greedy"
     profile) is vllm's own greedy-decoding convention, so no separate handling is
     needed for it.
+
+    `lora_request`, when given, applies a trained lora adapter on top of the base model
+    for this generation (see src/eval/evaluate.py) - None runs the base model alone.
 
     vllm handles chat templating, batching, and scheduling internally (unlike plain
     transformers generate(), which needed manual left-padding and batching here) and
@@ -48,7 +53,12 @@ def generate_responses(
         max_tokens=decoding_settings["max_new_tokens"],
     )
 
-    outputs = llm.chat(prompts, sampling_params=sampling_params, use_tqdm=True)
+    outputs = llm.chat(
+        prompts,
+        sampling_params=sampling_params,
+        use_tqdm=True,
+        lora_request=lora_request,
+    )
 
     return [
         (output.outputs[0].text, _stop_reason(output.outputs[0].finish_reason))

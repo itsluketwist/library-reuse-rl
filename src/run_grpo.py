@@ -8,8 +8,8 @@ import unsloth  # noqa: F401, E402
 
 from src.grpo.rewards import load_reward_profile
 from src.grpo.train_model import train_model_with_grpo
-from src.prompts import PromptStyle, library_prompt_suffix
-from src.utils.config import load_full_yaml, load_yaml_config, register_model
+from src.prompts import PromptStyle
+from src.utils.config import load_yaml_config, register_model
 from src.utils.log import log, log_header
 
 
@@ -65,9 +65,10 @@ parser.add_argument(
     type=str,
     default="output",
     help=(
-        "Base directory trained models are saved under (see trained_model_path). "
-        "Defaults to the local 'output' directory - scripts/submit_grpo.sh instead "
-        "points this at scratch storage, since checkpoints are large."
+        "Base directory trained models are saved under, one folder per run id (see "
+        "trained_model_path). Defaults to the local 'output' directory - "
+        "scripts/submit_grpo.sh instead points this at scratch storage, where the "
+        "adapters and checkpoints live."
     ),
 )
 
@@ -128,45 +129,22 @@ parser.add_argument(
 
 
 def trained_model_path(
-    model: str,
-    dataset: str,
-    recipe_config: str,
-    reward_profile: str,
-    seed: int,
-    library_prompt_style: PromptStyle = "lib",
+    run_id: str,
     output_root: str = "output",
 ) -> Path:
     """
-    Compute the output path a training run saves its trained model to.
+    Compute the directory a training run saves its output to, named by `run_id` - the
+    registry key the model is later looked up by (see run_grpo) - so the folder on disk
+    matches the registry entry.
 
-    Output lives under output_root/{model}/ so all runs for the same base model stay
-    together - output_root defaults to the local "output" directory, but
-    scripts/submit_grpo.sh points it at scratch storage instead, since checkpoints are
-    large. The recipe config, reward profile, and seed (when non-default) are encoded
-    in the run name. When the recipe sets libraries_requirements_file, a suffix (e.g.
-    "-libv1" or "-usev1", depending on `library_prompt_style`) is also appended, so
-    runs under different library system-prompt settings stay separate.
-    `library_prompt_style` is a CLI-level setting (see --library-prompt-style below),
-    not part of the recipe file, mirroring how `seed` overrides the recipe.
-
-    This is purely a human-readable directory name - the registry key a trained model
-    is looked up by (see run_id in run_grpo()) is independent of it, so nothing needs
-    to reconstruct this naming convention just to find a model again.
+    output_root defaults to the local "output" directory, but scripts/submit_grpo.sh
+    points it at scratch storage instead, since adapters/checkpoints live there. The run
+    id is short and non-descriptive, so the knobs behind it are recorded in the registry
+    entry's "properties" instead of the folder name (see src/utils/config.py).
 
     Returns the output directory path.
     """
-    recipe = load_full_yaml(recipe_config)
-    libraries_requirements_file = recipe.get("libraries_requirements_file")
-
-    dataset_name = Path(dataset).name
-    recipe_name = Path(recipe_config).stem
-    # only include the seed when it differs from the default, to keep names short
-    seed_suffix = f"-seed{seed}" if seed != DEFAULT_SEED else ""
-    lib_suffix = library_prompt_suffix(
-        libraries_requirements_file, style=library_prompt_style
-    )
-    run_name = f"{dataset_name}-{recipe_name}-{reward_profile}{seed_suffix}{lib_suffix}"
-    return Path(output_root) / model / run_name
+    return Path(output_root) / run_id
 
 
 def run_grpo(
@@ -203,11 +181,12 @@ def run_grpo(
     src/grpo/train_model.py::train_model_with_grpo, which loads the dataset itself -
     see src/data.py::load_train_dataset) with the weights from `reward_profile` (see
     config/rewards.yaml and src/grpo/rewards.py) selecting which reward components
-    count, and saves the trained output under the path returned by
-    `trained_model_path`. Once training finishes, registers the trained model in
-    `model_config` under `run_id` (generated if not given - see --run-id), separately
-    from the human-readable directory it's actually saved to, so eval can look it up
-    by that id just like a base model is looked up by name.
+    count, and saves the trained adapter under the path returned by
+    `trained_model_path` (a folder named by `run_id`). Once training finishes,
+    registers the trained model in `model_config` under `run_id` (generated if not
+    given - see --run-id), recording its base, adapter path, and the training knobs
+    (`properties`), so eval can look it up by that id just like a base model is looked
+    up by name.
     """
     if model is None:
         if not debug:
@@ -229,29 +208,14 @@ def run_grpo(
     log(f"Library prompt style: {library_prompt_style}")
     log(f"Debug: {debug}")
 
-    output_path = trained_model_path(
-        model=model,
-        dataset=dataset,
-        recipe_config=recipe_config,
-        reward_profile=reward_profile,
-        seed=seed,
-        library_prompt_style=library_prompt_style,
-        output_root=output_root,
-    )
+    output_path = trained_model_path(run_id=run_id, output_root=output_root)
     log(f"Output model path: {output_path}")
 
     # metrics/logs always stay in the repo's own "output" tree, regardless of
     # output_root - only the (large) model weights/checkpoints go to scratch. when
     # output_root is left at its "output" default, this is the same path as
     # output_path, so everything lands in one place, matching the old behaviour
-    metrics_path = trained_model_path(
-        model=model,
-        dataset=dataset,
-        recipe_config=recipe_config,
-        reward_profile=reward_profile,
-        seed=seed,
-        library_prompt_style=library_prompt_style,
-    )
+    metrics_path = trained_model_path(run_id=run_id)
     log(f"Metrics path: {metrics_path}")
 
     train_model_with_grpo(
@@ -267,10 +231,20 @@ def run_grpo(
         debug=debug,
     )
 
+    # the run id is non-descriptive, so record the knobs this run was launched with -
+    # enough to recognise the model later without decoding its id (see register_model)
+    properties = {
+        "dataset": dataset,
+        "recipe": recipe_config,
+        "reward_profile": reward_profile,
+        "seed": seed,
+        "library_prompt_style": library_prompt_style,
+    }
     register_model(
         model_key=run_id,
         base=model_settings["base"],
         path=str(output_path),
+        properties=properties,
         config_file=model_config,
     )
     log(f"Registered trained model '{run_id}' ({output_path}) in {model_config}")

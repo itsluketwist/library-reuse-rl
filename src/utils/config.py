@@ -56,15 +56,19 @@ def register_model(
     model_key: str,
     base: str,
     path: str,
+    properties: dict[str, Any],
     config_file: str,
 ) -> None:
     """
     Add a trained model entry to the model registry (config/models.yaml).
 
     Creates or overwrites the entry for `model_key`, recording the base model it was
-    trained from (`base`) and where the trained output was saved (`path`). Uses an
-    exclusive file lock so concurrent slurm jobs cannot corrupt the file by writing at
-    the same time.
+    trained from (`base`), where the trained output (the lora adapter) was saved
+    (`path`), and the training `properties` - the knobs the run was launched with (see
+    src/run_grpo.py). The properties are stored because `model_key` is a short, non-
+    descriptive run id, so they are what makes a registered model recognisable without
+    having to reconstruct the run from its id. Uses an exclusive file lock so concurrent
+    slurm jobs cannot corrupt the file by writing at the same time.
     """
     # separate lock file, so we hold the lock without truncating the yaml itself
     lock_path = config_file + ".lock"
@@ -78,6 +82,7 @@ def register_model(
             config[model_key] = {
                 "base": base,
                 "path": path,
+                "properties": properties,
             }
 
             # write to a temp file then rename, so readers never see a half-written file
