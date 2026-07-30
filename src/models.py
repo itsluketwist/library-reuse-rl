@@ -65,6 +65,7 @@ def get_model_and_tokenizer(
         gpu_memory_utilization=gpu_memory_utilization,
         fast_inference=use_vllm,
         max_lora_rank=model_args.lora_r,
+        load_in_4bit=False,
     )
 
     # attach the lora adapters to the frozen base model. gradient checkpointing is set up

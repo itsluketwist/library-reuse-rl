@@ -204,7 +204,7 @@ def train_model_with_grpo(
     log_level = training_args.get_process_log_level()
     logger.setLevel(log_level)
     datasets.utils.logging.set_verbosity(log_level)
-    transformers.utils.logging.set_verbosity(log_level)
+    transformers.utils.logging.set_verbosity(max(log_level, logging.WARNING))
     transformers.utils.logging.enable_default_handler()
     transformers.utils.logging.enable_explicit_format()
 
@@ -213,8 +213,8 @@ def train_model_with_grpo(
         f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}"
         + f" distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}"
     )
-    logger.info(f"Model parameters {model_args}")
-    logger.info(f"Training parameters {training_args}")
+    logger.debug(f"Model parameters {model_args}")
+    logger.debug(f"Training parameters {training_args}")
 
     # Check for last checkpoint
     last_checkpoint = None
