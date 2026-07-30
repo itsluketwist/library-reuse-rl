@@ -14,7 +14,7 @@ from src.utils.log import log, log_header, log_timer
 from .generate import generate_responses
 
 
-# dtype used to load the model for generation - matching config/train/demo.yaml's
+# dtype used to load the model for generation - matching config/training.yaml's
 # model arguments, since eval isn't driven by its own recipe file. no attention-
 # implementation setting here (unlike training) - vllm picks its own backend
 EVAL_DTYPE = "bfloat16"

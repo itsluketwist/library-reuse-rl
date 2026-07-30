@@ -33,8 +33,8 @@ training_datasets=(
 )
 
 # grpo training recipe - hyperparameters, including the decoding settings used to
-# generate responses during rollout (see config/train/demo.yaml)
-recipe_config="config/train/demo.yaml"
+# generate responses during rollout (see config/training.yaml)
+recipe_config="config/training.yaml"
 
 # system prompt wording during training (see src/prompts.py::PromptStyle)
 library_prompt_style="lib"

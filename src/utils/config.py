@@ -24,7 +24,7 @@ def load_yaml_config(
     """Load a specific key from a yaml config file, optionally nested under a section.
 
     `section`, when given, is looked up first (e.g. "eval_decoding_profiles" in
-    config/train/demo.yaml, which shares that file with training's own top-level
+    config/training.yaml, which shares that file with training's own top-level
     keys), and `key` is then looked up inside it rather than at the top level.
 
     Returns the config dict for the given key.

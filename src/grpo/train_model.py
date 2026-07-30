@@ -35,7 +35,7 @@ from transformers import TrainerCallback, set_seed
 from transformers.trainer_callback import TrainerControl, TrainerState
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.training_args import TrainingArguments
-from trl import GRPOTrainer, ModelConfig, TrlParser, get_peft_config
+from trl import GRPOTrainer, ModelConfig, TrlParser
 
 from src.data import load_train_dataset
 from src.models import get_model_and_tokenizer
@@ -52,7 +52,7 @@ from .wandb_logging import init_wandb_training
 logger = logging.getLogger(__name__)
 
 # sample counts used by --debug mode (src/run_grpo.py) - just enough to fill a train
-# batch and give eval a couple of rows (see config/train/demo.yaml), small enough to
+# batch and give eval a couple of rows (see config/training.yaml), small enough to
 # finish in seconds. GRPOTrainer still takes a real optimizer step on a partial/short
 # epoch like this - transformers' Trainer flushes any accumulated gradients at epoch end.
 DEBUG_TRAIN_SAMPLES = 16
@@ -128,7 +128,7 @@ def train_model_with_grpo(
     reward_profile: str,
     reward_weights: dict[str, float],
     seed: int,
-    recipe_config: str = "config/train/demo.yaml",
+    recipe_config: str = "config/training.yaml",
     library_prompt_style: PromptStyle = "lib",
     debug: bool = False,
 ) -> None:
@@ -170,7 +170,7 @@ def train_model_with_grpo(
     )
 
     # rollouts and eval sample with the same decoding profile - see
-    # rollout_decoding_profile/eval_decoding_profiles in config/train/demo.yaml
+    # rollout_decoding_profile/eval_decoding_profiles in config/training.yaml
     rollout_decoding = recipe["eval_decoding_profiles"][
         recipe["rollout_decoding_profile"]
     ]
@@ -270,7 +270,6 @@ def train_model_with_grpo(
         args=training_args,
         train_dataset=dataset["train"],
         eval_dataset=dataset["val"] if training_args.eval_strategy != "no" else None,
-        peft_config=get_peft_config(model_args),
         processing_class=tokenizer,
         callbacks=[
             SaveTrainerStateCallback(metrics_dir=metrics_dir),
@@ -321,7 +320,7 @@ def train_model_with_grpo(
         trainer.model.config.save_pretrained(training_args.output_dir)
 
         # the last periodic checkpoint (kept around so a cancelled run could resume -
-        # see save_strategy/save_steps in config/train/demo.yaml) is now redundant with
+        # see save_strategy/save_steps in config/training.yaml) is now redundant with
         # the save_model call above, so drop it to avoid a duplicate copy on scratch
         for checkpoint_dir in Path(training_args.output_dir).glob("checkpoint-*"):
             shutil.rmtree(checkpoint_dir)

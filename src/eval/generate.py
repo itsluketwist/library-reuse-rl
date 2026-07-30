@@ -29,7 +29,7 @@ def generate_responses(
 
     `prompts` is a list of chat-messages lists, as produced by
     src/data.py::load_eval_dataset. `decoding_settings` is a decoding profile dict (see
-    eval_decoding_profiles in config/train/demo.yaml) with
+    eval_decoding_profiles in config/training.yaml) with
     "temperature"/"top_p"/"top_k"/"max_new_tokens" - a temperature of 0 (the "greedy"
     profile) is vllm's own greedy-decoding convention, so no separate handling is
     needed for it.

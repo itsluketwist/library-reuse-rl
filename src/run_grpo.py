@@ -4,6 +4,8 @@ import uuid
 from argparse import ArgumentParser
 from pathlib import Path
 
+import unsloth  # noqa: F401, E402
+
 from src.grpo.rewards import load_reward_profile
 from src.grpo.train_model import train_model_with_grpo
 from src.prompts import PromptStyle, library_prompt_suffix
@@ -95,7 +97,7 @@ parser.add_argument(
 parser.add_argument(
     "--recipe-config",
     type=str,
-    default="config/train/demo.yaml",
+    default="config/training.yaml",
     help="Path to the GRPO training hyperparameters recipe file.",
 )
 
@@ -174,7 +176,7 @@ def run_grpo(
     reward_profile: str = "full",
     rewards_config: str = "config/rewards.yaml",
     seed: int = DEFAULT_SEED,
-    recipe_config: str = "config/train/demo.yaml",
+    recipe_config: str = "config/training.yaml",
     library_prompt_style: PromptStyle = "lib",
     debug: bool = False,
     output_root: str = "output",

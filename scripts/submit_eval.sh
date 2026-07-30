@@ -26,7 +26,7 @@ models=(
 # comma-separated eval dataset names (config/eval_datasets.yaml) - empty means all
 datasets=""
 
-# decoding profiles to evaluate with (eval_decoding_profiles in config/train/demo.yaml)
+# decoding profiles to evaluate with (eval_decoding_profiles in config/training.yaml)
 decoding_profiles=(
     "greedy"
     "default"

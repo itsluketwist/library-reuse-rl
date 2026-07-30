@@ -57,7 +57,7 @@ parser.add_argument(
 parser.add_argument(
     "--decoding-config",
     type=str,
-    default="config/train/demo.yaml",
+    default="config/training.yaml",
     help=(
         "Path to decoding config file - defaults to the training recipe file, which "
         "also carries eval's decoding profiles (see its eval_decoding_profiles "
@@ -134,7 +134,7 @@ def run_eval(
     datasets: list[str] | None = None,
     model_config: str = "config/models.yaml",
     decoding_profile: str = "greedy",
-    decoding_config: str = "config/train/demo.yaml",
+    decoding_config: str = "config/training.yaml",
     eval_datasets_config: str = "config/eval_datasets.yaml",
     prompt_style: PromptStyle = "lib",
     debug: bool = False,
