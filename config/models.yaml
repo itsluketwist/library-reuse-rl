@@ -4,6 +4,9 @@
 # carry a "properties" block recording the knobs the run was launched with, since the
 # run-id key is non-descriptive - see src/utils/config.py and src/run_grpo.py
 
+qwen3-debug:
+  base: "Qwen/Qwen3-0.6B"
+  path:
 
 qwen3-4b:
   base: "Qwen/Qwen3-4B"
@@ -11,10 +14,4 @@ qwen3-4b:
 
 qwen3-8b:
   base: "Qwen/Qwen3-8B"
-  path:
-
-# tiny model used by run_grpo's --debug flag, to quickly smoke-test that the training
-# code runs correctly without waiting on a full-size model
-qwen3-debug:
-  base: "Qwen/Qwen3-0.6B"
   path:
