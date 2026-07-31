@@ -52,6 +52,46 @@ def load_full_yaml(config_file: str) -> dict[str, Any]:
     return _load_yaml(config_file=config_file)
 
 
+# header written at the top of the model registry each time register_model rewrites it -
+# yaml.dump drops the file's existing comments, so we re-add it to keep the file
+# self-documenting. keep in sync with the intended contents of config/models.yaml.
+_MODEL_REGISTRY_HEADER = """\
+# model registry - base models we start from, plus any models trained from them.
+# "path" is blank for base models, and filled in (by register_model) once a model
+# has actually been trained, pointing at that run's lora adapter. trained entries also
+# carry a "properties" block recording the knobs the run was launched with, since the
+# run-id key is non-descriptive - see src/utils/config.py and src/run_grpo.py"""
+
+
+class _RegistryDumper(yaml.SafeDumper):
+    """yaml dumper that writes None as a blank value (e.g. `path:`) rather than `null`,
+    matching the hand-written base-model entries in the registry."""
+
+
+_RegistryDumper.add_representer(
+    type(None),
+    lambda dumper, _: dumper.represent_scalar("tag:yaml.org,2002:null", ""),
+)
+
+
+def _dump_model_registry(config: dict[str, Any]) -> str:
+    """Serialise the model registry: the header comment, then one entry per model with a
+    blank line between them (yaml.dump alone drops comments and packs entries together).
+
+    Returns the file contents as a string.
+    """
+    entries = [
+        yaml.dump(
+            {model_key: entry},
+            Dumper=_RegistryDumper,
+            default_flow_style=False,
+            sort_keys=False,
+        )
+        for model_key, entry in config.items()
+    ]
+    return _MODEL_REGISTRY_HEADER + "\n\n" + "\n".join(entries)
+
+
 def register_model(
     model_key: str,
     base: str,
@@ -88,12 +128,7 @@ def register_model(
             # write to a temp file then rename, so readers never see a half-written file
             tmp_path = config_file + ".tmp"
             with open(file=tmp_path, mode="w") as f:
-                yaml.dump(
-                    data=config,
-                    stream=f,
-                    default_flow_style=False,
-                    sort_keys=False,
-                )
+                f.write(_dump_model_registry(config))
             os.replace(src=tmp_path, dst=config_file)
         finally:
             fcntl.flock(lock_file, fcntl.LOCK_UN)

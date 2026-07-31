@@ -51,12 +51,10 @@ from .wandb_logging import init_wandb_training
 
 logger = logging.getLogger(__name__)
 
-# sample counts used by --debug mode (src/run_grpo.py) - just enough to fill a train
-# batch and give eval a couple of rows (see config/training.yaml), small enough to
-# finish in seconds. GRPOTrainer still takes a real optimizer step on a partial/short
-# epoch like this - transformers' Trainer flushes any accumulated gradients at epoch end.
+# constants used to configure src/run_grpo.py --debug mode
 DEBUG_TRAIN_SAMPLES = 16
 DEBUG_VAL_SAMPLES = 4
+DEBUG_MAX_COMPLETION_LENGTH = 512
 
 
 class SaveTrainerStateCallback(TrainerCallback):
@@ -192,8 +190,11 @@ def train_model_with_grpo(
     training_args.library_prompt_style = library_prompt_style
 
     if debug:
+        # a debug run is only a couple of steps, so log and flush metrics every step,
+        # and cap the rollout length so the smoke test finishes in minutes not hours
         training_args.logging_steps = 1
         training_args.save_steps = 1
+        training_args.max_completion_length = DEBUG_MAX_COMPLETION_LENGTH
 
     set_seed(training_args.seed)
 
@@ -207,8 +208,10 @@ def train_model_with_grpo(
     )
     log_level = training_args.get_process_log_level()
     logger.setLevel(log_level)
-    datasets.utils.logging.set_verbosity(log_level)
-    transformers.utils.logging.set_verbosity(max(log_level, logging.WARNING))
+    lib_log_level = max(log_level, logging.WARNING)
+    training_args.log_level = logging.getLevelName(lib_log_level).lower()
+    datasets.utils.logging.set_verbosity(lib_log_level)
+    transformers.utils.logging.set_verbosity(lib_log_level)
     transformers.utils.logging.enable_default_handler()
     transformers.utils.logging.enable_explicit_format()
 

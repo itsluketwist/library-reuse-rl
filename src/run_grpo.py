@@ -234,6 +234,18 @@ def run_grpo(
         debug=debug,
     )
 
+    # debug runs are throwaway, so don't register them
+    if debug:
+        eval_command = (
+            f"run_eval --debug --model {model} --adapter {output_path} "
+            f"--decoding-config {recipe_config} --prompt-style {library_prompt_style}"
+        )
+        log(
+            f"Debug run - not registered in {model_config}. Evaluate this adapter with:"
+        )
+        log(f"  {eval_command}")
+        return
+
     # the run id is non-descriptive, so record the knobs this run was launched with -
     # enough to recognise the model later without decoding its id (see register_model)
     properties = {
