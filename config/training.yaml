@@ -68,8 +68,7 @@ gpu_memory_utilization: 0.4  # share of gpu memory the colocated vllm engine res
 
 # lora (parameter-efficient) fine-tuning settings
 use_peft: true
-lora_r: 256  # adapter rank - trades capacity for memory/speed. ~512 approximates full
-# fine-tuning; lowered here for lighter, faster initial runs
+lora_r: 256  # adapter rank - trades capacity for memory/speed (~512 approximates full fine-tuning)
 lora_alpha: 256  # scaling factor, kept equal to lora_r (unsloth convention)
 lora_dropout: 0.0  # 0 lets unsloth use its faster fused lora kernel
 lora_target_modules:  # the attention and mlp projections adapters are attached to
@@ -102,7 +101,6 @@ logging_strategy: steps
 report_to:
 - wandb
 
-save_strategy: "steps"  # so a run cancelled by the slurm time limit can resume (see
-# train_model_with_grpo/get_last_checkpoint) instead of losing all progress
-save_steps: 50  # frequent enough to land at least a few checkpoints within one job's walltime
+save_strategy: "steps"  # so a run cancelled by the slurm time limit can resume from the last checkpoint
+save_steps: 50  # frequent enough to land a few checkpoints within one job's walltime
 save_total_limit: 1

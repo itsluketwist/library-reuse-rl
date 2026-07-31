@@ -46,7 +46,7 @@ bash setup/setup_eval_venv.sh v1
 ## *usage*
 
 After [*installation*](#installation), training and evaluation are run via the `run_grpo`
-and `run_eval` console scripts (installed by `pip install -e .`, see
+and `run_eval` console scripts (installed into the venv by `uv sync`, see
 [`src/run_grpo.py`](src/run_grpo.py) and [`src/run_eval.py`](src/run_eval.py)):
 
 ```shell
@@ -77,7 +77,7 @@ The same flag is available as the `debug` setting in
 [`scripts/submit_eval.sh`](scripts/submit_eval.sh).
 
 Set `libraries_requirements_file` in the recipe config
-([`config/train/demo.yaml`](config/train/demo.yaml)) to a requirements file from
+([`config/training.yaml`](config/training.yaml)) to a requirements file from
 [`setup/requirements/`](setup/requirements/) to include the available libraries in the
 prompt, so the model knows what it can import and reuse - see
 [`src/prompts.py`](src/prompts.py). `run_eval` reads this straight from the same
@@ -100,35 +100,30 @@ correctness_only:
   passed_tests: 1.0
 ```
 
-Pick a profile by name with `-rp`/`--reward-profile` (default `full`), and it's baked
-into the trained model's output directory name (see `trained_model_path` in
-[`src/run_grpo.py`](src/run_grpo.py)) so a run's reward function is always recoverable
-from its path. The resolved profile (name + weights) is also saved into the run's
-`train_results.json`, alongside the rest of its training metrics.
+Pick a profile by name with `-rp`/`--reward-profile` (default `full`). The resolved
+profile (name + weights) is recorded in the run's `train_results.json` and in the
+trained model's registry `properties` (see [`src/run_grpo.py`](src/run_grpo.py)), so a
+run's reward function stays recoverable.
 
-The actual reward logic lives in [`src/grpo/rewards.py`](src/grpo/rewards.py):
+The reward logic lives in [`src/grpo/rewards.py`](src/grpo/rewards.py): `REWARD_COMPONENTS`
+is the set of valid component names (the keys allowed in a profile), and `compute_reward`
+has one `if weight := weights.get("name"):` block per component, adding its weight when
+satisfied.
 
-- `REWARD_COMPONENTS` is the set of valid component names - the names you're allowed
-  to use as keys in a `config/rewards.yaml` profile.
-- `compute_reward` is a single function with one `if weight := weights.get("name"):`
-  block per component, each checking that component's condition and adding its weight
-  to the total if satisfied.
-
-**To add a new reward profile**, just add a new top-level entry to
-`config/rewards.yaml` using any of the existing component names.
+**To add a new reward profile**, add a top-level entry to `config/rewards.yaml` using
+existing component names.
 
 **To add a new reward component**, in `src/grpo/rewards.py`:
 
 1. Add its name to the `REWARD_COMPONENTS` frozenset.
 2. Add a matching `if weight := weights.get("your_component_name"):` block in
-   `compute_reward`, with a short comment explaining what it checks and `reward +=
-   weight` if the condition is met.
-3. Reference the new name in a profile in `config/rewards.yaml` to use it.
+   `compute_reward`.
+3. Reference the new name in a `config/rewards.yaml` profile.
 
 ## *structure*
 
 - [`config/`](config/) - YAML config: the model registry (base models, and trained models
-  once `train` registers one), decoding profiles, and the eval dataset name → file mapping.
+  once `run_grpo` registers one), decoding profiles, and the eval dataset name → file mapping.
 - [`data/`](data/) - Scripts that download and format the datasets used by the project
   ([`download_skywork.py`](data/download_skywork.py) for RL training data,
   [`download_eval.py`](data/download_eval.py) for the held-out eval benchmarks). Run them
@@ -136,8 +131,8 @@ The actual reward logic lives in [`src/grpo/rewards.py`](src/grpo/rewards.py):
   them (`data/skywork/`, `data/eval/`) and are not committed.
 - [`notebooks/`](notebooks/) - One-off, numbered notebooks for exploratory work that doesn't
   belong in `src/`.
-- [`output/`](output/) - Trained model outputs, named and registered automatically by `train`
-  (see `trained_model_path` in [`src/run_grpo.py`](src/run_grpo.py)). Gitignored.
+- [`output/`](output/) - Trained model outputs, named and registered automatically by
+  `run_grpo` (see `trained_model_path` in [`src/run_grpo.py`](src/run_grpo.py)). Gitignored.
 - [`scripts/`](scripts/) - Bash scripts for running jobs on a slurm cluster
   (`setup_job.sh`, `submit_grpo.sh`, `submit_eval.sh`).
 - [`setup/`](setup/) - Defines the isolated venv used to sandbox LLM-generated code during

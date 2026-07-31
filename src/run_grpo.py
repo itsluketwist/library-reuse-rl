@@ -36,11 +36,9 @@ parser.add_argument(
     type=str,
     default=None,
     help=(
-        "Registry key (see config/models.yaml) this run's trained model is "
-        "registered under. Generated automatically if not given - "
-        "scripts/submit_grpo.sh always passes one explicitly, generated once in "
-        "bash and reused for the dependent eval job's --model, so eval doesn't need "
-        "to recompute this run's naming convention to find it."
+        "Registry key this run's trained model is registered under (see "
+        "config/models.yaml). Auto-generated if not given; submit_grpo.sh passes one "
+        "so the dependent eval job can find the model without recomputing it."
     ),
 )
 
@@ -66,9 +64,8 @@ parser.add_argument(
     default="output",
     help=(
         "Base directory trained models are saved under, one folder per run id (see "
-        "trained_model_path). Defaults to the local 'output' directory - "
-        "scripts/submit_grpo.sh instead points this at scratch storage, where the "
-        "adapters and checkpoints live."
+        "trained_model_path). Defaults to local 'output'; submit_grpo.sh points it at "
+        "scratch storage, where the large adapters and checkpoints live."
     ),
 )
 
@@ -108,12 +105,10 @@ parser.add_argument(
     choices=["lib", "use"],
     default="lib",
     help=(
-        "Wording used for the library system prompt when the recipe's "
-        "libraries_requirements_file is set (see "
-        "src/prompts.py::build_system_prompt): 'lib' just lists the available "
-        "libraries, 'use' also pushes the model to prefer them over writing its own "
-        "implementations. Ignored when the recipe has no libraries_requirements_file. "
-        "Changes the output path suffix from e.g. '-libv1' to '-usev1'."
+        "System-prompt wording when the recipe sets libraries_requirements_file (see "
+        "src/prompts.py): 'lib' lists the available libraries, 'use' also pushes the "
+        "model to prefer them. Ignored with no requirements file. Sets the output "
+        "suffix ('-libv1' vs '-usev1')."
     ),
 )
 
@@ -121,9 +116,9 @@ parser.add_argument(
     "--debug",
     action="store_true",
     help=(
-        f"Run a tiny smoke test: defaults the model to '{DEBUG_MODEL_KEY}' (see "
-        "config/models.yaml) if --model isn't given, and truncates the dataset to a "
-        "handful of samples, to quickly check the training code runs end-to-end."
+        f"Run a tiny smoke test: defaults the model to '{DEBUG_MODEL_KEY}' if --model "
+        "isn't given, and truncates the dataset to a few samples, to check the "
+        "training code runs end-to-end."
     ),
 )
 
@@ -133,16 +128,12 @@ def trained_model_path(
     output_root: str = "output",
 ) -> Path:
     """
-    Compute the directory a training run saves its model adapter and checkpoints to,
-    named by `run_id` - the registry key the model is later looked up by (see run_grpo)
-    - so the folder on disk matches the registry entry.
+    Compute the directory a training run saves its adapter and checkpoints to, named by
+    `run_id` (the registry key the model is later looked up by) so the folder matches
+    the registry entry.
 
-    output_root defaults to the local "output" directory, but scripts/submit_grpo.sh
-    points it at scratch storage instead, since these adapter/checkpoint files are large.
-    Training metrics go elsewhere (output/grpo/{run_id}, see run_grpo), so only the big
-    binary artifacts land here. The run id is short and non-descriptive, so the knobs
-    behind it are recorded in the registry entry's "properties" instead of the folder
-    name (see src/utils/config.py).
+    output_root defaults to "output", but submit_grpo.sh points it at scratch storage
+    since these files are large; small training metrics go elsewhere (see run_grpo).
 
     Returns the output directory path.
     """
@@ -165,30 +156,17 @@ def run_grpo(
     """
     Run GRPO RL training for the given model and dataset.
 
-    `dataset` is a directory containing train/val/test.jsonl files (e.g. data/skywork)
-    - training runs against its train.jsonl, and uses val.jsonl for periodic
-    evaluation if the recipe at `recipe_config` switches that on.
+    `dataset` is a directory of train/val/test.jsonl files (e.g. data/skywork); training
+    runs against train.jsonl and uses val.jsonl for periodic evaluation if the recipe
+    enables it. `seed` and `library_prompt_style` override the recipe's fields.
 
-    `library_prompt_style` overrides the recipe's library_prompt_style the same way
-    `seed` overrides its seed field (see src/grpo/config.py::GRPOConfig) - only takes
-    effect when the recipe sets libraries_requirements_file.
+    If `debug` is set, the dataset is truncated to a few samples (a quick end-to-end
+    check) and `model` defaults to DEBUG_MODEL_KEY; otherwise `model` is required.
 
-    If `debug` is set, src/grpo/train_model.py::train_model_with_grpo truncates the
-    dataset to a handful of samples - useful to quickly check the training code runs
-    end-to-end. `model` defaults to `DEBUG_MODEL_KEY` in that case, but an explicit
-    `model` is still respected, so a bigger model can be smoke-tested too. Without
-    `debug`, `model` is required.
-
-    Resolves the model and reward profile, then runs GRPO training (see
-    src/grpo/train_model.py::train_model_with_grpo, which loads the dataset itself -
-    see src/data.py::load_train_dataset) with the weights from `reward_profile` (see
-    config/rewards.yaml and src/grpo/rewards.py) selecting which reward components
-    count, and saves the trained adapter under the path returned by
-    `trained_model_path` (a folder named by `run_id`). Once training finishes,
-    registers the trained model in `model_config` under `run_id` (generated if not
-    given - see --run-id), recording its base, adapter path, and the training knobs
-    (`properties`), so eval can look it up by that id just like a base model is looked
-    up by name.
+    Resolves the model and reward profile, runs training (see train_model_with_grpo),
+    saves the adapter under trained_model_path, then registers the trained model in
+    `model_config` under `run_id` (generated if not given) so eval can look it up by
+    name, recording its base, adapter path, and the training knobs (`properties`).
     """
     if model is None:
         if not debug:
@@ -210,14 +188,11 @@ def run_grpo(
     log(f"Library prompt style: {library_prompt_style}")
     log(f"Debug: {debug}")
 
-    # the adapter and its checkpoints are large, so they go under output_root -
-    # scripts/submit_grpo.sh points that at scratch storage (see trained_model_path)
+    # large adapter/checkpoints go under output_root (scratch storage, see trained_model_path)
     output_path = trained_model_path(run_id=run_id, output_root=output_root)
     log(f"Adapter output path: {output_path}")
 
-    # training metrics (loss, rewards over time, periodic held-out eval - see
-    # src/grpo/train_model.py) are small and worth keeping in the repo, under
-    # output/grpo/{run_id}, separate from the large adapter/checkpoints on scratch
+    # small training metrics stay in the repo, separate from the large scratch artifacts
     metrics_path = Path("output") / "grpo" / run_id
     log(f"Metrics path: {metrics_path}")
 
@@ -246,8 +221,7 @@ def run_grpo(
         log(f"  {eval_command}")
         return
 
-    # the run id is non-descriptive, so record the knobs this run was launched with -
-    # enough to recognise the model later without decoding its id (see register_model)
+    # the run id is non-descriptive, so record the knobs to recognise the model later
     properties = {
         "dataset": dataset,
         "recipe": recipe_config,

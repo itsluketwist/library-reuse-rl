@@ -52,9 +52,7 @@ def load_full_yaml(config_file: str) -> dict[str, Any]:
     return _load_yaml(config_file=config_file)
 
 
-# header written at the top of the model registry each time register_model rewrites it -
-# yaml.dump drops the file's existing comments, so we re-add it to keep the file
-# self-documenting. keep in sync with the intended contents of config/models.yaml.
+# re-added at the top of the registry each rewrite, since yaml.dump drops comments
 _MODEL_REGISTRY_HEADER = """\
 # model registry - base models we start from, plus any models trained from them.
 # "path" is blank for base models, and filled in (by register_model) once a model
@@ -102,13 +100,11 @@ def register_model(
     """
     Add a trained model entry to the model registry (config/models.yaml).
 
-    Creates or overwrites the entry for `model_key`, recording the base model it was
-    trained from (`base`), where the trained output (the lora adapter) was saved
-    (`path`), and the training `properties` - the knobs the run was launched with (see
-    src/run_grpo.py). The properties are stored because `model_key` is a short, non-
-    descriptive run id, so they are what makes a registered model recognisable without
-    having to reconstruct the run from its id. Uses an exclusive file lock so concurrent
-    slurm jobs cannot corrupt the file by writing at the same time.
+    Creates or overwrites the entry for `model_key`, recording the `base` it was trained
+    from, the adapter `path`, and the training `properties` (the knobs the run was
+    launched with) - stored because `model_key` is a non-descriptive run id, so they are
+    what make the model recognisable later. Uses an exclusive file lock so concurrent
+    slurm jobs cannot corrupt the file.
     """
     # separate lock file, so we hold the lock without truncating the yaml itself
     lock_path = config_file + ".lock"

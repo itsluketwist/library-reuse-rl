@@ -15,13 +15,10 @@ from src.utils.log import log, log_header, log_timer
 from .generate import generate_responses
 
 
-# dtype used to load the model for generation - matching config/training.yaml's
-# model arguments, since eval isn't driven by its own recipe file. no attention-
-# implementation setting here (unlike training) - vllm picks its own backend
+# dtype used to load the model for generation, matching config/training.yaml
 EVAL_DTYPE = "bfloat16"
 
-# sample count used by --debug mode (src/run_eval.py) - just enough to smoke-test
-# generation and scoring end-to-end without waiting on a full dataset
+# sample count used by --debug mode (src/run_eval.py) for a quick end-to-end check
 DEBUG_EVAL_SAMPLES = 4
 
 # generation length cap for --debug runs
@@ -55,35 +52,26 @@ def evaluate_model(
     from `adapter_path`) against each dataset in `dataset_files`, analyse them with the
     response pipeline, and save results.
 
-    `base` is always loaded as the vllm model; when `adapter_path` is given, that lora
-    adapter is applied on top for every generation (see src/eval/generate.py), otherwise
-    the base model runs alone. Since training saves adapters rather than merged models
-    (see src/grpo/train_model.py), this is how a trained model is evaluated.
-    `max_lora_rank` sizes vllm's adapter slot and should be at least the adapter's rank
-    (it comes from the training recipe's lora_r, see src/run_eval.py) - only used when
-    `adapter_path` is set.
+    `base` is loaded as the vllm model; when `adapter_path` is given, that adapter is
+    applied on top for every generation, otherwise the base model runs alone (this is
+    how a trained model is evaluated). `max_lora_rank` sizes vllm's adapter slot and
+    should be at least the adapter's rank (only used when `adapter_path` is set).
 
-    `dataset_files` and `output_paths` are both keyed by dataset name (see
-    config/eval_datasets.yaml) - the model is loaded once and reused across every
-    dataset. For each dataset, generates a response per prompt (see
-    generate_responses), parses and evaluates each response against its test cases
-    (see src/response/pipeline.py::process_response - reused rather than
-    reimplementing scoring), and saves one record per prompt to that dataset's
-    `output_paths` entry.
+    `dataset_files` and `output_paths` are keyed by dataset name (see
+    config/eval_datasets.yaml); the model is loaded once and reused across all of them.
+    For each dataset, generates a response per prompt, parses and evaluates it against
+    its test cases (see process_response), and saves one record per prompt.
 
-    `libraries_requirements_file` and `prompt_style` build the system prompt the same
-    way training does (see src/prompts.py::build_system_prompt) - match these to the
-    training run's recipe config so the model is evaluated under the same conditions
-    it trained on. When `libraries_requirements_file` is None, no system prompt is
-    used and `prompt_style` is ignored.
+    `libraries_requirements_file` and `prompt_style` build the system prompt as training
+    does (see build_system_prompt) - match these to the training recipe so the model is
+    evaluated as it trained. When the file is None, no system prompt is used.
 
-    If `debug` is set, each dataset is truncated to DEBUG_EVAL_SAMPLES rows, to
-    quickly smoke-test that evaluation runs end-to-end.
+    If `debug` is set, each dataset is truncated to DEBUG_EVAL_SAMPLES rows for a quick
+    end-to-end smoke test.
     """
     system_prompt = build_system_prompt(libraries_requirements_file, style=prompt_style)
 
-    # cap generation length for a debug smoke test so it finishes quickly (copy rather
-    # than mutate the shared decoding_settings dict) - see DEBUG_MAX_NEW_TOKENS
+    # cap generation length for the debug smoke test (copy, don't mutate the shared dict)
     if debug:
         decoding_settings = {
             **decoding_settings,
@@ -133,8 +121,7 @@ def evaluate_model(
                 },
             )
             n_passed += processed.passed
-            # store idx (original row number in the dataset file) to identify the
-            # problem without repeating the full prompt text in every result
+            # store idx (original row number) to identify the problem without the prompt
             results.append(
                 {
                     "idx": row["idx"],
@@ -149,8 +136,7 @@ def evaluate_model(
         n_reasoning = sum(1 for r in results if r.get("reasoning"))
         n_answer = sum(1 for r in results if r.get("answer"))
 
-        # averages computed over responses with valid code only, so missing or
-        # unparseable code doesn't skew the library and complexity numbers
+        # average over valid-code responses only, so missing/unparseable code doesn't skew
         valid_results = [r for r in results if r.get("valid") is True]
         avg_std_libs = _average([len(r["std_libs"]) for r in valid_results])
         avg_ext_libs = _average([len(r["ext_libs"]) for r in valid_results])

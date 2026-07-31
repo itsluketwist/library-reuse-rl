@@ -18,10 +18,9 @@ class GRPOConfig(trl.GRPOConfig):
             "help": (
                 "Requirements file (see setup/requirements/) listing the libraries "
                 "available in the sandboxed eval environment. When set, the system "
-                "prompt lists those libraries, worded according to "
-                "library_prompt_style (see src/prompts.py::build_system_prompt). "
-                "When null, no system prompt is used and library_prompt_style is "
-                "ignored. Also appended to the output path as e.g. '-libv1'."
+                "prompt lists them (worded per library_prompt_style, see "
+                "src/prompts.py) and it's appended to the output path as e.g. "
+                "'-libv1'. When null, no system prompt is used."
             ),
         },
     )
@@ -29,13 +28,10 @@ class GRPOConfig(trl.GRPOConfig):
         default="lib",
         metadata={
             "help": (
-                "Wording used for the library system prompt when "
-                "libraries_requirements_file is set: 'lib' just lists the available "
-                "libraries, 'use' also pushes the model to prefer them over writing "
-                "its own implementations (see src/prompts.py::build_system_prompt). "
-                "Changes the output path suffix from e.g. '-libv1' to '-usev1'. "
-                "Set via src/run_grpo.py's --library-prompt-style CLI flag rather "
-                "than the recipe file, mirroring how --seed overrides seed."
+                "System-prompt wording when libraries_requirements_file is set: 'lib' "
+                "lists the available libraries, 'use' also pushes the model to prefer "
+                "them (see src/prompts.py). Set via src/run_grpo.py's "
+                "--library-prompt-style flag rather than the recipe file."
             ),
         },
     )

@@ -14,10 +14,7 @@
 
 """The GRPO training loop, wired to this project's reward and dataset format."""
 
-# unsloth patches trl's GRPOConfig/GRPOTrainer in place the moment it's imported, so it
-# must be imported before trl (directly below, and transitively via .config's
-# GRPOConfig subclass) - see src/models.py for the full explanation. the "isort: split"
-# below stops isort reordering this above/below the other imports.
+# unsloth must be imported before trl (see src/models.py); "isort: split" holds the order
 import unsloth  # noqa: F401
 
 
@@ -59,11 +56,9 @@ DEBUG_MAX_COMPLETION_LENGTH = 512
 
 class SaveTrainerStateCallback(TrainerCallback):
     """
-    Periodically overwrites metrics_dir/trainer_state.json with the training history
-    so far, on the same cadence as checkpointing (`save_steps`) - so if a run crashes,
-    the metric history up to the last save isn't lost along with it. Written to
-    metrics_dir (tracked in the repo) rather than output_dir (scratch storage, for the
-    large model files) since this is small and worth keeping alongside the code.
+    Overwrites metrics_dir/trainer_state.json with the training history so far, on the
+    checkpointing cadence (`save_steps`), so a crash doesn't lose the metric history
+    since the last save. Written to metrics_dir (tracked) not output_dir (scratch).
     """
 
     def __init__(self, metrics_dir: str | Path) -> None:
@@ -106,8 +101,8 @@ def _save_metrics_json(
     """
     Write metrics_dir/{split}_results.json, updating metrics_dir/all_results.json too.
 
-    Mirrors what trainer.save_metrics() does, except targeting metrics_dir (tracked in
-    the repo) instead of output_dir (scratch storage) - see train_model_with_grpo.
+    Mirrors trainer.save_metrics(), but targets metrics_dir (tracked) not output_dir
+    (scratch) - see train_model_with_grpo.
     """
     metrics_dir = Path(metrics_dir)
     save_json(metrics, metrics_dir / f"{split}_results.json")
@@ -132,43 +127,29 @@ def train_model_with_grpo(
 ) -> None:
     """
     Run GRPO training for `model_name_or_path` against the skywork-format dataset at
-    `dataset_dir` (see src/data.py::load_train_dataset), saving the trained model to
-    `output_dir` and its training metrics/logs to `metrics_dir`.
+    `dataset_dir`, saving the trained model to `output_dir` (large, typically scratch
+    storage) and its metrics to `metrics_dir` (small, typically the repo).
 
-    `output_dir` is expected to be large (model weights, checkpoints) and typically
-    points at scratch storage, while `metrics_dir` is small (json metrics files,
-    trainer_state.json) and typically stays in the repo - see src/run_grpo.py, which
-    computes both.
+    `seed` and `library_prompt_style` override the corresponding `recipe_config` fields
+    (resolved once by the caller); every other hyperparameter, including
+    libraries_requirements_file and the rollout decoding settings, comes from
+    `recipe_config`.
 
-    `seed` and `library_prompt_style` override the corresponding fields parsed from
-    `recipe_config`, so that - along with the model, dataset, and output path -
-    they're resolved once by the caller (src/run_grpo.py) rather than duplicated in
-    the recipe file. Every other training hyperparameter, including
-    `libraries_requirements_file` (used to build the system prompt via
-    src/prompts.py::build_system_prompt - see src/grpo/config.py) and the decoding
-    settings used during rollout generation (temperature/top_p/top_k), comes straight
-    from `recipe_config`.
-
-    `reward_profile` and `reward_weights` (see config/rewards.yaml and
-    src/grpo/rewards.py) are recorded into train_results.json, alongside the rest of
-    the run's training metrics, so the exact reward function used to produce a
-    trained model stays recoverable from its metrics directory.
+    `reward_profile` and `reward_weights` (see config/rewards.yaml) are recorded into
+    train_results.json, so the reward function stays recoverable from the metrics dir.
 
     If `debug` is set, the train/val splits are truncated to DEBUG_TRAIN_SAMPLES /
-    DEBUG_VAL_SAMPLES rows, to quickly smoke-test that training runs end-to-end.
+    DEBUG_VAL_SAMPLES rows for a quick end-to-end smoke test.
     """
     metrics_dir = Path(metrics_dir)
     metrics_dir.mkdir(parents=True, exist_ok=True)
     recipe = load_full_yaml(recipe_config)
-    # allow_extra_keys=True since recipe also carries rollout_decoding_profile and
-    # eval_decoding_profiles (for run_eval.py) that GRPOConfig/ModelConfig don't
-    # recognise - training and inference share one recipe file
+    # allow_extra_keys since the shared recipe also carries eval-only keys trl ignores
     training_args, model_args = TrlParser((GRPOConfig, ModelConfig)).parse_dict(
         recipe, allow_extra_keys=True
     )
 
-    # rollouts and eval sample with the same decoding profile - see
-    # rollout_decoding_profile/eval_decoding_profiles in config/training.yaml
+    # rollouts sample with one of the eval decoding profiles (see config/training.yaml)
     rollout_decoding = recipe["eval_decoding_profiles"][
         recipe["rollout_decoding_profile"]
     ]
@@ -177,10 +158,7 @@ def train_model_with_grpo(
     training_args.top_k = rollout_decoding["top_k"]
     training_args.max_completion_length = rollout_decoding["max_new_tokens"]
 
-    # unsloth-only model-loading settings (see src/models.py::get_model_and_tokenizer) -
-    # read straight off the recipe dict rather than added as GRPOConfig fields, same as
-    # rollout_decoding_profile/eval_decoding_profiles above, since trl's trainer never
-    # needs to know about them
+    # unsloth-only model-loading settings, read off the recipe dict (trl never sees them)
     max_seq_length = recipe["max_seq_length"]
     gpu_memory_utilization = recipe["gpu_memory_utilization"]
 
@@ -190,8 +168,7 @@ def train_model_with_grpo(
     training_args.library_prompt_style = library_prompt_style
 
     if debug:
-        # a debug run is only a couple of steps, so log and flush metrics every step,
-        # and cap the rollout length so the smoke test finishes in minutes not hours
+        # a debug run is only a couple of steps: log every step, cap rollout length
         training_args.logging_steps = 1
         training_args.save_steps = 1
         training_args.max_completion_length = DEBUG_MAX_COMPLETION_LENGTH
@@ -259,10 +236,8 @@ def train_model_with_grpo(
         gradient_checkpointing=training_args.gradient_checkpointing,
         chat_template=training_args.chat_template,
     )
-    # log gpu memory now the model is loaded. unlike a plain transformers load, unsloth
-    # places the model (and, when use_vllm is on, its colocated vllm engine) onto the
-    # gpu straight away rather than leaving that to the trainer, so this reading
-    # already reflects most of the run's steady-state model memory
+    # unsloth places the model (and colocated vllm engine) on the gpu at load time, so
+    # this already reflects most of the run's steady-state model memory
     log_gpu_memory("after model load")
 
     # Get the reward function, configured with this run's reward_weights
@@ -283,9 +258,8 @@ def train_model_with_grpo(
             LogGPUMemoryCallback(),
         ],
     )
-    # log again after trainer init - the trainer loads the reference model (needed
-    # since beta > 0), so this shows the memory left for optimizer states and
-    # activations before training actually starts
+    # the trainer loads the reference model (beta > 0), so this shows what's left for
+    # optimizer states and activations before training starts
     log_gpu_memory("after trainer init")
 
     ###############
@@ -301,9 +275,8 @@ def train_model_with_grpo(
     metrics = train_result.metrics
     metrics["train_samples"] = len(dataset["train"])
     trainer.log_metrics("train", metrics)
-    # added after log_metrics (rather than before) since its formatting only handles
-    # scalar metric values - _save_metrics_json, called next, just does a plain
-    # json.dump, so this still lands in train_results.json alongside the run's metrics
+    # added after log_metrics (which only formats scalars); _save_metrics_json below
+    # json.dumps it into train_results.json regardless
     metrics["reward_profile"] = {"name": reward_profile, "weights": reward_weights}
     _save_metrics_json(metrics_dir, "train", metrics)
     trainer.state.save_to_json(metrics_dir / "trainer_state.json")
@@ -315,9 +288,8 @@ def train_model_with_grpo(
     # Align the model's generation config with the tokenizer's eos token
     # to avoid unbounded generation in the transformers `pipeline()` function
     trainer.model.generation_config.eos_token_id = tokenizer.eos_token_id
-    # the model is lora-wrapped (see src/models.py), so this writes just the adapter
-    # (adapter_config.json + adapter_model.safetensors), not a full merged model - eval
-    # reloads the base and applies this adapter on top (see src/eval/evaluate.py)
+    # the model is lora-wrapped, so this writes just the adapter, not a merged model -
+    # eval reloads the base and applies this adapter on top (see src/eval/evaluate.py)
     trainer.save_model(training_args.output_dir)
     logger.info(f"Adapter saved to {training_args.output_dir}")
 
@@ -325,15 +297,12 @@ def train_model_with_grpo(
     kwargs = {"tags": ["library-reuse-rl"]}
     if trainer.accelerator.is_main_process:
         trainer.create_model_card(**kwargs)
-        # re-enable the kv cache (disabled for gradient checkpointing in src/models.py)
-        # so the held-out eval below generates with fast caching. nothing to save back
-        # out here - the adapter is already written above, and it carries no full-model
-        # config for use_cache to live in
+        # re-enable the kv cache (disabled for gradient checkpointing) so the held-out
+        # eval below generates with fast caching
         trainer.model.config.use_cache = True
 
-        # the last periodic checkpoint (kept around so a cancelled run could resume -
-        # see save_strategy/save_steps in config/training.yaml) is now redundant with
-        # the save_model call above, so drop it to avoid a duplicate copy on scratch
+        # the last periodic checkpoint is now redundant with save_model above, so drop
+        # it to avoid a duplicate copy on scratch
         for checkpoint_dir in Path(training_args.output_dir).glob("checkpoint-*"):
             shutil.rmtree(checkpoint_dir)
 

@@ -8,8 +8,7 @@ from radon.metrics import mi_visit
 from radon.raw import analyze
 
 
-# matches the opening reasoning tag at the very start of a string (with optional
-# surrounding whitespace), used to strip it from the extracted reasoning block
+# opening reasoning tag at the start of a string, stripped from the reasoning block
 _REASONING_OPEN_TAG = re.compile(
     r"^\s*<(?:think|thinking|reasoning|thought)>\s*",
     re.IGNORECASE,
@@ -118,8 +117,7 @@ def parse_response(
     reasoning, answer = strip_reasoning(response)
     block = select_code(answer)
 
-    # no code means there is nothing to measure - store missing metrics rather than
-    # scoring the empty string (radon gives empty code a perfect 100.0 index)
+    # no code means nothing to measure (radon scores empty code a perfect 100.0)
     if block.text:
         logical_lines, maintainability_index = code_metrics(block.text)
     else:
