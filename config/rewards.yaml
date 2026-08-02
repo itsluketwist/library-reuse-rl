@@ -11,5 +11,9 @@ full:
   internal_lib_used: 0.05
   external_lib_used: 0.05
 
-correctness_only:
+std:
+  correct_format: 0.1
+  passes_syntax_check: 0.1
   passed_tests: 1.0
+  internal_lib_imported: 0.1
+  internal_lib_used: 0.1

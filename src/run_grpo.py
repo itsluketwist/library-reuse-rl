@@ -102,13 +102,13 @@ parser.add_argument(
 parser.add_argument(
     "--library-prompt-style",
     type=str,
-    choices=["lib", "use"],
+    choices=["lib", "use", "std"],
     default="lib",
     help=(
-        "System-prompt wording when the recipe sets libraries_requirements_file (see "
-        "src/prompts.py): 'lib' lists the available libraries, 'use' also pushes the "
-        "model to prefer them. Ignored with no requirements file. Sets the output "
-        "suffix ('-libv1' vs '-usev1')."
+        "System-prompt wording (see src/prompts.py): 'lib' lists the available "
+        "libraries, 'use' also pushes the model to prefer them (both need the recipe's "
+        "libraries_requirements_file), 'std' pushes the model to prefer the standard "
+        "library (independent of that file). Sets the output suffix."
     ),
 )
 

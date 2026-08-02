@@ -164,7 +164,12 @@ def evaluate_model(
                 "dataset": name,
                 "dataset_file": dataset_file,
                 "system_prompt": system_prompt,
-                "prompt_style": prompt_style if libraries_requirements_file else None,
+                # lib/use need the requirements file to matter; std applies regardless
+                "prompt_style": (
+                    prompt_style
+                    if libraries_requirements_file or prompt_style == "std"
+                    else None
+                ),
                 "decoding_settings": decoding_settings,
                 "debug": debug,
             },

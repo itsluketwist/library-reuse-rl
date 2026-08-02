@@ -37,6 +37,7 @@ decoding_profiles=(
 prompt_styles=(
     "lib"
     "use"
+    "std"
     "base"
 )
 

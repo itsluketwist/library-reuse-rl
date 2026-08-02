@@ -4,10 +4,13 @@ from pathlib import Path
 from typing import Literal
 
 
-# system prompt styles: "lib" lists the installed libraries, "use" also pushes the
-# model to prefer them, "base" skips the system prompt entirely (see build_system_prompt)
-PromptStyle = Literal["lib", "use", "base"]
+# system prompt styles: "lib" lists the installed libraries, "use" also pushes the model
+# to prefer them, "std" pushes the model to prefer the standard library, "base" skips the
+# system prompt entirely (see build_system_prompt)
+PromptStyle = Literal["lib", "use", "std", "base"]
 
+# templates for the styles that list the requirements-file libraries (lib/use); the
+# {libraries} placeholder is filled by build_libraries_system_prompt
 _SYSTEM_PROMPT_TEMPLATES: dict[PromptStyle, str] = {
     "lib": (
         "You have access to a Python3.11 environment with the following "
@@ -20,6 +23,14 @@ _SYSTEM_PROMPT_TEMPLATES: dict[PromptStyle, str] = {
         "check whether one of these libraries already provides it."
     ),
 }
+
+# the "std" style: independent of the requirements file, since the standard library is
+# always available - so this lists no third-party libraries (see build_system_prompt)
+_STD_SYSTEM_PROMPT = (
+    "You are writing Python3.11 code. Actively prefer using the Python standard "
+    "library over writing your own implementations - before writing any non-trivial "
+    "logic, check whether the standard library already provides it."
+)
 
 
 def load_requirements_libraries(
@@ -67,14 +78,20 @@ def build_system_prompt(
     """
     Build the effective system prompt for a training or evaluation run.
 
-    When `libraries_requirements_file` is given, the prompt lists the available libraries
-    under `style` (see build_libraries_system_prompt). When None, or when `style` is
-    "base", no system prompt is used - "base" always wins, forcing no system prompt even
-    when a requirements file is configured.
+    "base" always returns None (no system prompt). "std" returns the standard-library
+    prompt regardless of `libraries_requirements_file`, since the standard library is
+    always available. "lib"/"use" list the file's libraries (see
+    build_libraries_system_prompt), and return None when no file is given.
 
     Returns the system prompt string, or None.
     """
-    if style == "base" or libraries_requirements_file is None:
+    if style == "base":
+        return None
+
+    if style == "std":
+        return _STD_SYSTEM_PROMPT
+
+    if libraries_requirements_file is None:
         return None
 
     return build_libraries_system_prompt(libraries_requirements_file, style=style)
@@ -85,14 +102,18 @@ def library_prompt_suffix(
     style: PromptStyle = "lib",
 ) -> str:
     """
-    Compute the output-path suffix for a run's library system-prompt setting, e.g.
-    "-libv1"/"-usev1" for requirements file "v1.txt" under each style.
+    Compute the output-path suffix for a run's system-prompt setting, e.g. "-libv1"/
+    "-usev1" for requirements file "v1.txt", or a fixed "-std" for the "std" style.
 
     Used by eval_results_path so runs under different (file, style) combinations land in
     distinct output paths.
 
-    Returns "" when no requirements file is set, or when `style` is "base".
+    Returns "" when `style` is "base", or when "lib"/"use" have no requirements file.
     """
+    if style == "std":
+        # file-independent, so a fixed suffix (no requirements-file version stem)
+        return "-std"
+
     if style == "base" or libraries_requirements_file is None:
         return ""
 

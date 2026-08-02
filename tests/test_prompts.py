@@ -121,6 +121,24 @@ class TestBuildSystemPrompt:
 
         assert lib_result != use_result
 
+    def test_std_style_builds_a_prompt_without_a_requirements_file(self):
+        """The "std" style produces a standard-library prompt even with no file."""
+        result = build_system_prompt(libraries_requirements_file=None, style="std")
+
+        assert result is not None
+        assert "standard library" in result
+
+    def test_std_style_ignores_the_requirements_file_libraries(self, tmp_path: Path):
+        """The "std" style is file-independent, so it lists no third-party libraries."""
+        requirements_file = _write_requirements(tmp_path, ["numpy==2.4.6"])
+
+        result = build_system_prompt(
+            libraries_requirements_file=requirements_file, style="std"
+        )
+
+        assert result is not None
+        assert "numpy==2.4.6" not in result
+
 
 class TestLibraryPromptSuffix:
     """Tests for library_prompt_suffix."""
@@ -138,3 +156,8 @@ class TestLibraryPromptSuffix:
         assert (
             library_prompt_suffix("setup/requirements/v1.txt", style="use") == "-usev1"
         )
+
+    def test_std_style_produces_a_fixed_suffix_regardless_of_file(self):
+        """The "std" style produces a fixed "-std" suffix, with or without a file."""
+        assert library_prompt_suffix(None, style="std") == "-std"
+        assert library_prompt_suffix("setup/requirements/v1.txt", style="std") == "-std"

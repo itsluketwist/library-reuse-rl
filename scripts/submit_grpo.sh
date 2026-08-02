@@ -39,6 +39,7 @@ recipe_config="config/training.yaml"
 # system prompt wording during training (see src/prompts.py::PromptStyle)
 library_prompt_style="lib"
 # library_prompt_style="use"
+# library_prompt_style="std"
 
 # random seed for training
 seed=42
