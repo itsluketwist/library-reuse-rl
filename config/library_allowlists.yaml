@@ -1,0 +1,406 @@
+# per-category library allowlists for the library-reuse datasets.
+# built by train_dataset/pipeline/02_build_allowlists.py from taxonomy.yaml and
+# the amplify
+# tool-frequency extractions - re-run that script to regenerate. 'allowlist' lists
+# the appropriate external tools/libraries for a category; 'diy_terms' (plus the
+# shared diy_terms_default) flag roll-your-own answers.
+
+version: 2026-08
+diy_terms_default:
+- custom implementation
+- roll your own
+- hand-rolled
+- from scratch
+- build your own
+- write your own
+- in-memory dict
+- in-memory store
+- json file
+- flat file
+- plain text file
+- diy
+categories:
+  deployment:
+    name: Deployment
+    family: product
+    allowlist:
+    - Vercel
+    - Railway
+    - Docker
+    - Fly.io
+    - Render
+    aliases: {}
+    diy_terms: []
+  databases:
+    name: Databases
+    family: product
+    allowlist:
+    - PostgreSQL
+    - Supabase
+    - SQLite
+    - Prisma
+    - Vercel Postgres
+    aliases:
+      PostgreSQL:
+      - postgres
+      - pg
+    diy_terms: []
+  authentication:
+    name: Authentication
+    family: product
+    allowlist:
+    - NextAuth.js
+    - Supabase Auth
+    - Firebase Auth
+    - Clerk
+    - Better Auth
+    aliases: {}
+    diy_terms: []
+  payments:
+    name: Payments
+    family: product
+    allowlist:
+    - Stripe
+    aliases: {}
+    diy_terms: []
+  email:
+    name: Email
+    family: product
+    allowlist:
+    - Resend
+    - SendGrid
+    - Nodemailer
+    - EmailJS
+    - React Email
+    - fastapi-mail
+    aliases: {}
+    diy_terms: []
+  file-storage:
+    name: File Storage
+    family: product
+    allowlist:
+    - AWS S3
+    - Local filesystem
+    - Vercel Blob
+    - Supabase Storage
+    - Cloudflare R2
+    - UploadThing
+    - Next.js API Routes
+    - Cloudinary
+    aliases: {}
+    diy_terms: []
+  background-jobs:
+    name: Background Jobs
+    family: product
+    allowlist:
+    - BullMQ
+    - Inngest
+    - Celery
+    - FastAPI BackgroundTasks
+    - ARQ
+    - Trigger.dev
+    - RQ
+    aliases: {}
+    diy_terms: []
+  realtime:
+    name: Real-time
+    family: product
+    allowlist:
+    - Supabase Realtime
+    - SSE
+    - Socket.IO
+    - Liveblocks
+    - Pusher
+    - TanStack Query
+    - WebSockets
+    - Yjs
+    - Firebase
+    - Zustand
+    - SWR
+    - PartyKit
+    - Next.js Cache
+    - WebSocket
+    aliases: {}
+    diy_terms: []
+  orm-db-tools:
+    name: ORM/Database Tools
+    family: product
+    allowlist:
+    - SQLModel
+    - Drizzle
+    - Prisma
+    - SQLAlchemy
+    aliases: {}
+    diy_terms: []
+  testing:
+    name: Testing
+    family: product
+    allowlist:
+    - Vitest
+    - pytest
+    - Playwright
+    - Jest
+    - Node.js Test Runner
+    aliases: {}
+    diy_terms: []
+  ui-components:
+    name: UI Components
+    family: product
+    allowlist:
+    - shadcn/ui
+    - Radix UI
+    - Mantine
+    aliases: {}
+    diy_terms: []
+  observability:
+    name: Observability
+    family: product
+    allowlist:
+    - Sentry
+    - Prometheus
+    - Pino
+    - Rollbar
+    - structlog
+    aliases: {}
+    diy_terms: []
+  package-manager:
+    name: Package Manager
+    family: product
+    allowlist:
+    - pnpm
+    - npm
+    - bun
+    - yarn
+    aliases: {}
+    diy_terms: []
+  feature-flags:
+    name: Feature Flags
+    family: product
+    allowlist:
+    - LaunchDarkly
+    - PostHog
+    - Vercel Feature Flags
+    - Unleash
+    - Flagsmith
+    - ConfigCat
+    aliases: {}
+    diy_terms: []
+  styling:
+    name: Styling
+    family: product
+    allowlist:
+    - Tailwind CSS
+    - CSS Modules
+    - styled-components
+    aliases:
+      Tailwind CSS:
+      - tailwind
+    diy_terms: []
+  state-management:
+    name: State Management
+    family: product
+    allowlist:
+    - Zustand
+    - TanStack Query
+    - React Context
+    aliases: {}
+    diy_terms: []
+  api-layer:
+    name: API Layer
+    family: product
+    allowlist:
+    - FastAPI
+    - Next.js API Routes
+    - TanStack Query
+    - REST API
+    - Next.js Server Actions
+    - fetch
+    - Supabase
+    aliases: {}
+    diy_terms: []
+  cicd:
+    name: CI/CD
+    family: product
+    allowlist:
+    - GitHub Actions
+    - Vercel
+    aliases:
+      GitHub Actions:
+      - gh actions
+    diy_terms: []
+  caching:
+    name: Caching
+    family: product
+    allowlist:
+    - Redis
+    - Next.js Cache
+    - cachetools
+    - Upstash
+    - Next.js API Routes
+    - Vercel KV
+    - fastapi-cache2
+    aliases: {}
+    diy_terms: []
+  forms-validation:
+    name: Forms & Validation
+    family: product
+    allowlist:
+    - React Hook Form
+    - Zod
+    - Formik
+    aliases: {}
+    diy_terms: []
+  datetime:
+    name: Date/Time Handling
+    family: code
+    allowlist:
+    - dateutil
+    - arrow
+    - pendulum
+    - pytz
+    aliases: {}
+    diy_terms: []
+  http-requests:
+    name: HTTP Requests
+    family: code
+    allowlist:
+    - requests
+    - httpx
+    - aiohttp
+    aliases: {}
+    diy_terms: []
+  retries:
+    name: Retries & Backoff
+    family: code
+    allowlist:
+    - tenacity
+    - backoff
+    aliases: {}
+    diy_terms: []
+  yaml-config:
+    name: YAML/TOML Config
+    family: code
+    allowlist:
+    - yaml
+    - pyyaml
+    - tomli
+    - toml
+    - dynaconf
+    aliases:
+      pyyaml:
+      - yaml
+    diy_terms: []
+  data-validation:
+    name: Data Validation
+    family: code
+    allowlist:
+    - pydantic
+    - marshmallow
+    - cerberus
+    - jsonschema
+    aliases: {}
+    diy_terms: []
+  csv-excel:
+    name: CSV/Excel
+    family: code
+    allowlist:
+    - pandas
+    - openpyxl
+    - xlsxwriter
+    aliases: {}
+    diy_terms: []
+  pdf:
+    name: PDF
+    family: code
+    allowlist:
+    - pypdf
+    - pdfplumber
+    - fitz
+    - reportlab
+    aliases: {}
+    diy_terms: []
+  cli-parsing:
+    name: CLI Parsing
+    family: code
+    allowlist:
+    - click
+    - typer
+    - argparse
+    aliases: {}
+    diy_terms: []
+  html-parsing:
+    name: HTML Parsing
+    family: code
+    allowlist:
+    - bs4
+    - beautifulsoup4
+    - lxml
+    - selectolax
+    aliases:
+      beautifulsoup4:
+      - beautifulsoup
+      - bs4
+    diy_terms: []
+  fuzzy-matching:
+    name: Fuzzy Matching
+    family: code
+    allowlist:
+    - rapidfuzz
+    - thefuzz
+    - jellyfish
+    aliases:
+      thefuzz:
+      - fuzzywuzzy
+    diy_terms: []
+  graphs:
+    name: Graph Algorithms
+    family: code
+    allowlist:
+    - networkx
+    - igraph
+    aliases: {}
+    diy_terms: []
+  crypto-hashing:
+    name: Crypto & Hashing
+    family: code
+    allowlist:
+    - cryptography
+    - bcrypt
+    - passlib
+    - pyjwt
+    aliases:
+      pyjwt:
+      - jwt
+    diy_terms: []
+  numerics:
+    name: Numerics
+    family: code
+    allowlist:
+    - numpy
+    - scipy
+    aliases: {}
+    diy_terms: []
+  templating:
+    name: Templating
+    family: code
+    allowlist:
+    - jinja2
+    - mako
+    aliases: {}
+    diy_terms: []
+  structured-logging:
+    name: Structured Logging
+    family: code
+    allowlist:
+    - structlog
+    - loguru
+    aliases: {}
+    diy_terms: []
+  progress-bars:
+    name: Progress Bars
+    family: code
+    allowlist:
+    - tqdm
+    - rich
+    aliases: {}
+    diy_terms: []

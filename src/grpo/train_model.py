@@ -42,7 +42,7 @@ from src.utils.io import load_json, save_json
 from src.utils.log import log_gpu_memory
 
 from .config import GRPOConfig
-from .rewards import make_library_reuse_reward
+from .rewards import build_reward, infer_reward_kind
 from .wandb_logging import init_wandb_training
 
 
@@ -240,8 +240,11 @@ def train_model_with_grpo(
     # this already reflects most of the run's steady-state model memory
     log_gpu_memory("after model load")
 
-    # Get the reward function, configured with this run's reward_weights
-    reward_func = make_library_reuse_reward(reward_weights)
+    # pick the reward for this dataset's task (tested implementation, library usage, or
+    # product choice), configured with this run's reward_weights
+    reward_kind = infer_reward_kind(dataset["train"][0])
+    logger.info(f"Reward kind: {reward_kind}")
+    reward_func = build_reward(kind=reward_kind, weights=reward_weights)
 
     #############################
     # Initialize the GRPO trainer

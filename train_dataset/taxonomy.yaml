@@ -1,0 +1,156 @@
+# category taxonomy for the library-reuse datasets (see train_dataset/PLAN.md).
+#
+# two families of "build vs buy" decision points:
+#   - product: infra/service choices (the 20 amplify categories) -> product-choice split.
+#     their allowlists come mostly from the amplify tool-frequency data, so we only list
+#     id/name/stacks here; seed_libraries is optional (stage 02 fills them in).
+#   - code: code-level library choices where a mature python library exists but a model is
+#     tempted to hand-roll it -> library-usage split. these are not in the amplify
+#     data, so seed_libraries (pip import names) is authoritative here.
+#
+# pipeline/02_build_allowlists.py turns this file (plus the amplify extractions) into
+# config/library_allowlists.yaml; extend either family by adding entries here.
+
+product:
+  - id: deployment
+    name: Deployment
+    stacks: [nextjs, react, python, node]
+  - id: databases
+    name: Databases
+    stacks: [nextjs, react, python, node]
+  - id: authentication
+    name: Authentication
+    stacks: [nextjs, react, python]
+  - id: payments
+    name: Payments
+    stacks: [nextjs, react, python]
+  - id: email
+    name: Email
+    stacks: [nextjs, react, python, node]
+  - id: file-storage
+    name: File Storage
+    stacks: [nextjs, react, python]
+  - id: background-jobs
+    name: Background Jobs
+    stacks: [nextjs, python, node]
+  - id: realtime
+    name: Real-time
+    stacks: [nextjs, react, python]
+  - id: orm-db-tools
+    name: ORM/Database Tools
+    stacks: [nextjs, python, node]
+  - id: testing
+    name: Testing
+    stacks: [nextjs, react, python, node]
+  - id: ui-components
+    name: UI Components
+    stacks: [nextjs, react]
+  - id: observability
+    name: Observability
+    stacks: [nextjs, react, python, node]
+  - id: package-manager
+    name: Package Manager
+    stacks: [nextjs, react, node]
+  - id: feature-flags
+    name: Feature Flags
+    stacks: [nextjs, react, python]
+  - id: styling
+    name: Styling
+    stacks: [nextjs, react]
+  - id: state-management
+    name: State Management
+    stacks: [nextjs, react]
+  - id: api-layer
+    name: API Layer
+    stacks: [nextjs, react, python, node]
+  - id: cicd
+    name: CI/CD
+    stacks: [nextjs, react, python, node]
+  - id: caching
+    name: Caching
+    stacks: [nextjs, python, node]
+  - id: forms-validation
+    name: Forms & Validation
+    stacks: [nextjs, react]
+
+code:
+  - id: datetime
+    name: Date/Time Handling
+    stacks: [python]
+    seed_libraries: [dateutil, arrow, pendulum, pytz]
+    diy_temptation: parsing or arithmetic on dates by hand instead of a date library
+  - id: http-requests
+    name: HTTP Requests
+    stacks: [python]
+    seed_libraries: [requests, httpx, aiohttp]
+    diy_temptation: building requests with urllib/sockets instead of an http client
+  - id: retries
+    name: Retries & Backoff
+    stacks: [python]
+    seed_libraries: [tenacity, backoff]
+    diy_temptation: hand-written retry loops with time.sleep instead of a retry library
+  - id: yaml-config
+    name: YAML/TOML Config
+    stacks: [python]
+    seed_libraries: [yaml, pyyaml, tomli, toml, dynaconf]
+    diy_temptation: parsing config text by hand instead of a config parser
+  - id: data-validation
+    name: Data Validation
+    stacks: [python]
+    seed_libraries: [pydantic, marshmallow, cerberus, jsonschema]
+    diy_temptation: hand-written type/shape checks instead of a validation library
+  - id: csv-excel
+    name: CSV/Excel
+    stacks: [python]
+    seed_libraries: [pandas, openpyxl, xlsxwriter]
+    diy_temptation: splitting csv lines by hand instead of a csv/dataframe library
+  - id: pdf
+    name: PDF
+    stacks: [python]
+    seed_libraries: [pypdf, pdfplumber, fitz, reportlab]
+    diy_temptation: reading pdf bytes by hand instead of a pdf library
+  - id: cli-parsing
+    name: CLI Parsing
+    stacks: [python]
+    seed_libraries: [click, typer, argparse]
+    diy_temptation: parsing sys.argv by hand instead of a cli library
+  - id: html-parsing
+    name: HTML Parsing
+    stacks: [python]
+    seed_libraries: [bs4, beautifulsoup4, lxml, selectolax]
+    diy_temptation: regex over html instead of an html parser
+  - id: fuzzy-matching
+    name: Fuzzy Matching
+    stacks: [python]
+    seed_libraries: [rapidfuzz, thefuzz, jellyfish]
+    diy_temptation: hand-written edit-distance instead of a fuzzy-matching library
+  - id: graphs
+    name: Graph Algorithms
+    stacks: [python]
+    seed_libraries: [networkx, igraph]
+    diy_temptation: hand-written graph traversal instead of a graph library
+  - id: crypto-hashing
+    name: Crypto & Hashing
+    stacks: [python]
+    seed_libraries: [cryptography, bcrypt, passlib, pyjwt]
+    diy_temptation: rolling your own hashing/token logic instead of a crypto library
+  - id: numerics
+    name: Numerics
+    stacks: [python]
+    seed_libraries: [numpy, scipy]
+    diy_temptation: hand-written vector/matrix math instead of a numerics library
+  - id: templating
+    name: Templating
+    stacks: [python]
+    seed_libraries: [jinja2, mako]
+    diy_temptation: string concatenation/format instead of a templating engine
+  - id: structured-logging
+    name: Structured Logging
+    stacks: [python]
+    seed_libraries: [structlog, loguru]
+    diy_temptation: print statements instead of a structured logging library
+  - id: progress-bars
+    name: Progress Bars
+    stacks: [python]
+    seed_libraries: [tqdm, rich]
+    diy_temptation: manual percentage prints instead of a progress-bar library

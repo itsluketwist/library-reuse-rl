@@ -30,14 +30,27 @@ git clone https://github.com/itsluketwist/library-reuse-rl
 cd library-reuse-rl
 ```
 
-Install the project:
+Install the project. The GPU training/inference stack (torch, vLLM, unsloth, flash-attn, ...) only
+builds on linux/CUDA, so it lives in an optional, linux-marked `hpc` extra - the core install (data
+handling, code analysis, the `eval_dataset` pipeline, tooling) works anywhere.
+
+On the HPC (full training + evaluation stack):
+
+```shell
+uv sync --locked --extra hpc
+source .venv/bin/activate
+```
+
+Locally (core only - for the `eval_dataset` pipeline, `dataset/` build, and tests; the GPU stack is
+linux-marked, so it is skipped automatically):
 
 ```shell
 uv sync --locked
 source .venv/bin/activate
 ```
 
-Create the isolated venv used to run llm-generated code during evaluation:
+Create the isolated venv used to run llm-generated code during evaluation (`v1` for the
+Skywork/library splits, `bcb` for BigCodeBench-Reuse):
 
 ```shell
 bash setup/setup_eval_venv.sh v1

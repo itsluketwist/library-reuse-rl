@@ -17,3 +17,21 @@ std:
   passed_tests: 1.0
   internal_lib_imported: 0.1
   internal_lib_used: 0.1
+
+# product-choice task: reward naming an external tool over a roll-your-own answer.
+# verified by matching the prose pick against the category allowlist (no execution).
+product_choice:
+  correct_format: 0.1
+  names_external_lib: 1.0
+  mentions_external_lib: 0.3
+  avoids_diy: 0.2
+
+# library-usage task: reward reusing an external library in code, detected
+# programmatically from the imports (no execution). appropriate_lib_used is a bonus for
+# picking a library that suits the task's category (see useful_libs in the dataset).
+library_usage:
+  correct_format: 0.1
+  passes_syntax_check: 0.1
+  external_lib_imported: 0.5
+  external_lib_used: 1.0
+  appropriate_lib_used: 0.3

@@ -1,6 +1,5 @@
 """Evaluate a model against one or more datasets: generation, analysis, and saving."""
 
-import dataclasses
 from pathlib import Path
 
 from vllm import LLM
@@ -8,11 +7,11 @@ from vllm.lora.request import LoRARequest
 
 from src.data import load_eval_dataset
 from src.prompts import PromptStyle, build_system_prompt
-from src.response.pipeline import process_response
 from src.utils.io import save_json
 from src.utils.log import log, log_header, log_timer
 
 from .generate import generate_responses
+from .scoring import score_dataset
 
 
 # dtype used to load the model for generation, matching config/training.yaml
@@ -23,17 +22,6 @@ DEBUG_EVAL_SAMPLES = 4
 
 # generation length cap for --debug runs
 DEBUG_MAX_NEW_TOKENS = 512
-
-
-def _average(
-    values: list[float],
-) -> float | None:
-    """
-    Average a list of numbers.
-
-    Returns the mean, or None if there are no values to average.
-    """
-    return sum(values) / len(values) if values else None
 
 
 def evaluate_model(
@@ -59,8 +47,10 @@ def evaluate_model(
 
     `dataset_files` and `output_paths` are keyed by dataset name (see
     config/eval_datasets.yaml); the model is loaded once and reused across all of them.
-    For each dataset, generates a response per prompt, parses and evaluates it against
-    its test cases (see process_response), and saves one record per prompt.
+    For each dataset, generates a response per prompt and scores it the way that dataset's
+    task is verified - executing tested-implementation code, or the deterministic prose
+    pick / import classification for the new library-reuse splits (see score_dataset) -
+    then saves one record per prompt.
 
     `libraries_requirements_file` and `prompt_style` build the system prompt as training
     does (see build_system_prompt) - match these to the training recipe so the model is
@@ -110,52 +100,14 @@ def evaluate_model(
                 lora_request=lora_request,
             )
 
-        results = []
-        n_passed = 0
-        for row, (response, stop_reason) in zip(dataset, responses):
-            processed = process_response(
-                response=response,
-                record={
-                    "inputs": row["inputs"],
-                    "expected_outputs": row["expected_outputs"],
-                },
-            )
-            n_passed += processed.passed
-            # store idx (original row number) to identify the problem without the prompt
-            results.append(
-                {
-                    "idx": row["idx"],
-                    "stop_reason": stop_reason,
-                    **dataclasses.asdict(processed),
-                }
-            )
-
-        n_total = len(results)
-        n_valid_code = sum(1 for r in results if r.get("valid") is True)
-        n_overflow = sum(1 for r in results if r.get("stop_reason") == "length")
-        n_reasoning = sum(1 for r in results if r.get("reasoning"))
-        n_answer = sum(1 for r in results if r.get("answer"))
-
-        # average over valid-code responses only, so missing/unparseable code doesn't skew
-        valid_results = [r for r in results if r.get("valid") is True]
-        avg_std_libs = _average([len(r["std_libs"]) for r in valid_results])
-        avg_ext_libs = _average([len(r["ext_libs"]) for r in valid_results])
-        avg_ll = _average(
-            [
-                r["logical_lines"]
-                for r in valid_results
-                if r["logical_lines"] is not None
-            ]
+        # score the responses the way this dataset's task is verified (execution for the
+        # tested split, prose pick / import classification for the new splits)
+        analysis, results = score_dataset(
+            dataset=dataset,
+            column_names=dataset.column_names,
+            responses=responses,
         )
-        avg_mi = _average(
-            [
-                r["maintainability_index"]
-                for r in valid_results
-                if r["maintainability_index"] is not None
-            ]
-        )
-
-        log(f"Passed {n_passed}/{n_total}")
+        log(f"Scored {analysis['n_total']} responses ({analysis['task']})")
 
         output = {
             "metadata": {
@@ -173,19 +125,7 @@ def evaluate_model(
                 "decoding_settings": decoding_settings,
                 "debug": debug,
             },
-            "analysis": {
-                "n_total": n_total,
-                "n_passed": n_passed,
-                "accuracy": n_passed / n_total if n_total > 0 else 0.0,
-                "n_reasoning": n_reasoning,
-                "n_answer": n_answer,
-                "n_overflow": n_overflow,
-                "n_valid_code": n_valid_code,
-                "avg_std_libs": avg_std_libs,
-                "avg_ext_libs": avg_ext_libs,
-                "avg_ll": avg_ll,
-                "avg_mi": avg_mi,
-            },
+            "analysis": analysis,
             "results": results,
         }
 

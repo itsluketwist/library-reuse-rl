@@ -172,6 +172,14 @@ todo.txt
 output/archive
 data/raw
 data/skywork
+# vendored amplify seed + generated library-reuse datasets (regenerable via train_dataset/pipeline/*.py)
+train_dataset/vendor
+train_dataset/data
+# bigcodebench-reuse eval dataset: fetched seed, per-stage artefacts, built splits
+# (all regenerable via eval_dataset/pipeline/*.py)
+eval_dataset/vendor
+eval_dataset/artefacts
+eval_dataset/data
 logs/*
 wandb/*
 output/grpo/*debug*/

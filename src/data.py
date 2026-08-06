@@ -49,11 +49,13 @@ def load_train_dataset(
     train_n: int | None = None,
     val_n: int | None = None,
 ) -> DatasetDict:
-    """Load the skywork-format train/val splits from `dataset_dir` and build chat prompts.
+    """Load the train/val splits from `dataset_dir` and build chat prompts.
 
-    `dataset_dir` must contain train.jsonl and val.jsonl files in the schema produced
-    by data/download_skywork.py: {prompt, ground_truth: {inputs, outputs}, data_source,
-    source}.
+    `dataset_dir` must contain train.jsonl and val.jsonl files. Two schemas are handled:
+    the skywork format from data/download_skywork.py ({prompt, ground_truth: {inputs,
+    outputs}, ...}, flattened via _make_conversation), and the new library-reuse datasets
+    ({prompt, task_type, allowlist, ...}), whose reward-reference columns pass straight
+    through for the reward function to read.
 
     `train_n`/`val_n` truncate the train/val splits to at most that many rows (e.g. for
     a quick debug smoke test) - leave as None to use the full split.
@@ -80,9 +82,21 @@ def load_train_dataset(
         splits[split] = split_dataset
 
     dataset = DatasetDict(splits)
-    dataset = dataset.map(
-        lambda example: _make_conversation(example, system_prompt=system_prompt),
-    )
+
+    # the skywork schema nests tests under ground_truth (flattened via _make_conversation);
+    # the new product-choice/library-usage schemas carry no tests, just the raw
+    # prompt plus reward-reference columns (allowlist, local_modules, ...) which pass
+    # through untouched for the reward function to read
+    if "ground_truth" in dataset["train"].column_names:
+        dataset = dataset.map(
+            lambda example: _make_conversation(example, system_prompt=system_prompt),
+        )
+    else:
+        dataset = dataset.map(
+            lambda example: {
+                "prompt": _build_messages(example["prompt"], system_prompt)
+            },
+        )
     return dataset
 
 

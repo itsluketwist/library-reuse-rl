@@ -156,6 +156,44 @@ class TestLoadTrainDataset:
         assert len(dataset["val"]) == 1
 
 
+def _make_product_choice_record(prompt: str, allowlist: list[str]) -> dict:
+    """Build a product-choice-format record (no ground_truth, reward-reference columns)."""
+    return {
+        "prompt": prompt,
+        "task_type": "product_choice",
+        "category_id": "databases",
+        "allowlist": allowlist,
+        "diy_terms": ["json file"],
+        "source": "synthetic",
+    }
+
+
+class TestLoadTrainDatasetNewSchema:
+    """Tests for load_train_dataset on the new (no ground_truth) library-reuse schema."""
+
+    def test_builds_prompt_and_passes_reference_columns_through(self, tmp_path: Path):
+        """The prompt becomes chat messages and reward-reference columns are preserved."""
+        _write_jsonl(
+            tmp_path / "train.jsonl",
+            [_make_product_choice_record("what db should i use", ["postgresql"])],
+        )
+        _write_jsonl(
+            tmp_path / "val.jsonl",
+            [_make_product_choice_record("pick a database", ["mongodb"])],
+        )
+
+        dataset = load_train_dataset(tmp_path, system_prompt=None)
+        example = dataset["train"][0]
+
+        assert example["prompt"] == [
+            {"role": "user", "content": "what db should i use"}
+        ]
+        # reward-reference columns survive for the reward function to read
+        assert example["allowlist"] == ["postgresql"]
+        assert example["diy_terms"] == ["json file"]
+        assert example["task_type"] == "product_choice"
+
+
 class TestLoadEvalDataset:
     """Tests for load_eval_dataset."""
 

@@ -3,3 +3,13 @@
 livecodebench: "data/eval/livecodebench.jsonl"
 apps_introductory: "data/eval/apps_introductory.jsonl"
 skywork_test: "data/skywork/test.jsonl"
+
+# library-reuse held-out test splits (built by train_dataset/pipeline/03_build_dataset.py);
+# scored by the prose pick / import classification rather than execution (src/eval/scoring.py)
+product_choice: "train_dataset/data/product_choice/test.jsonl"
+library_usage: "train_dataset/data/library_usage/test.jsonl"
+
+# BigCodeBench-Reuse: library-agnostic stdin/stdout problems with executable test cases
+# (built by eval_dataset/pipeline/*.py); execution-scored, giving accuracy plus library-use
+# metrics on the same external benchmark
+bigcodebench_reuse: "eval_dataset/data/bigcodebench_reuse/test.jsonl"
