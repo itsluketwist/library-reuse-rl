@@ -231,6 +231,23 @@ wheels = [
 ]
 
 [[package]]
+name = "bcb-reuse"
+version = "0.1.0"
+source = { editable = "benchmark" }
+dependencies = [
+    { name = "llm-codegen-research" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "llm-codegen-research" },
+    { name = "pre-commit", marker = "extra == 'dev'" },
+    { name = "pytest", marker = "extra == 'dev'" },
+    { name = "uv", marker = "extra == 'dev'" },
+]
+provides-extras = ["dev"]
+
+[[package]]
 name = "beautifulsoup4"
 version = "4.15.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2832,6 +2849,7 @@ version = "0.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
+    { name = "bcb-reuse" },
     { name = "beautifulsoup4" },
     { name = "datasets" },
     { name = "huggingface-hub" },
@@ -2871,6 +2889,7 @@ hpc = [
 requires-dist = [
     { name = "accelerate", marker = "sys_platform == 'linux' and extra == 'hpc'", specifier = ">=0.34.1" },
     { name = "anthropic" },
+    { name = "bcb-reuse", editable = "benchmark" },
     { name = "beautifulsoup4" },
     { name = "datasets", specifier = ">=3.4.1,!=4.0.*,!=4.1.0,<4.4.0" },
     { name = "flash-attn", marker = "sys_platform == 'linux' and extra == 'hpc'", specifier = "==2.8.3.post1" },

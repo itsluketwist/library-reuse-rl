@@ -6,7 +6,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["src", "eval_dataset", "train_dataset"]
+packages = ["src", "train_dataset"]
 
 [project]
 name = "src"
@@ -21,12 +21,15 @@ classifiers = [
 requires-python = ">=3.12.12,<3.13"
 
 # core dependencies install everywhere (local dev + HPC): data handling, code analysis, the
-# LLM sdk for the eval_dataset pipeline, and tooling. the GPU training/inference stack lives
+# LLM sdk for the benchmark pipeline, and tooling. the GPU training/inference stack lives
 # in the optional [hpc] extra below, since those wheels only exist on linux/CUDA.
 dependencies = [
-    # anthropic sdk for the eval_dataset pipeline's LLM stages (problem rewriting,
+    # anthropic sdk for the benchmark pipeline's LLM stages (problem rewriting,
     # judging, solution generation)
     "anthropic",
+    # the standalone BigCodeBenchReuse benchmark package (in benchmark/), installed editable so
+    # the build pipeline and eval can import it; see [tool.uv.sources] below
+    "bcbreuse",
     "datasets>=3.4.1,!=4.0.*,!=4.1.0,<4.4.0",
     "huggingface_hub",
     "Jupyter",
@@ -38,7 +41,7 @@ dependencies = [
     "tqdm",
     "types-PyYAML",
     "uv",
-    # data libraries the eval_dataset build runs BigCodeBench reference solutions (the
+    # data libraries the benchmark build runs BigCodeBench reference solutions (the
     # oracle) against - needed for the pipeline to work on a core (local) install too
     "beautifulsoup4",
     "lxml",
@@ -87,6 +90,13 @@ run_eval = "src.run_eval:main"
 torch = { index = "pytorch-cu126" }
 torchvision = { index = "pytorch-cu126" }
 torchaudio = { index = "pytorch-cu126" }
+# the benchmark package lives in this repo under benchmark/ - install it editable
+bcbreuse = { path = "benchmark", editable = true }
+
+# the build pipeline scripts (benchmark/pipeline) are run as files and import sibling build
+# helpers; put them on the path so their unit tests can import them too
+[tool.pytest.ini_options]
+pythonpath = ["benchmark/pipeline"]
 
 [tool.uv]
 no-build-isolation-package = ["flash-attn"]

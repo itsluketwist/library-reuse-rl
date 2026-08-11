@@ -9,7 +9,5 @@ skywork_test: "data/skywork/test.jsonl"
 product_choice: "train_dataset/data/product_choice/test.jsonl"
 library_usage: "train_dataset/data/library_usage/test.jsonl"
 
-# BigCodeBench-Reuse: library-agnostic stdin/stdout problems with executable test cases
-# (built by eval_dataset/pipeline/*.py); execution-scored, giving accuracy plus library-use
-# metrics on the same external benchmark
-bigcodebench_reuse: "eval_dataset/data/bigcodebench_reuse/test.jsonl"
+# BigCodeBenchReuse: library-agnostic stdin/stdout problems with executable test cases
+bcbreuse: "benchmark/bcbreuse/data/test.jsonl"

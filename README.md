@@ -32,7 +32,7 @@ cd library-reuse-rl
 
 Install the project. The GPU training/inference stack (torch, vLLM, unsloth, flash-attn, ...) only
 builds on linux/CUDA, so it lives in an optional, linux-marked `hpc` extra - the core install (data
-handling, code analysis, the `eval_dataset` pipeline, tooling) works anywhere.
+handling, code analysis, the `benchmark` pipeline, tooling) works anywhere.
 
 On the HPC (full training + evaluation stack):
 
@@ -41,7 +41,7 @@ uv sync --locked --extra hpc
 source .venv/bin/activate
 ```
 
-Locally (core only - for the `eval_dataset` pipeline, `dataset/` build, and tests; the GPU stack is
+Locally (core only - for the `benchmark` pipeline, `dataset/` build, and tests; the GPU stack is
 linux-marked, so it is skipped automatically):
 
 ```shell

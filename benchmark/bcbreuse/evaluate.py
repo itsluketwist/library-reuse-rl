@@ -1,0 +1,397 @@
+"""Evaluate model responses against BigCodeBenchReuse: parse, confirm installs, run, aggregate.
+
+The flow is: parse every response and work out the union of third-party packages they import; show
+that list to the user and ask them to confirm (the harness pip-installs arbitrary libraries the
+model reached for, so this is a deliberate checkpoint); then create the venv, install the confirmed
+packages, and run each response against its task's stdin/stdout tests. Reporting gives both
+correctness (pass rate) and library reuse (how often a solution used an external library) on the
+same problems - the signal this benchmark exists to provide.
+
+For control and reproducibility the environment can instead be supplied as a package-per-line
+`.txt` file (`env_file`), which skips collection and confirmation. When the user declines the
+collected packages, or a package fails to install, such a file is written for them to fix up and
+pass back - so an unwanted or un-installable library is always recoverable.
+"""
+
+from collections import Counter, defaultdict
+from collections.abc import Callable, Iterable
+from datetime import datetime
+from math import comb
+from pathlib import Path
+from typing import Any
+
+from bcbreuse.environment import _DEFAULT_TIMEOUT_SECONDS, Environment
+from bcbreuse.libraries import (
+    extract_code,
+    imported_libraries,
+    pip_package,
+    required_import_names,
+    required_pip_packages,
+)
+from bcbreuse.load import load_dataset
+from llm_cgr import load_jsonl, save_json
+
+
+def _benchmark_by_id() -> dict[str, dict]:
+    """Load the benchmark splits flattened into a dict keyed by task id.
+
+    Returns the {task_id: record} map.
+    """
+    return {
+        record["task_id"]: record
+        for records in load_dataset().values()
+        for record in records
+    }
+
+
+def _load_responses(
+    file_path: str,
+) -> dict[str, list[str]]:
+    """Load model responses, keyed by task id.
+
+    Each JSONL line is either {"task_id": ..., "responses": [...]} or {"task_id": ...,
+    "response": "..."}; single responses are collated by id.
+
+    Returns the {task_id: [response, ...]} map.
+    """
+    responses: dict[str, list[str]] = defaultdict(list)
+    for record in load_jsonl(file_path):
+        task_id = record["task_id"]
+        if "responses" in record:
+            responses[task_id].extend(record["responses"])
+        elif "response" in record:
+            responses[task_id].append(record["response"])
+        else:
+            raise ValueError(f"record {task_id} has neither 'responses' nor 'response'")
+    return dict(responses)
+
+
+def plan_installs(
+    responses: dict[str, list[str]],
+) -> dict[str, set[str]]:
+    """Scan every response and collect the pip packages needed to run them all.
+
+    Each required pip distribution is mapped back to the import name(s) it came from, so the user
+    can see exactly what will be installed - and any import->distribution remaps - before agreeing.
+
+    Returns a {pip package: {import names}} map.
+    """
+    origins: defaultdict[str, set[str]] = defaultdict(set)
+    for response_list in responses.values():
+        for response in response_list:
+            for name in required_import_names(response):
+                origins[pip_package(name)].add(name)
+    return dict(origins)
+
+
+def _confirm_packages(
+    plan: dict[str, set[str]],
+) -> bool:
+    """Show the third-party packages that will be pip-installed and ask for confirmation on stdin.
+
+    Returns whether the user approved installing them and running the evaluation.
+    """
+    if not plan:
+        print("No third-party packages to install.")
+        return True
+    print(
+        f"\nThe responses import {len(plan)} third-party package(s) to install into the eval venv:"
+    )
+    for package in sorted(plan):
+        imports = sorted(plan[package])
+        # note the import name only when it differs from the distribution name (sklearn -> scikit-learn)
+        note = "" if imports == [package] else f"  (import: {', '.join(imports)})"
+        print(f"  - {package}{note}")
+    reply = input("\nInstall these and run the evaluation? [y/N] ").strip().lower()
+    return reply in ("y", "yes")
+
+
+# the editable environment file the user fixes up and passes back with --env
+_ENV_FILENAME = "bcbreuse_env.txt"
+
+
+def read_env_file(
+    path: str,
+) -> set[str]:
+    """Read a package-per-line environment file, ignoring blank lines and # comments.
+
+    Each remaining line is a pip spec (a name, or a name with a version pin such as numpy==2.5.1).
+
+    Returns the set of pip package specs to install.
+    """
+    packages: set[str] = set()
+    for line in Path(path).read_text().splitlines():
+        spec = line.split("#", 1)[0].strip()
+        if spec:
+            packages.add(spec)
+    return packages
+
+
+def write_env_file(
+    directory: str,
+    packages: set[str],
+    origins: dict[str, set[str]] | None = None,
+    failed: set[str] | None = None,
+) -> Path:
+    """Write an editable environment file listing the packages, for the user to correct and reuse.
+
+    Annotates each package with the import it came from (when they differ) and flags any that
+    failed to install, so the user can fix names/versions or drop libraries they do not want.
+
+    Returns the path written.
+    """
+    origins = origins or {}
+    failed = failed or set()
+    lines = [
+        "# BigCodeBenchReuse eval environment",
+        "# one pip package per line; blank lines and '#' comments are ignored.",
+        "# edit as needed (remove unwanted libraries, fix names, pin versions), then re-run:",
+        "#   bcbeval <responses.jsonl> --env <this file>",
+        "",
+    ]
+    for package in sorted(packages):
+        comments = []
+        imports = sorted(origins.get(package, set()))
+        if imports and imports != [package]:
+            comments.append(f"import: {', '.join(imports)}")
+        if package in failed:
+            comments.append("FAILED TO INSTALL - fix or remove")
+        suffix = f"  # {'; '.join(comments)}" if comments else ""
+        lines.append(f"{package}{suffix}")
+
+    path = Path(directory) / _ENV_FILENAME
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n")
+    return path
+
+
+def _score_response(
+    response: str,
+    record: dict,
+    env: Environment,
+    timeout_seconds: float,
+    install_failed: set[str],
+) -> dict[str, Any]:
+    """Run one response against its task's tests and score it (packages already installed).
+
+    Returns a per-response result dict (passed, used_external, install_failed, ...).
+    """
+    code = extract_code(response)
+    if code is None:
+        return {"passed": False, "used_external": False, "reason": "no code"}
+
+    external = imported_libraries(response)
+    # any of this response's own packages that failed the up-front install (explains a failure)
+    missing = sorted(required_pip_packages(response) & install_failed)
+    passed, message = env.evaluate(
+        program=code,
+        inputs=record["test_inputs"],
+        expected_outputs=record["expected_outputs"],
+        timeout_seconds=timeout_seconds,
+    )
+    return {
+        "passed": passed,
+        "used_external": bool(external),
+        "external_libs": sorted(external),
+        "install_failed": missing,
+        "reason": "" if passed else message,
+    }
+
+
+def _mean(
+    values: Iterable[float],
+) -> float:
+    """The arithmetic mean of some values, or 0.0 when there are none.
+
+    Returns the mean.
+    """
+    items = list(values)
+    return sum(items) / len(items) if items else 0.0
+
+
+def _pass_at_k(
+    n: int,
+    c: int,
+    k: int,
+) -> float:
+    """The unbiased pass@k estimate for one task: P(at least 1 of k samples correct).
+
+    Given `n` samples of which `c` passed, this is 1 - C(n-c, k) / C(n, k) (the HumanEval estimator).
+
+    Returns the estimate in [0, 1].
+    """
+    k = min(k, n)
+    if (
+        n - c < k
+    ):  # too few failures to fill k slots, so at least one is guaranteed correct
+        return 1.0
+    return 1.0 - comb(n - c, k) / comb(n, k)
+
+
+def _lib_stats(
+    lib_sets: list[set],
+) -> dict:
+    """Library-use statistics over external-library sets (one per task, or one per response).
+
+    Returns {using_lib_rate, avg_extlibs, library_counts}: the fraction that used any library, the
+    mean number of distinct libraries, and a per-library count of how many used it.
+    """
+    counts: Counter = Counter()
+    for libs in lib_sets:
+        counts.update(libs)
+    return {
+        "using_lib_rate": _mean(1.0 if libs else 0.0 for libs in lib_sets),
+        "avg_extlibs": _mean(len(libs) for libs in lib_sets),
+        "library_counts": dict(counts.most_common()),
+    }
+
+
+def _aggregate(
+    per_response: list[dict],
+    benchmark: dict[str, dict],
+    k: int | None = None,
+) -> dict:
+    """Aggregate per-response results into pass@1 / pass@k and library-use statistics.
+
+    Responses are grouped by task. Pass rates use the unbiased pass@k estimator (k defaults to the
+    smallest number of samples any task has, so it is well-defined everywhere). Library-use is
+    reported both per task (a task "uses a library" if any of its responses imported one) and per
+    response, each with a using-rate, an average, and a per-library count.
+
+    Returns the results dict (without the per-response detail, which the caller attaches).
+    """
+    # group by task: sample count, correct count, and the union of external libraries used
+    tasks: dict[str, dict] = {}
+    for row in per_response:
+        task = tasks.setdefault(
+            row["task_id"],
+            {
+                "n": 0,
+                "correct": 0,
+                "libs": set(),
+                "category": benchmark[row["task_id"]].get("category", "?"),
+            },
+        )
+        task["n"] += 1
+        task["correct"] += int(row["passed"])
+        task["libs"].update(row.get("external_libs", []))
+
+    values = list(tasks.values())
+    samples_min = min((t["n"] for t in values), default=0)
+    k = samples_min if k is None else min(k, samples_min)
+
+    by_category: defaultdict[str, list] = defaultdict(list)
+    for task in values:
+        by_category[task["category"]].append(task)
+
+    return {
+        "n_tasks": len(values),
+        "n_responses": len(per_response),
+        "k": k,
+        "pass@1": _mean(t["correct"] / t["n"] for t in values),
+        "pass@k": _mean(_pass_at_k(t["n"], t["correct"], k) for t in values),
+        "library_use": {
+            "per_task": _lib_stats([t["libs"] for t in values]),
+            "per_response": _lib_stats(
+                [set(row.get("external_libs", [])) for row in per_response]
+            ),
+        },
+        "by_category": {
+            category: {
+                "n_tasks": len(group),
+                "pass@1": _mean(t["correct"] / t["n"] for t in group),
+                "using_lib_rate": _mean(1.0 if t["libs"] else 0.0 for t in group),
+            }
+            for category, group in sorted(by_category.items())
+        },
+    }
+
+
+def evaluate_responses(
+    responses_file: str,
+    output_directory: str = "output",
+    env_dir: str = ".bcbeval-venv",
+    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
+    env_file: str | None = None,
+    k: int | None = None,
+    confirm: Callable[[dict[str, set[str]]], bool] | None = None,
+) -> dict:
+    """Evaluate responses to BigCodeBenchReuse and save the results.
+
+    The environment is decided one of two ways. With `env_file`, that file is the definitive list
+    of packages to install (skip collection and confirmation). Otherwise the responses are parsed,
+    the collected packages are shown to `confirm` (defaults to an interactive stdin prompt), and on
+    approval they are installed. If the user declines, or a package fails to install, an editable
+    environment file is written for them to fix up and pass back with `env_file` - and the run stops.
+
+    On success, reports pass@1 / pass@k and per-problem library-reuse statistics (fraction of
+    problems using a library, average external libraries per problem, and a per-library task count),
+    plus a per-category breakdown, and writes a timestamped JSON alongside the per-response details.
+    `k` defaults to the smallest number of samples any task has.
+
+    Returns the results dict (empty if the run stopped for the environment to be corrected).
+    """
+    print(f"Evaluating BigCodeBenchReuse responses from {responses_file}")
+    benchmark = _benchmark_by_id()
+    responses = _load_responses(responses_file)
+
+    unknown = set(responses) - set(benchmark)
+    if unknown:
+        raise ValueError(f"responses reference unknown task ids: {sorted(unknown)}")
+
+    plan = plan_installs(responses)
+
+    if env_file is not None:
+        # the supplied file is the validated environment - use it as-is
+        packages = read_env_file(env_file)
+        print(f"using environment from {env_file}: {len(packages)} package(s)")
+    else:
+        # collect from the responses and have the user validate before installing anything
+        approve = confirm if confirm is not None else _confirm_packages
+        if not approve(plan):
+            path = write_env_file(output_directory, set(plan), origins=plan)
+            print(
+                f"\nwrote {path} - edit it (remove/rename packages) and re-run with:"
+                f"\n  bcbeval {responses_file} --env {path}"
+            )
+            return {}
+        packages = set(plan)
+
+    # only now create the venv and install the chosen packages in one batch
+    env = Environment(env_dir)
+    install_failed = env.ensure_packages(packages)
+    if install_failed:
+        # emit a fixable environment file and stop, so the user can correct it and re-run with --env
+        path = write_env_file(
+            output_directory, packages, origins=plan, failed=install_failed
+        )
+        print(
+            f"\ncould not install {sorted(install_failed)}."
+            f"\nwrote {path} - fix the offending package(s) and re-run with:"
+            f"\n  bcbeval {responses_file} --env {path}"
+        )
+        return {}
+
+    per_response: list[dict] = []
+    for task_id, task_responses in responses.items():
+        record = benchmark[task_id]
+        for idx, response in enumerate(task_responses):
+            result = _score_response(
+                response, record, env, timeout_seconds, install_failed
+            )
+            per_response.append({"task_id": task_id, "idx": idx, **result})
+
+    # correctness (pass@1 / pass@k) and per-problem library-reuse statistics
+    results = _aggregate(per_response, benchmark, k) | {"results": per_response}
+
+    output_path = Path(output_directory)
+    output_path.mkdir(parents=True, exist_ok=True)
+    file_path = output_path / f"bcbreuse_eval_{datetime.now().isoformat()}.json"
+    save_json(data=results, file_path=str(file_path))
+
+    summary = f"pass@1 {results['pass@1']:.3f}"
+    if results["k"] > 1:
+        summary += f" | pass@{results['k']} {results['pass@k']:.3f}"
+    lib_use = results["library_use"]["per_task"]["using_lib_rate"]
+    print(f"{summary} | lib-use {lib_use:.3f} | saved {file_path}")
+    return results

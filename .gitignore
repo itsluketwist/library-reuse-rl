@@ -124,6 +124,7 @@ celerybeat.pid
 .env
 .venv
 .venv-eval
+.venv-build
 env/
 venv/
 ENV/
@@ -172,14 +173,18 @@ todo.txt
 output/archive
 data/raw
 data/skywork
+
 # vendored amplify seed + generated library-reuse datasets (regenerable via train_dataset/pipeline/*.py)
 train_dataset/vendor
 train_dataset/data
-# bigcodebench-reuse eval dataset: fetched seed, per-stage artefacts, built splits
-# (all regenerable via eval_dataset/pipeline/*.py)
-eval_dataset/vendor
-eval_dataset/artefacts
-eval_dataset/data
+
+# bigcodebenchreuse: fetched seed + per-stage build artefacts (regenerable via
+# benchmark/pipeline/*.py). the built splits under benchmark/bcbreuse/data ARE committed
+# (they are the benchmark). the harness's cached install venv is disposable.
+benchmark/vendor
+benchmark/artefacts
+.bcbeval-venv
+
 logs/*
 wandb/*
 output/grpo/*debug*/
