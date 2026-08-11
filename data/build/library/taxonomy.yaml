@@ -1,0 +1,259 @@
+# code-level category taxonomy for the library-usage dataset (see data/README.md).
+#
+# code-level "build vs buy" decisions: a mature python library exists, but a model is
+# tempted to hand-roll the functionality. these drive the library-usage split, whose reward
+# is programmatic (extract imports, subtract stdlib + the project's own modules, and any
+# remaining used import is genuine reuse). seed_libraries are pip *import* names (e.g. PIL,
+# not Pillow) - they become each row's useful_libs and feed the appropriate_lib_used bonus.
+
+code:
+  - id: datetime
+    name: Date/Time Handling
+    stacks: [python]
+    seed_libraries: [dateutil, arrow, pendulum, pytz]
+    diy_temptation: parsing or arithmetic on dates by hand instead of a date library
+  - id: http-requests
+    name: HTTP Requests
+    stacks: [python]
+    seed_libraries: [requests, httpx, aiohttp]
+    diy_temptation: building requests with urllib/sockets instead of an http client
+  - id: retries
+    name: Retries & Backoff
+    stacks: [python]
+    seed_libraries: [tenacity, backoff]
+    diy_temptation: hand-written retry loops with time.sleep instead of a retry library
+  - id: yaml-config
+    name: YAML/TOML Config
+    stacks: [python]
+    seed_libraries: [yaml, pyyaml, tomli, toml, dynaconf]
+    diy_temptation: parsing config text by hand instead of a config parser
+  - id: data-validation
+    name: Data Validation
+    stacks: [python]
+    seed_libraries: [pydantic, marshmallow, cerberus, jsonschema]
+    diy_temptation: hand-written type/shape checks instead of a validation library
+  - id: csv-excel
+    name: CSV/Excel
+    stacks: [python]
+    seed_libraries: [pandas, openpyxl, xlsxwriter]
+    diy_temptation: splitting csv lines by hand instead of a csv/dataframe library
+  - id: pdf
+    name: PDF
+    stacks: [python]
+    seed_libraries: [pypdf, pdfplumber, fitz, reportlab]
+    diy_temptation: reading pdf bytes by hand instead of a pdf library
+  - id: cli-parsing
+    name: CLI Parsing
+    stacks: [python]
+    seed_libraries: [click, typer, argparse]
+    diy_temptation: parsing sys.argv by hand instead of a cli library
+  - id: html-parsing
+    name: HTML Parsing
+    stacks: [python]
+    seed_libraries: [bs4, beautifulsoup4, lxml, selectolax]
+    diy_temptation: regex over html instead of an html parser
+  - id: fuzzy-matching
+    name: Fuzzy Matching
+    stacks: [python]
+    seed_libraries: [rapidfuzz, thefuzz, jellyfish]
+    diy_temptation: hand-written edit-distance instead of a fuzzy-matching library
+  - id: graphs
+    name: Graph Algorithms
+    stacks: [python]
+    seed_libraries: [networkx, igraph]
+    diy_temptation: hand-written graph traversal instead of a graph library
+  - id: crypto-hashing
+    name: Crypto & Hashing
+    stacks: [python]
+    seed_libraries: [cryptography, bcrypt, passlib, pyjwt]
+    diy_temptation: rolling your own hashing/token logic instead of a crypto library
+  - id: numerics
+    name: Numerics
+    stacks: [python]
+    seed_libraries: [numpy, scipy]
+    diy_temptation: hand-written vector/matrix math instead of a numerics library
+  - id: templating
+    name: Templating
+    stacks: [python]
+    seed_libraries: [jinja2, mako]
+    diy_temptation: string concatenation/format instead of a templating engine
+  - id: structured-logging
+    name: Structured Logging
+    stacks: [python]
+    seed_libraries: [structlog, loguru]
+    diy_temptation: print statements instead of a structured logging library
+  - id: progress-bars
+    name: Progress Bars
+    stacks: [python]
+    seed_libraries: [tqdm, rich]
+    diy_temptation: manual percentage prints instead of a progress-bar library
+  - id: image-processing
+    name: Image Processing
+    stacks: [python]
+    seed_libraries: [PIL, cv2, wand]
+    diy_temptation: manipulating raw pixel bytes by hand instead of an image library
+  - id: timezones
+    name: Timezone Conversion
+    stacks: [python]
+    seed_libraries: [pytz, tzlocal, dateutil]
+    diy_temptation: hardcoding utc offsets instead of a timezone database
+  - id: uuid-slugs
+    name: UUIDs & Slugs
+    stacks: [python]
+    seed_libraries: [shortuuid, slugify, nanoid]
+    diy_temptation: assembling id/slug strings by hand instead of a dedicated library
+  - id: env-config
+    name: Environment Config
+    stacks: [python]
+    seed_libraries: [dotenv, environs, decouple]
+    diy_temptation: parsing a .env file by hand instead of a config loader
+  - id: json-schema
+    name: JSON Schema Validation
+    stacks: [python]
+    seed_libraries: [jsonschema, fastjsonschema]
+    diy_temptation: hand-written recursive schema checks instead of a json-schema validator
+  - id: compression
+    name: Compression
+    stacks: [python]
+    seed_libraries: [zstandard, lz4, brotli]
+    diy_temptation: hand-rolling a compression scheme instead of a compression library
+  - id: url-parsing
+    name: URL Parsing & Building
+    stacks: [python]
+    seed_libraries: [furl, yarl]
+    diy_temptation: splitting and joining urls with string ops instead of a url library
+  - id: email-validation
+    name: Email Validation & Parsing
+    stacks: [python]
+    seed_libraries: [email_validator, mailparser]
+    diy_temptation: regex over raw email text instead of an email library
+  - id: rate-limiting
+    name: Rate Limiting
+    stacks: [python]
+    seed_libraries: [ratelimit, limits, pyrate_limiter]
+    diy_temptation: hand-written token-bucket timers instead of a rate-limit library
+  - id: caching-memoize
+    name: Caching & Memoization
+    stacks: [python]
+    seed_libraries: [cachetools, diskcache]
+    diy_temptation: hand-rolled dicts with manual eviction instead of a cache library
+  - id: phone-numbers
+    name: Phone Number Handling
+    stacks: [python]
+    seed_libraries: [phonenumbers]
+    diy_temptation: regex validating/formatting phone numbers instead of a phone library
+  - id: money-currency
+    name: Money & Currency
+    stacks: [python]
+    seed_libraries: [moneyed, babel]
+    diy_temptation: float arithmetic on currency instead of a money library
+  - id: markdown-render
+    name: Markdown Rendering
+    stacks: [python]
+    seed_libraries: [markdown, mistune, markdown_it]
+    diy_temptation: regex-replacing markdown to html instead of a markdown library
+  - id: color-manipulation
+    name: Color Manipulation
+    stacks: [python]
+    seed_libraries: [colour, webcolors]
+    diy_temptation: hand-coding hex/rgb/hsl conversions instead of a color library
+  - id: geo-distance
+    name: Geospatial Distance
+    stacks: [python]
+    seed_libraries: [geopy, haversine]
+    diy_temptation: hand-coding the haversine formula instead of a geo library
+  - id: hypothesis-testing
+    name: Statistical Testing
+    stacks: [python]
+    seed_libraries: [scipy, statsmodels, pingouin]
+    diy_temptation: hand-implementing statistical tests instead of a stats library
+  - id: plotting
+    name: Plotting & Charts
+    stacks: [python]
+    seed_libraries: [matplotlib, plotly, seaborn]
+    diy_temptation: emitting svg/ascii charts by hand instead of a plotting library
+  - id: xml-parsing
+    name: XML Parsing
+    stacks: [python]
+    seed_libraries: [lxml, xmltodict]
+    diy_temptation: regex over xml instead of an xml parser
+  - id: sql-builder
+    name: SQL Building
+    stacks: [python]
+    seed_libraries: [sqlalchemy, sqlmodel, peewee]
+    diy_temptation: string-concatenating sql instead of a query builder/orm
+  - id: file-watching
+    name: File Watching
+    stacks: [python]
+    seed_libraries: [watchdog, watchfiles]
+    diy_temptation: polling file mtimes in a loop instead of a file-watching library
+  - id: fast-serialization
+    name: Fast Serialization
+    stacks: [python]
+    seed_libraries: [orjson, msgpack, ujson]
+    diy_temptation: hand-rolled binary/text serialization instead of a serialization library
+  - id: subprocess-shell
+    name: Subprocess & Shell
+    stacks: [python]
+    seed_libraries: [sh, plumbum]
+    diy_temptation: building os.system command strings by hand instead of a subprocess library
+  - id: natural-sort
+    name: Natural Sorting
+    stacks: [python]
+    seed_libraries: [natsort]
+    diy_temptation: hand-written key functions to sort strings with numbers naturally
+  - id: unit-conversion
+    name: Unit Conversion
+    stacks: [python]
+    seed_libraries: [pint]
+    diy_temptation: hardcoding conversion factors instead of a units library
+  - id: qr-barcode
+    name: QR & Barcodes
+    stacks: [python]
+    seed_libraries: [qrcode, barcode]
+    diy_temptation: drawing barcode/qr matrices by hand instead of a barcode library
+  - id: fake-data
+    name: Fake Data Generation
+    stacks: [python]
+    seed_libraries: [faker, mimesis]
+    diy_temptation: hand-writing random name/address generators instead of a faker library
+  - id: encoding-detect
+    name: Text Encoding Detection
+    stacks: [python]
+    seed_libraries: [chardet, charset_normalizer]
+    diy_temptation: guessing byte encodings by hand instead of a detection library
+  - id: structured-diff
+    name: Structured Diffing
+    stacks: [python]
+    seed_libraries: [deepdiff]
+    diy_temptation: recursively comparing nested structures by hand instead of a diff library
+  - id: scheduling
+    name: Job Scheduling
+    stacks: [python]
+    seed_libraries: [schedule, apscheduler, croniter]
+    diy_temptation: a sleep loop checking the clock instead of a scheduler library
+  - id: terminal-tables
+    name: Terminal Tables
+    stacks: [python]
+    seed_libraries: [tabulate, prettytable]
+    diy_temptation: manual column padding to align a table instead of a table library
+  - id: audio
+    name: Audio Processing
+    stacks: [python]
+    seed_libraries: [pydub, soundfile]
+    diy_temptation: parsing wav bytes by hand instead of an audio library
+  - id: geometry
+    name: Computational Geometry
+    stacks: [python]
+    seed_libraries: [shapely]
+    diy_temptation: hand-coding point-in-polygon/intersection instead of a geometry library
+  - id: nlp-tokenize
+    name: NLP Tokenization
+    stacks: [python]
+    seed_libraries: [nltk, spacy]
+    diy_temptation: regex tokenizing/stemming instead of an nlp library
+  - id: ip-address
+    name: IP Address Handling
+    stacks: [python]
+    seed_libraries: [netaddr]
+    diy_temptation: parsing CIDR ranges by hand instead of an ip-address library

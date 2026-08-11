@@ -1,23 +1,23 @@
-"""Stage 01: download the amplifying.ai "claude-code-picks" seed the datasets build from.
+"""Download the amplifying.ai "claude-code-picks" seed the amplify pipeline is built from.
 
 Source: https://github.com/amplifying-ai/claude-code-picks (the dataset behind
 https://amplifying.ai/research/claude-code-picks).
 
-The seed provides three things we reuse: the open-ended benchmark prompts, the four
-greenfield test repos (used as prompt context), and the per-category tool-frequency
-extractions (used to seed the allowlists). The upstream repo ships no licence file, so
-we do not commit its content into this repo - this stage fetches it at build time into
-train_dataset/vendor/ (gitignored), pinned to a commit for reproducibility, mirroring
-data/download_skywork.py.
+The seed provides the amplify pipeline's raw material: the open-ended benchmark prompts, the
+per-category tool-frequency extractions (used to seed the allowlists), and four greenfield
+test repos used as prompt context. The library pipeline also reuses the vendored python-api
+repo as one of its repo contexts, so this stage is a shared prerequisite - run it first. The
+upstream repo ships no licence file, so we do not commit its content: this stage fetches it at
+build time into data/build/vendor/ (gitignored), pinned to a commit for reproducibility.
 
-Usage: python train_dataset/pipeline/01_vendor_seed.py
+Usage: python data/build/amplify/vendor_seed.py
 """
 
 import io
 import tarfile
 import urllib.request
 
-from train_dataset.common import VENDOR_DIR
+from data.build.paths import VENDOR_DIR
 
 
 # commit pinned for reproducibility (dated 2026-02-17)
@@ -60,7 +60,7 @@ def _wanted(
 
 
 def download_seed() -> None:
-    """Fetch and extract the wanted seed files into train_dataset/vendor/."""
+    """Fetch and extract the wanted seed files into data/build/vendor/."""
     url = _archive_url()
     print(f"downloading {REPO}@{REVISION[:8]} from {url}")
     with urllib.request.urlopen(url) as response:  # noqa: S310 - trusted github host
@@ -95,7 +95,7 @@ def main() -> None:
     notice = (
         f"Seed data vendored from https://github.com/{REPO}\n"
         f"Pinned revision: {REVISION}\n"
-        "Fetched by train_dataset/pipeline/01_vendor_seed.py; not committed to this repo.\n"
+        "Fetched by data/build/amplify/vendor_seed.py; not committed to this repo.\n"
         "See https://amplifying.ai/research/claude-code-picks for the accompanying study.\n"
     )
     (VENDOR_DIR / "NOTICE").write_text(notice)

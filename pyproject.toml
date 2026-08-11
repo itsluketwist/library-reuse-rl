@@ -6,7 +6,10 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["src", "train_dataset"]
+# src is the experiment code; data.build (+ subpackages) is the dataset construction code, run
+# by path but importable so its stages can share helpers and tests can import them. the folder
+# is "data" (not "datasets") so it never shadows the HuggingFace `datasets` library.
+packages = ["src", "data", "data.build", "data.build.amplify", "data.build.library"]
 
 [project]
 name = "src"

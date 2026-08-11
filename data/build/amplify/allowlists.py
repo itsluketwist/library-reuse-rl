@@ -1,25 +1,40 @@
-"""Stage 02: build config/library_allowlists.yaml from the taxonomy and amplify extractions.
+"""Build config/library_allowlists.yaml from the taxonomies and amplify extractions.
 
 For the product categories, the allowlist is seeded from the amplify tool-frequency data
-(train_dataset/vendor/results/combined-extracted.json) - every tool models actually
-recommended, minus the "Custom/DIY" marker. For the code-level categories, which the amplify
-study does not cover, the allowlist is the taxonomy's seed_libraries. A small curated aliases
-map and a shared diy_terms list are attached so the deterministic verifier
-(src/response/pick.py) can match abbreviations ("postgres" -> PostgreSQL) and spot DIY answers.
+(data/build/vendor/results/combined-extracted.json) - every tool models actually recommended,
+minus the "Custom/DIY" marker. For the code-level categories, which the amplify study does not
+cover, the allowlist is the library taxonomy's seed_libraries. A small curated aliases map and
+a shared diy_terms list are attached so the deterministic verifier (src/response/pick.py) can
+match abbreviations ("postgres" -> PostgreSQL) and spot DIY answers.
 
 This is the deterministic seed. An offline LLM judge can later enrich/normalise the result
-(see train_dataset/PLAN.md) - it is intentionally kept out of the training loop.
+(see data/README.md) - it is intentionally kept out of the training loop.
 
-Usage: python train_dataset/pipeline/02_build_allowlists.py
+Usage: python data/build/amplify/allowlists.py
 """
 
 import json
+from pathlib import Path
 
 import yaml
 
-from src.utils.config import load_full_yaml
-from train_dataset.common import ALLOWLISTS_FILE as OUTPUT_FILE
-from train_dataset.common import EXTRACTED_FILE, PROMPTS_FILE, TAXONOMY_FILE
+from data.build.paths import ALLOWLISTS_FILE as OUTPUT_FILE
+from data.build.paths import (
+    AMPLIFY_TAXONOMY_FILE,
+    EXTRACTED_FILE,
+    LIBRARY_TAXONOMY_FILE,
+    PROMPTS_FILE,
+)
+
+
+def _load_yaml(
+    path: Path,
+) -> dict:
+    """Parse a yaml file into a dict.
+
+    Returns the parsed contents.
+    """
+    return yaml.safe_load(path.read_text())
 
 
 # allowlist version, recorded on every dataset row so a reward stays reproducible
@@ -100,14 +115,15 @@ def build_allowlists() -> dict:
 
     Returns the full config dict ready to serialise.
     """
-    taxonomy = load_full_yaml(str(TAXONOMY_FILE))
+    product_taxonomy = _load_yaml(AMPLIFY_TAXONOMY_FILE)
+    library_taxonomy = _load_yaml(LIBRARY_TAXONOMY_FILE)
     extracted = json.loads(EXTRACTED_FILE.read_text())
     names = _category_names()
 
     categories: dict[str, dict] = {}
 
     # product categories: allowlist seeded from the amplify tool frequencies
-    for entry in taxonomy.get("product", []):
+    for entry in product_taxonomy.get("product", []):
         cid = entry["id"]
         allowlist = _amplify_tools(extracted, names.get(cid, entry["name"]))
         # fold in any taxonomy seed_libraries not already present (usually none)
@@ -123,7 +139,7 @@ def build_allowlists() -> dict:
         }
 
     # code-level categories: allowlist is the taxonomy's seed_libraries (import names)
-    for entry in taxonomy.get("code", []):
+    for entry in library_taxonomy.get("code", []):
         allowlist = list(entry.get("seed_libraries", []))
         categories[entry["id"]] = {
             "name": entry["name"],
@@ -146,11 +162,10 @@ def main() -> None:
 
     header = (
         "# per-category library allowlists for the library-reuse datasets.\n"
-        "# built by train_dataset/pipeline/02_build_allowlists.py from taxonomy.yaml and\n"
-        "# the amplify\n"
-        "# tool-frequency extractions - re-run that script to regenerate. 'allowlist' lists\n"
-        "# the appropriate external tools/libraries for a category; 'diy_terms' (plus the\n"
-        "# shared diy_terms_default) flag roll-your-own answers.\n\n"
+        "# built by data/build/amplify/allowlists.py from the amplify + library taxonomies\n"
+        "# and the amplify tool-frequency extractions - re-run that script to regenerate.\n"
+        "# 'allowlist' lists the appropriate external tools/libraries for a category;\n"
+        "# 'diy_terms' (plus the shared diy_terms_default) flag roll-your-own answers.\n\n"
     )
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_FILE.write_text(

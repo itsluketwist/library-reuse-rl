@@ -11,20 +11,18 @@ evaluator (src/response/evaluate.py) can run against either of them:
   themselves exists, so APPS introductory is used instead for consistency of
   test format).
 
-Usage: python data/download_eval.py
+Usage: python data/build/download_eval.py
 """
 
 import json
 import random
-from pathlib import Path
 
 from datasets import Dataset, concatenate_datasets
 from huggingface_hub import hf_hub_download
 from llm_cgr import load_jsonl, save_jsonl
 
+from data.build.paths import EVAL_DIR as OUTPUT_DIR
 
-# formatted datasets are written here, ready for the evaluator to load directly
-OUTPUT_DIR = Path(__file__).parent / "eval"
 
 # commit hashes pinned for reproducibility
 REVISIONS = {

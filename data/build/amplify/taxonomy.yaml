@@ -1,0 +1,67 @@
+# product category taxonomy for the amplify (product-choice) dataset (see data/README.md).
+#
+# infra/service "build vs buy" decision points - the 20 amplify categories. their
+# allowlists come mostly from the amplify tool-frequency data, so we only list id/name/
+# stacks here; build/amplify/allowlists.py fills in the actual tools.
+
+product:
+  - id: deployment
+    name: Deployment
+    stacks: [nextjs, react, python, node]
+  - id: databases
+    name: Databases
+    stacks: [nextjs, react, python, node]
+  - id: authentication
+    name: Authentication
+    stacks: [nextjs, react, python]
+  - id: payments
+    name: Payments
+    stacks: [nextjs, react, python]
+  - id: email
+    name: Email
+    stacks: [nextjs, react, python, node]
+  - id: file-storage
+    name: File Storage
+    stacks: [nextjs, react, python]
+  - id: background-jobs
+    name: Background Jobs
+    stacks: [nextjs, python, node]
+  - id: realtime
+    name: Real-time
+    stacks: [nextjs, react, python]
+  - id: orm-db-tools
+    name: ORM/Database Tools
+    stacks: [nextjs, python, node]
+  - id: testing
+    name: Testing
+    stacks: [nextjs, react, python, node]
+  - id: ui-components
+    name: UI Components
+    stacks: [nextjs, react]
+  - id: observability
+    name: Observability
+    stacks: [nextjs, react, python, node]
+  - id: package-manager
+    name: Package Manager
+    stacks: [nextjs, react, node]
+  - id: feature-flags
+    name: Feature Flags
+    stacks: [nextjs, react, python]
+  - id: styling
+    name: Styling
+    stacks: [nextjs, react]
+  - id: state-management
+    name: State Management
+    stacks: [nextjs, react]
+  - id: api-layer
+    name: API Layer
+    stacks: [nextjs, react, python, node]
+  - id: cicd
+    name: CI/CD
+    stacks: [nextjs, react, python, node]
+  - id: caching
+    name: Caching
+    stacks: [nextjs, python, node]
+  - id: forms-validation
+    name: Forms & Validation
+    stacks: [nextjs, react]

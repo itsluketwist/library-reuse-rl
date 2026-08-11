@@ -8,7 +8,8 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
+# anchored to the repo root so it only ignores the setuptools build output, not data/build/
+/build/
 develop-eggs/
 dist/
 downloads/
@@ -172,11 +173,17 @@ cython_debug/
 todo.txt
 output/archive
 data/raw
-data/skywork
 
-# vendored amplify seed + generated library-reuse datasets (regenerable via train_dataset/pipeline/*.py)
-train_dataset/vendor
-train_dataset/data
+# skywork is a large download (~1.3GB after filtering), so it is not committed - re-run
+# data/build/download_skywork.py to regenerate it. the small, committed product_choice and
+# library_usage splits (and the eval sets under data/eval) ARE tracked, since they are the
+# actual dataset deliverable and can't be rebuilt without the (unlicensed) vendored seed below.
+data/train/skywork
+data/train/product_choice
+
+# vendored amplify seed the build pipelines fetch - upstream ships no licence, so we don't
+# commit it; re-run data/build/amplify/vendor_seed.py to regenerate it locally.
+data/build/vendor
 
 # bigcodebenchreuse: fetched seed + per-stage build artefacts (regenerable via
 # benchmark/pipeline/*.py). the built splits under benchmark/bcbreuse/data ARE committed

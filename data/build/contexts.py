@@ -3,14 +3,17 @@
 Each context is a short stack summary (README head + dependency manifest + file tree) plus,
 for python repos, the `local_modules` the repo defines - the top-level import names the
 library-usage reward subtracts so importing the project's own code is never mistaken for
-reusing an external library (see src/grpo/rewards/library_usage.py).
+reusing an external library (see src/grpo/rewards/library_usage.py). Shared by both the
+amplify and library build pipelines.
 """
 
 from dataclasses import dataclass
 from pathlib import Path
 
 
-# vendored repo directory name -> the stack/language tag used on generated rows
+# known repo directory name -> the stack/language tag used on generated rows. repos not
+# listed here have their stack inferred (see _infer_stack), so committed python repos we add
+# for the library pipeline are picked up without needing an entry.
 REPO_STACK = {
     "nextjs-saas": "nextjs",
     "python-api": "python",
@@ -71,14 +74,31 @@ def _local_modules(
     return sorted(modules)
 
 
+def _infer_stack(
+    repo_dir: Path,
+) -> str:
+    """The stack tag for a repo: its known mapping, else inferred from its files.
+
+    A repo with a pyproject.toml or any .py file is treated as python, so committed python
+    repos added for the library pipeline work without a REPO_STACK entry.
+
+    Returns the stack tag.
+    """
+    if repo_dir.name in REPO_STACK:
+        return REPO_STACK[repo_dir.name]
+    if (repo_dir / "pyproject.toml").exists() or any(repo_dir.rglob("*.py")):
+        return "python"
+    return "unknown"
+
+
 def build_context(
     repo_dir: Path,
 ) -> Context:
-    """Summarise a vendored repo into a Context.
+    """Summarise a repo into a Context.
 
     Returns the Context.
     """
-    stack = REPO_STACK.get(repo_dir.name, "unknown")
+    stack = _infer_stack(repo_dir)
 
     parts = [f"# Project: {repo_dir.name} ({stack})"]
 
@@ -95,7 +115,7 @@ def build_context(
     parts.append("## Files\n" + "\n".join(tree))
 
     return Context(
-        context_id=f"amplify-{repo_dir.name}",
+        context_id=repo_dir.name,
         stack=stack,
         language="python" if stack == "python" else stack,
         summary="\n\n".join(parts),

@@ -1,9 +1,8 @@
 # per-category library allowlists for the library-reuse datasets.
-# built by train_dataset/pipeline/02_build_allowlists.py from taxonomy.yaml and
-# the amplify
-# tool-frequency extractions - re-run that script to regenerate. 'allowlist' lists
-# the appropriate external tools/libraries for a category; 'diy_terms' (plus the
-# shared diy_terms_default) flag roll-your-own answers.
+# built by data/build/amplify/allowlists.py from the amplify + library taxonomies
+# and the amplify tool-frequency extractions - re-run that script to regenerate.
+# 'allowlist' lists the appropriate external tools/libraries for a category;
+# 'diy_terms' (plus the shared diy_terms_default) flag roll-your-own answers.
 
 version: 2026-08
 diy_terms_default:
@@ -402,5 +401,283 @@ categories:
     allowlist:
     - tqdm
     - rich
+    aliases: {}
+    diy_terms: []
+  image-processing:
+    name: Image Processing
+    family: code
+    allowlist:
+    - PIL
+    - cv2
+    - wand
+    aliases: {}
+    diy_terms: []
+  timezones:
+    name: Timezone Conversion
+    family: code
+    allowlist:
+    - pytz
+    - tzlocal
+    - dateutil
+    aliases: {}
+    diy_terms: []
+  uuid-slugs:
+    name: UUIDs & Slugs
+    family: code
+    allowlist:
+    - shortuuid
+    - slugify
+    - nanoid
+    aliases: {}
+    diy_terms: []
+  env-config:
+    name: Environment Config
+    family: code
+    allowlist:
+    - dotenv
+    - environs
+    - decouple
+    aliases: {}
+    diy_terms: []
+  json-schema:
+    name: JSON Schema Validation
+    family: code
+    allowlist:
+    - jsonschema
+    - fastjsonschema
+    aliases: {}
+    diy_terms: []
+  compression:
+    name: Compression
+    family: code
+    allowlist:
+    - zstandard
+    - lz4
+    - brotli
+    aliases: {}
+    diy_terms: []
+  url-parsing:
+    name: URL Parsing & Building
+    family: code
+    allowlist:
+    - furl
+    - yarl
+    aliases: {}
+    diy_terms: []
+  email-validation:
+    name: Email Validation & Parsing
+    family: code
+    allowlist:
+    - email_validator
+    - mailparser
+    aliases: {}
+    diy_terms: []
+  rate-limiting:
+    name: Rate Limiting
+    family: code
+    allowlist:
+    - ratelimit
+    - limits
+    - pyrate_limiter
+    aliases: {}
+    diy_terms: []
+  caching-memoize:
+    name: Caching & Memoization
+    family: code
+    allowlist:
+    - cachetools
+    - diskcache
+    aliases: {}
+    diy_terms: []
+  phone-numbers:
+    name: Phone Number Handling
+    family: code
+    allowlist:
+    - phonenumbers
+    aliases: {}
+    diy_terms: []
+  money-currency:
+    name: Money & Currency
+    family: code
+    allowlist:
+    - moneyed
+    - babel
+    aliases: {}
+    diy_terms: []
+  markdown-render:
+    name: Markdown Rendering
+    family: code
+    allowlist:
+    - markdown
+    - mistune
+    - markdown_it
+    aliases: {}
+    diy_terms: []
+  color-manipulation:
+    name: Color Manipulation
+    family: code
+    allowlist:
+    - colour
+    - webcolors
+    aliases: {}
+    diy_terms: []
+  geo-distance:
+    name: Geospatial Distance
+    family: code
+    allowlist:
+    - geopy
+    - haversine
+    aliases: {}
+    diy_terms: []
+  hypothesis-testing:
+    name: Statistical Testing
+    family: code
+    allowlist:
+    - scipy
+    - statsmodels
+    - pingouin
+    aliases: {}
+    diy_terms: []
+  plotting:
+    name: Plotting & Charts
+    family: code
+    allowlist:
+    - matplotlib
+    - plotly
+    - seaborn
+    aliases: {}
+    diy_terms: []
+  xml-parsing:
+    name: XML Parsing
+    family: code
+    allowlist:
+    - lxml
+    - xmltodict
+    aliases: {}
+    diy_terms: []
+  sql-builder:
+    name: SQL Building
+    family: code
+    allowlist:
+    - sqlalchemy
+    - sqlmodel
+    - peewee
+    aliases: {}
+    diy_terms: []
+  file-watching:
+    name: File Watching
+    family: code
+    allowlist:
+    - watchdog
+    - watchfiles
+    aliases: {}
+    diy_terms: []
+  fast-serialization:
+    name: Fast Serialization
+    family: code
+    allowlist:
+    - orjson
+    - msgpack
+    - ujson
+    aliases: {}
+    diy_terms: []
+  subprocess-shell:
+    name: Subprocess & Shell
+    family: code
+    allowlist:
+    - sh
+    - plumbum
+    aliases: {}
+    diy_terms: []
+  natural-sort:
+    name: Natural Sorting
+    family: code
+    allowlist:
+    - natsort
+    aliases: {}
+    diy_terms: []
+  unit-conversion:
+    name: Unit Conversion
+    family: code
+    allowlist:
+    - pint
+    aliases: {}
+    diy_terms: []
+  qr-barcode:
+    name: QR & Barcodes
+    family: code
+    allowlist:
+    - qrcode
+    - barcode
+    aliases: {}
+    diy_terms: []
+  fake-data:
+    name: Fake Data Generation
+    family: code
+    allowlist:
+    - faker
+    - mimesis
+    aliases: {}
+    diy_terms: []
+  encoding-detect:
+    name: Text Encoding Detection
+    family: code
+    allowlist:
+    - chardet
+    - charset_normalizer
+    aliases: {}
+    diy_terms: []
+  structured-diff:
+    name: Structured Diffing
+    family: code
+    allowlist:
+    - deepdiff
+    aliases: {}
+    diy_terms: []
+  scheduling:
+    name: Job Scheduling
+    family: code
+    allowlist:
+    - schedule
+    - apscheduler
+    - croniter
+    aliases: {}
+    diy_terms: []
+  terminal-tables:
+    name: Terminal Tables
+    family: code
+    allowlist:
+    - tabulate
+    - prettytable
+    aliases: {}
+    diy_terms: []
+  audio:
+    name: Audio Processing
+    family: code
+    allowlist:
+    - pydub
+    - soundfile
+    aliases: {}
+    diy_terms: []
+  geometry:
+    name: Computational Geometry
+    family: code
+    allowlist:
+    - shapely
+    aliases: {}
+    diy_terms: []
+  nlp-tokenize:
+    name: NLP Tokenization
+    family: code
+    allowlist:
+    - nltk
+    - spacy
+    aliases: {}
+    diy_terms: []
+  ip-address:
+    name: IP Address Handling
+    family: code
+    allowlist:
+    - netaddr
     aliases: {}
     diy_terms: []

@@ -1,0 +1,18 @@
+# deterministic phrasing templates for the library-usage rows (see data/README.md).
+#
+# each task is wrapped in these templates to produce several natural wordings, in two modes:
+#   - repo:  the task is asked inside a vendored python repo's context (carries local_modules)
+#   - bare:  the task is asked on its own, "how do i implement x", with no repo context
+# build.py substitutes {context} (repo summary), {task} (the task verbatim) and {task_lower}
+# (the task with a lowercased first letter - kept as-is for acronyms like "POST" - and no
+# trailing full stop, for mid-sentence use). the LLM cache
+# (phrasings.json) layers extra bare-mode wordings on top of these.
+
+repo:
+  - "{context}\n\nTask: {task}\n\nImplement this in Python."
+  - "{context}\n\nWe need a new helper in this project: {task_lower}. Write it in Python."
+
+bare:
+  - "How do I {task_lower} in Python?"
+  - "I need to {task_lower}. Write the Python for it."
+  - "Write a short Python program to {task_lower}."

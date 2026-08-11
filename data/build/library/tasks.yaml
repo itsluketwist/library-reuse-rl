@@ -1,0 +1,160 @@
+# concrete library-usage tasks per code category (see data/README.md).
+#
+# each task is a short imperative feature description, deliberately in the "diy temptation"
+# zone - small enough that a model might hand-roll it, but whose natural solution reaches for
+# one of the category's libraries. build.py wraps each task in several phrasings (repo context
+# or a bare "how do i implement x") to produce the training rows. tasks should end with a full
+# stop and start with a capitalised verb (build.py derives a lowercased variant for phrasing).
+
+datetime:
+  - Parse an ISO-8601 timestamp string and return how long ago it was.
+  - Normalise a date string in an unknown common format to YYYY-MM-DD.
+  - Add a given number of business days to a date and return the result.
+http-requests:
+  - Fetch JSON from an external REST API and return the parsed body.
+  - Download a file from a URL and save it to disk.
+  - POST a JSON payload to a webhook URL and return the response status.
+retries:
+  - Call a flaky external API, retrying with exponential backoff up to five times.
+  - Wrap a function so transient errors are retried with jitter.
+yaml-config:
+  - Load application settings from a config file into a dict.
+  - Merge a base config with an environment-specific override file.
+data-validation:
+  - Validate that an incoming JSON payload has the required fields and types.
+  - Parse and validate a request body into a typed model, raising on bad input.
+csv-excel:
+  - Read a CSV file and return the number of rows per distinct column value.
+  - Write a list of records out to a spreadsheet file.
+pdf:
+  - Extract the text from a PDF file and return it.
+  - Generate a simple one-page PDF report from a title and body text.
+cli-parsing:
+  - Add a command-line entry point that accepts --input and --output options.
+  - Build a subcommand that takes a required argument and a verbosity flag.
+html-parsing:
+  - Extract all the links from an HTML page and return them as a list.
+  - Parse an HTML table into a list of row dicts.
+fuzzy-matching:
+  - Given a query string, find the closest match from a list of names.
+  - Deduplicate a list of near-identical strings by similarity.
+graphs:
+  - Given a list of task dependencies, return a valid execution order.
+  - Find the shortest path between two nodes in a weighted graph.
+crypto-hashing:
+  - Hash a user password securely for storage and verify it on login.
+  - Issue and verify a signed token for an authenticated user.
+numerics:
+  - Multiply two matrices supplied as nested lists.
+  - Fit a simple linear regression to a set of points and return the slope.
+templating:
+  - Render an HTML email body from a template and a context dict.
+  - Generate a config file from a template with variable substitution.
+structured-logging:
+  - Add structured, leveled logging around a job-processing function.
+  - Emit JSON-formatted log lines with contextual fields for a worker.
+progress-bars:
+  - Show a progress bar while processing a long list of files.
+  - Report progress as a percentage while iterating over a large dataset.
+image-processing:
+  - Resize an uploaded image to a thumbnail and save it.
+  - Convert an image to grayscale and write it back out.
+timezones:
+  - Convert a naive local timestamp to UTC for a given timezone.
+  - Show what time it is in three named cities right now.
+uuid-slugs:
+  - Generate a short unique id for a new record.
+  - Turn an article title into a url-safe slug.
+env-config:
+  - Load secrets and settings from environment variables into a config object.
+  - Read a .env file and return one of its values with a default.
+json-schema:
+  - Validate a config document against a JSON schema and report the first error.
+  - Check that a list of records all match an expected schema.
+compression:
+  - Compress a large log file and write the compressed output to disk.
+  - Decompress a downloaded archive and return its contents.
+url-parsing:
+  - Add or replace a query parameter on a given URL and return the new URL.
+  - Extract the host and path components from a URL.
+email-validation:
+  - Validate that a user-supplied email address is well-formed and deliverable.
+  - Extract the sender and subject from a raw email message.
+rate-limiting:
+  - Limit calls to an external API to at most five per second.
+  - Throttle a function so it runs no more than once per minute.
+caching-memoize:
+  - Cache the result of an expensive function with a time-to-live.
+  - Add an LRU cache with a maximum size to a lookup function.
+phone-numbers:
+  - Validate and format a phone number into international format.
+  - Extract the country code from a phone number.
+money-currency:
+  - Add two monetary amounts in the same currency and format the result.
+  - Format an amount as localised currency for a given locale.
+markdown-render:
+  - Render a markdown document to HTML.
+  - Extract the plain text from a markdown string, dropping the formatting.
+color-manipulation:
+  - Convert a hex colour to its RGB components.
+  - Darken a given colour by a percentage and return the new hex value.
+geo-distance:
+  - Compute the distance in kilometres between two latitude/longitude points.
+  - Find the nearest location to a point from a list of coordinates.
+hypothesis-testing:
+  - Run a t-test between two samples and return the p-value.
+  - Compute the Pearson correlation between two lists of numbers.
+plotting:
+  - Plot a line chart from a list of values and save it as a PNG.
+  - Render a bar chart of category counts to an image file.
+xml-parsing:
+  - Parse an XML document and extract the text of a named element.
+  - Convert an XML string into a nested dict.
+sql-builder:
+  - Build and run a parameterised SELECT with optional filters.
+  - Insert a batch of records into a table safely.
+file-watching:
+  - Watch a directory and print a message whenever a file changes.
+  - Trigger a callback when a specific file is modified.
+fast-serialization:
+  - Serialise a large list of dicts to bytes and back as fast as possible.
+  - Write a nested data structure to a compact binary file and reload it.
+subprocess-shell:
+  - Run an external command and capture its stdout, raising on failure.
+  - Pipe the output of one command into another and return the result.
+natural-sort:
+  - Sort a list of filenames like file2, file10 in natural order.
+  - Sort version strings so 1.10 comes after 1.9.
+unit-conversion:
+  - Convert a distance from miles to kilometres.
+  - Add two quantities with different units and return the result.
+qr-barcode:
+  - Generate a QR code for a URL and save it as an image.
+  - Create a barcode image for a product code.
+fake-data:
+  - Generate a list of fake user records with names and emails for a test.
+  - Produce a realistic fake address.
+encoding-detect:
+  - Detect the text encoding of a file's bytes and decode it correctly.
+  - Read a file whose encoding is unknown and return its text.
+structured-diff:
+  - Report the differences between two nested dictionaries.
+  - Detect what changed between two versions of a config object.
+scheduling:
+  - Run a cleanup function every day at a fixed time.
+  - Compute the next run time from a cron expression.
+terminal-tables:
+  - Print a list of records as an aligned table in the terminal.
+  - Format a summary as a bordered table for console output.
+audio:
+  - Read an audio file and return its duration in seconds.
+  - Trim the first ten seconds off an audio clip and save it.
+geometry:
+  - Test whether a point lies inside a polygon.
+  - Compute the area of a polygon from its vertices.
+nlp-tokenize:
+  - Split a paragraph into sentences and then into word tokens.
+  - Count the most common words in a document, ignoring stop words.
+ip-address:
+  - Check whether an IP address falls within a given CIDR range.
+  - List all the host addresses in a subnet.

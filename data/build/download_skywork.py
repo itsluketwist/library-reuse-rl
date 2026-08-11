@@ -6,26 +6,24 @@ Only the taco-sourced (stdin/stdout) problems are kept - the leetcode-sourced
 problems force a fixed function signature, which constrains the model's
 freedom over its own code structure and imports, so they're excluded.
 
-Unlike the evaluation datasets in data/download_eval.py, this dataset is too large
+Unlike the evaluation datasets in data/build/download_eval.py, this dataset is too large
 to commit to the repo (~700MB after filtering), so the outputs are written to
-data/skywork/, which is gitignored - this script must be re-run to regenerate
+data/train/skywork/, which is gitignored - this script must be re-run to regenerate
 them locally or on a server.
 
-Usage: python data/download_skywork.py
+Usage: python data/build/download_skywork.py
 """
 
 import json
-import random
 from collections import Counter
-from pathlib import Path
 
 from datasets import Dataset, concatenate_datasets
 from huggingface_hub import hf_hub_download
 from llm_cgr import load_jsonl, save_jsonl
 
+from data.build.paths import SKYWORK_DIR as OUTPUT_DIR
+from data.build.split import stratified_split
 
-# split outputs are written here - gitignored, since the dataset is too large to commit
-OUTPUT_DIR = Path(__file__).parent / "skywork"
 
 # commit hash pinned for reproducibility
 REVISIONS = {
@@ -35,10 +33,8 @@ REVISIONS = {
 # used to deterministically shuffle and split the data
 SEED = 42
 
-# train/val/test split ratio - val and test are kept equally sized
-TRAIN_FRAC = 0.95
+# val and test are each this fraction of every data-source group (kept equally sized)
 VAL_FRAC = 0.025
-TEST_FRAC = 0.025
 
 
 def download_skywork() -> Dataset:
@@ -112,43 +108,6 @@ def build_records(
     return records
 
 
-def stratified_split(
-    records: list[dict],
-) -> tuple[list[dict], list[dict], list[dict]]:
-    """Split records into train/val/test, stratified by data_source.
-
-    Each data_source group is shuffled and cut into equally-sized val/test
-    chunks (VAL_FRAC/TEST_FRAC of the group) plus a train remainder, so the
-    difficulty proportions - and the val/test sizes - are kept consistent
-    across groups, rather than splitting all records together at random.
-
-    Returns the (train, val, test) record lists.
-    """
-    rng = random.Random(SEED)
-
-    groups: dict[str, list[dict]] = {}
-    for record in records:
-        groups.setdefault(record["data_source"], []).append(record)
-
-    train, val, test = [], [], []
-    for source in sorted(groups):
-        group = groups[source][:]
-        rng.shuffle(group)
-
-        # val and test take the same number of records from each group, so
-        # their overall sizes come out exactly equal
-        num_holdout = round(len(group) * VAL_FRAC)
-
-        val += group[:num_holdout]
-        test += group[num_holdout : num_holdout * 2]
-        train += group[num_holdout * 2 :]
-
-    rng.shuffle(train)
-    rng.shuffle(val)
-    rng.shuffle(test)
-    return train, val, test
-
-
 def main() -> None:
     """Download, filter, split, and save the skywork-or1 code training data."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -156,7 +115,14 @@ def main() -> None:
     skywork = download_skywork()
     records = build_records(skywork)
 
-    train_records, val_records, test_records = stratified_split(records)
+    # stratify by data_source so the val/test sizes and difficulty proportions stay
+    # consistent across groups, rather than splitting all records together at random
+    train_records, val_records, test_records = stratified_split(
+        records,
+        key=lambda record: record["data_source"],
+        val_frac=VAL_FRAC,
+        seed=SEED,
+    )
     print(
         f"split into train: {len(train_records)}, "
         f"val: {len(val_records)}, test: {len(test_records)}"

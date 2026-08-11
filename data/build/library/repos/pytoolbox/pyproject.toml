@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pytoolbox"
+version = "0.1.0"
+description = "Internal Python toolbox CLI for small data, file, text, media and web chores."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+toolbox = "toolbox.cli:main"
