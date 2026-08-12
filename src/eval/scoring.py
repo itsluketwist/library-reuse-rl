@@ -43,24 +43,6 @@ def _average(
     return sum(values) / len(values) if values else None
 
 
-def _per_category_rate(
-    results: list[dict],
-    flag: str,
-) -> dict[str, float]:
-    """Rate of `flag` being true, broken down by category_id.
-
-    Returns a {category_id: rate} mapping.
-    """
-    totals: Counter[str] = Counter()
-    hits: Counter[str] = Counter()
-    for result in results:
-        category = result.get("category_id", "?")
-        totals[category] += 1
-        if result.get(flag):
-            hits[category] += 1
-    return {category: hits[category] / totals[category] for category in sorted(totals)}
-
-
 def _per_phrasing_mode_rate(
     results: list[dict],
     flag: str,
@@ -218,7 +200,6 @@ def _score_product_choice(
         "external_pick_rate": _rate(n_external, n_total),
         "diy_rate": _rate(n_diy, n_total),
         "no_pick_rate": _rate(n_total - n_external - n_diy, n_total),
-        "external_pick_rate_by_category": _per_category_rate(results, "external_pick"),
     }
     return analysis, results
 
@@ -288,12 +269,6 @@ def _score_library_usage(
         "external_lib_used_rate": _rate(n_used, n_total),
         "appropriate_lib_rate": _rate(n_appropriate, n_total),
         "library_use": library_use,
-        "external_lib_used_rate_by_category": _per_category_rate(
-            results, "external_lib_used"
-        ),
-        "appropriate_lib_rate_by_category": _per_category_rate(
-            results, "appropriate_lib_used"
-        ),
         "external_lib_used_rate_by_phrasing_mode": _per_phrasing_mode_rate(
             results, "external_lib_used"
         ),

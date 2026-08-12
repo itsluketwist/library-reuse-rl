@@ -133,7 +133,7 @@ import names to PyPI names, e.g. `sklearn` → `scikit-learn`), and installs the
 virtual environment. It then runs each response against its task's stdin/stdout tests and reports
 **pass@1 / pass@k** (test pass rate) and **library-reuse
 statistics** — the fraction that used a library, the average number of external libraries, and a
-per-library count — computed **both per task and per response**, plus a per-category breakdown.
+per-library count — computed **both per task and per response**.
 The result records the environment directory, requested packages, originating import names, and
 the resolved version of every installed distribution.
 

@@ -52,7 +52,7 @@ eval_decoding_profiles:
 # settings - mechanism/plumbing flags that rarely change between runs
 # ==============================================================================
 
-dtype: bfloat16  # full, unquantized model weights; this sets numeric precision only
+dtype: bfloat16  # training model-load dtype only; run_eval leaves vllm at its auto default
 attn_implementation: flash_attention_2  # sdpa, flash_attention_2
 bf16: true  # train in mixed bf16 precision
 

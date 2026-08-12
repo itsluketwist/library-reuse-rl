@@ -28,7 +28,6 @@ def evaluate_model(
     dataset_configs: dict[str, dict[str, str]],
     decoding_settings: dict,
     output_paths: dict[str, Path],
-    model_dtype: str = "auto",
     max_lora_rank: int | None = None,
     libraries_requirements_file: str | None = None,
     prompt_style: PromptStyle = "lib",
@@ -75,7 +74,8 @@ def evaluate_model(
         }
 
     log("*** Loading model ***")
-    llm_kwargs = {"model": base, "dtype": model_dtype, "enforce_eager": debug}
+    # leave dtype unset so vllm uses its `auto` default from the model checkpoint.
+    llm_kwargs = {"model": base, "enforce_eager": debug}
 
     if adapter_path is not None:
         llm = LLM(**llm_kwargs, enable_lora=True, max_lora_rank=max_lora_rank)
@@ -140,7 +140,7 @@ def evaluate_model(
                 "evaluator": evaluator,
                 "python_executable": python_executable,
                 "environment_dir": environment_dir,
-                "model_dtype": model_dtype,
+                "model_dtype": "auto",
                 "system_prompt": system_prompt,
                 # lib/use need the requirements file to matter; std applies regardless
                 "prompt_style": (

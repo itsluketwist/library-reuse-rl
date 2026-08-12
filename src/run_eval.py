@@ -193,9 +193,8 @@ def run_eval(
 
     recipe = load_full_yaml(decoding_config)
     libraries_requirements_file = recipe.get("libraries_requirements_file")
-    model_dtype = recipe.get("dtype", "auto")
     log(f"Libraries requirements file: {libraries_requirements_file or 'none'}")
-    log(f"Model dtype: {model_dtype}")
+    log("Model dtype: auto (vLLM default)")
 
     # size vllm's adapter slot from the recipe's training rank (assumes same recipe)
     max_lora_rank = recipe.get("lora_r")
@@ -243,7 +242,6 @@ def run_eval(
         dataset_configs=dataset_configs,
         decoding_settings=decoding_settings,
         output_paths=output_paths,
-        model_dtype=model_dtype,
         max_lora_rank=max_lora_rank,
         libraries_requirements_file=libraries_requirements_file,
         prompt_style=prompt_style,

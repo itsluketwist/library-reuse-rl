@@ -229,7 +229,6 @@ class TestStatistics:
         )  # one correct of two -> pass@2 certain
 
     def test_aggregate_per_task_and_per_response(self) -> None:
-        benchmark = {"BCBR/T000": {"category": "a"}, "BCBR/T001": {"category": "b"}}
         # T000 has two responses (one using libs, one not); T001 has one, no libs
         per_response = [
             {
@@ -240,7 +239,7 @@ class TestStatistics:
             {"task_id": "BCBR/T000", "passed": False, "external_libs": []},
             {"task_id": "BCBR/T001", "passed": False, "external_libs": []},
         ]
-        res = evaluate._aggregate(per_response, benchmark)
+        res = evaluate._aggregate(per_response)
 
         assert res["n_tasks"] == 2 and res["n_responses"] == 3
         per_task = res["library_use"]["per_task"]

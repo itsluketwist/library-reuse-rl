@@ -129,7 +129,7 @@ responses are keyed by `task_id` (`{task_id, response}` or `{task_id, responses:
 import name to its pip distribution (`sklearn` → `scikit-learn`, via `IMPORT_TO_PIP`). It then
 **creates the venv, installs the packages automatically, and runs** each response against its task's
 tests (`--confirm-installs` adds an optional interactive checkpoint), aggregating
-**pass@1 / pass@k** and **per-problem library-reuse statistics** (overall and per category). Point `--env-dir` at an
+**pass@1 / pass@k** and overall **per-problem library-reuse statistics**. Point `--env-dir` at an
 isolated location. The saved result records the environment directory, requested packages,
 originating import names, and the resolved version of every installed distribution.
 

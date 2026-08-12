@@ -17,7 +17,7 @@ class TestScoreProductChoice:
     """Tests for scoring the product-choice split."""
 
     def test_external_pick_and_diy_rates(self):
-        """External picks and DIY picks are counted into their rates and per-category."""
+        """External picks and DIY picks are counted into their overall rates."""
         dataset = [
             {
                 "idx": 0,
@@ -48,7 +48,6 @@ class TestScoreProductChoice:
         assert analysis["task"] == "product_choice"
         assert analysis["external_pick_rate"] == 0.5
         assert analysis["diy_rate"] == 0.5
-        assert analysis["external_pick_rate_by_category"] == {"databases": 0.5}
         assert results[0]["external_pick"] and results[0]["primary"] == "postgresql"
         assert results[1]["diy_pick"]
 
@@ -209,7 +208,6 @@ class TestScoreBigCodeBenchReuse:
                     "per_task": {"using_lib_rate": 1.0},
                     "per_response": {"using_lib_rate": 1.0},
                 },
-                "by_category": {},
                 "environment": {
                     "directory": env_dir,
                     "source": "response_imports",

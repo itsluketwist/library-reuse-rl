@@ -247,7 +247,6 @@ def _lib_stats(
 
 def _aggregate(
     per_response: list[dict],
-    benchmark: dict[str, dict],
     k: int | None = None,
 ) -> dict:
     """Aggregate per-response results into pass@1 / pass@k and library-use statistics.
@@ -268,7 +267,6 @@ def _aggregate(
                 "n": 0,
                 "correct": 0,
                 "libs": set(),
-                "category": benchmark[row["task_id"]].get("category", "?"),
             },
         )
         task["n"] += 1
@@ -278,10 +276,6 @@ def _aggregate(
     values = list(tasks.values())
     samples_min = min((t["n"] for t in values), default=0)
     k = samples_min if k is None else min(k, samples_min)
-
-    by_category: defaultdict[str, list] = defaultdict(list)
-    for task in values:
-        by_category[task["category"]].append(task)
 
     return {
         "n_tasks": len(values),
@@ -294,14 +288,6 @@ def _aggregate(
             "per_response": _lib_stats(
                 [set(row.get("external_libs", [])) for row in per_response]
             ),
-        },
-        "by_category": {
-            category: {
-                "n_tasks": len(group),
-                "pass@1": _mean(t["correct"] / t["n"] for t in group),
-                "using_lib_rate": _mean(1.0 if t["libs"] else 0.0 for t in group),
-            }
-            for category, group in sorted(by_category.items())
         },
     }
 
@@ -340,7 +326,7 @@ def score_responses(
             )
             per_response.append({"task_id": task_id, "idx": idx, **result})
 
-    return _aggregate(per_response, benchmark, k) | {"results": per_response}
+    return _aggregate(per_response, k) | {"results": per_response}
 
 
 def evaluate_responses(
@@ -362,8 +348,8 @@ def evaluate_responses(
 
     On success, reports pass@1 / pass@k and per-problem library-reuse statistics (fraction of
     problems using a library, average external libraries per problem, and a per-library task count),
-    plus a per-category breakdown, the installed package plan, and a timestamped JSON alongside the
-    per-response details. `k` defaults to the smallest number of samples any task has.
+    plus the installed package plan and a timestamped JSON alongside the per-response details. `k`
+    defaults to the smallest number of samples any task has.
 
     Returns the results dict (empty if the run stopped for the environment to be corrected).
     """
