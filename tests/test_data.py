@@ -194,6 +194,27 @@ class TestLoadTrainDatasetNewSchema:
         assert example["task_type"] == "product_choice"
 
 
+def _make_bcbreuse_record(
+    prompt: str,
+    test_inputs: list[str],
+    expected_outputs: list[str],
+) -> dict:
+    """Build a minimal BigCodeBenchReuse-format record."""
+    return {
+        "task_id": "BCBR/V000",
+        "category": "array-processing",
+        "prompt": prompt,
+        "test_inputs": test_inputs,
+        "expected_outputs": expected_outputs,
+        "ground_truth": {
+            "gold_stdlib": "print(input())",
+            "gold_extlib": "import numpy\nprint(input())",
+            "gold_extlib_packages": ["numpy==2.5.1"],
+        },
+        "source": {"seed_id": "BigCodeBench/1", "seed_libs": ["numpy"]},
+    }
+
+
 class TestLoadEvalDataset:
     """Tests for load_eval_dataset."""
 
@@ -239,3 +260,30 @@ class TestLoadEvalDataset:
             {"role": "system", "content": "be helpful"},
             {"role": "user", "content": "solve this"},
         ]
+
+    def test_loads_bcbreuse_without_treating_gold_solutions_as_tests(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """BCBReuse top-level tests and nested gold programs remain distinguishable."""
+        dataset_file = tmp_path / "bcbreuse.jsonl"
+        record = _make_bcbreuse_record(
+            "echo the input",
+            ["hello\n"],
+            ["hello"],
+        )
+        _write_jsonl(dataset_file, [record])
+
+        dataset = load_eval_dataset(dataset_file, system_prompt="write python")
+        example = dataset[0]
+
+        assert example["prompt"] == [
+            {"role": "system", "content": "write python"},
+            {"role": "user", "content": "echo the input"},
+        ]
+        assert example["inputs"] == ["hello\n"]
+        assert example["expected_outputs"] == ["hello"]
+        assert example["test_inputs"] == ["hello\n"]
+        assert example["task_id"] == "BCBR/V000"
+        assert example["category"] == "array-processing"
+        assert example["ground_truth"]["gold_extlib_packages"] == ["numpy==2.5.1"]

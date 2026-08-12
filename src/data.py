@@ -43,6 +43,24 @@ def _make_conversation(
     }
 
 
+def _make_bcbreuse_eval_conversation(
+    example: dict,
+    system_prompt: str | None,
+) -> dict:
+    """Build chat messages and normalise a BigCodeBenchReuse evaluation record.
+
+    BigCodeBenchReuse keeps executable inputs at the top level under `test_inputs`;
+    its nested `ground_truth` contains reference programs rather than test cases.
+
+    Returns the fields needed by the evaluation pipeline.
+    """
+    return {
+        "prompt": _build_messages(example["prompt"], system_prompt),
+        "inputs": example["test_inputs"],
+        "expected_outputs": example["expected_outputs"],
+    }
+
+
 def load_train_dataset(
     dataset_dir: str | Path,
     system_prompt: str | None,
@@ -107,9 +125,10 @@ def load_eval_dataset(
 ) -> Dataset:
     """Load an evaluation dataset file and build chat prompts.
 
-    Handles both the flat {prompt, inputs, expected_outputs, source} schema (from
-    data/download_eval.py) and the nested ground_truth schema (from
-    data/download_skywork.py), flattening the latter via _make_conversation.
+    Handles the flat {prompt, inputs, expected_outputs, source} schema from
+    data/download_eval.py, the nested Skywork ground_truth schema, and BigCodeBenchReuse's
+    {prompt, test_inputs, expected_outputs, ground_truth: {gold_stdlib, gold_extlib, ...}}
+    schema. BCBReuse test_inputs are also exposed as inputs for the common result pipeline.
 
     `n` truncates the dataset to at most that many rows (e.g. for a quick debug
     smoke test) - leave as None to use the full dataset.
@@ -126,7 +145,17 @@ def load_eval_dataset(
         dataset = dataset.select(range(min(n, len(dataset))))
         logger.info(f"Truncated dataset to {len(dataset)} rows")
 
-    if "ground_truth" in dataset.column_names:
+    # bcbreuse ground_truth contains gold programs, not the executable test cases;
+    # detect its top-level test_inputs before treating ground_truth as skywork format.
+    columns = set(dataset.column_names)
+    if {"test_inputs", "expected_outputs"} <= columns:
+        dataset = dataset.map(
+            lambda example: _make_bcbreuse_eval_conversation(
+                example,
+                system_prompt=system_prompt,
+            ),
+        )
+    elif "ground_truth" in columns:
         dataset = dataset.map(
             lambda example: _make_conversation(example, system_prompt=system_prompt),
         )
