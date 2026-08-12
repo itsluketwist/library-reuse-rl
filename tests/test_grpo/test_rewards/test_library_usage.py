@@ -1,5 +1,7 @@
 """Tests for the library-usage reward (external reuse, no execution)."""
 
+import pytest
+
 from src.grpo.rewards import build_reward
 from src.grpo.rewards.library_usage import LibraryUsageReward
 
@@ -86,8 +88,35 @@ class TestLibraryUsageReward:
 
         assert score == 1.0
 
+    def test_aggregates_library_use_across_every_code_block(self):
+        """A library in a shorter block counts even when another block is longest."""
+        reward = LibraryUsageReward(_WEIGHTS)
+        content = """reasoning</think>
+```python
+import requests
+requests.get("https://example.com")
+```
+```python
+def longer_hand_written_example(value):
+    result = value.strip()
+    return result.lower()
+```
+"""
+
+        score = reward.score(
+            content,
+            {"local_modules": [], "useful_libs": ["requests"]},
+        )
+
+        assert score == 3.0
+
     def test_build_reward_selects_this_class(self):
         """The factory resolves the library-usage kind to this reward."""
         reward = build_reward("library_usage", _WEIGHTS)
 
         assert isinstance(reward, LibraryUsageReward)
+
+    def test_build_reward_rejects_incompatible_profile(self):
+        """A tested-code component cannot silently become a no-op for this task."""
+        with pytest.raises(ValueError, match="does not score"):
+            build_reward("library_usage", {"passed_tests": 1.0})

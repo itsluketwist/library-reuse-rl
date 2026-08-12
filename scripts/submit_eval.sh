@@ -23,21 +23,22 @@ models=(
     "qwen3-8b"
 )
 
-# comma-separated eval dataset names (config/eval_datasets.yaml) - empty means all
-datasets=""
+# comma-separated eval dataset names (config/eval_datasets.yaml)
+# product_choice is gitignored and must have been built locally.
+datasets="library_usage,bcbreuse"
 
 # decoding profiles to evaluate with (eval_decoding_profiles in config/training.yaml)
 decoding_profiles=(
     "greedy"
     "default"
-    "qwen3"
+    # "qwen3"
 )
 
 # system prompt wordings to evaluate with, one job per entry (src/prompts.py::PromptStyle)
 prompt_styles=(
-    "lib"
-    "use"
-    "std"
+    # "lib"
+    # "use"
+    # "std"
     "base"
 )
 
@@ -80,6 +81,7 @@ echo
 
 for model in "${models[@]}"; do
     echo "Submitting jobs for $model"
+    mkdir -p "logs/eval-$model"
 
     for decoding_profile in "${decoding_profiles[@]}"; do
         for prompt_style in "${prompt_styles[@]}"; do

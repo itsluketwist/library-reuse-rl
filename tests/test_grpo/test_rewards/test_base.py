@@ -8,7 +8,7 @@ from src.grpo.rewards.base import (
     load_reward_profile,
     rows_from_columns,
 )
-from src.response.parser import ParsedResponse
+from src.response.parser import ParsedCodeBlock, ParsedResponse
 
 
 def _parsed(
@@ -21,17 +21,28 @@ def _parsed(
     lib_usage: dict[str, list[dict]] | None = None,
 ) -> ParsedResponse:
     """Build a ParsedResponse for the base-class tests."""
+    code_blocks = (
+        [
+            ParsedCodeBlock(
+                language="python",
+                text=code,
+                valid=valid,
+                error=None,
+                std_libs=std_libs or [],
+                ext_libs=ext_libs or [],
+                lib_usage=lib_usage or {},
+                logical_lines=1,
+                maintainability_index=100.0,
+                selected_for_tests=True,
+            )
+        ]
+        if code is not None
+        else []
+    )
     return ParsedResponse(
         reasoning=reasoning,
         answer=answer,
-        code=code,
-        valid=valid,
-        error=None,
-        std_libs=std_libs or [],
-        ext_libs=ext_libs or [],
-        lib_usage=lib_usage or {},
-        logical_lines=1,
-        maintainability_index=100.0,
+        code_blocks=code_blocks,
     )
 
 

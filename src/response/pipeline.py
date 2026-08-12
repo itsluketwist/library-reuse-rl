@@ -13,9 +13,8 @@ class ProcessedResponse(ParsedResponse):
     """
     A parsed response plus the outcome of evaluating its code against a record.
 
-    Inherits ParsedResponse's fields directly (e.g. `.code`, `.valid`) rather than
-    nesting them under a `.parsed` attribute, since a ProcessedResponse is always a
-    parsed response, just with the evaluation outcome attached too.
+    Inherits ParsedResponse's complete block collection. Candidate properties such as
+    `.code` and `.valid` resolve to the block marked for tests.
     """
 
     passed: bool

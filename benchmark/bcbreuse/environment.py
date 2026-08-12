@@ -306,6 +306,16 @@ class Environment:
                 failed.add(package)
         return failed
 
+    def installed_distributions(self) -> dict[str, str]:
+        """Inspect every distribution installed in the evaluation environment.
+
+        This includes transitively installed dependencies, which makes the recorded
+        environment useful when debugging more than just the requested top-level packages.
+
+        Returns the {normalised distribution name: version} map.
+        """
+        return _installed_distributions(self.python)
+
     def _pip_install(
         self,
         packages: list[str],

@@ -56,3 +56,26 @@ print("wrong")
         assert result.code is None
         assert result.passed is False
         assert result.output is None
+
+    def test_executes_only_the_largest_code_block(self):
+        """Test-backed evaluation treats the largest block as the candidate program."""
+        response = """
+```python
+print("wrong")
+```
+```python
+line = input()
+result = line.strip()
+print(result)
+```
+"""
+        record = {"inputs": ["hello\n"], "expected_outputs": ["hello\n"]}
+
+        result = process_response(
+            response=response,
+            record=record,
+            python_executable=PYTHON,
+        )
+
+        assert "result = line.strip()" in result.code
+        assert result.passed is True

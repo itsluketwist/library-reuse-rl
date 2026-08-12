@@ -1,16 +1,15 @@
-"""Evaluate model responses against BigCodeBenchReuse: parse, confirm installs, run, aggregate.
+"""Evaluate model responses against BigCodeBenchReuse: parse, install, run, and aggregate.
 
-The flow is: parse every response and work out the union of third-party packages they import; show
-that list to the user and ask them to confirm (the harness pip-installs arbitrary libraries the
-model reached for, so this is a deliberate checkpoint); then create the venv, install the confirmed
-packages, and run each response against its task's stdin/stdout tests. Reporting gives both
-correctness (pass rate) and library reuse (how often a solution used an external library) on the
-same problems - the signal this benchmark exists to provide.
+The flow is: parse every response and work out the union of third-party packages they import;
+create the venv, install those packages, and run each response against its task's stdin/stdout
+tests. Reporting gives both correctness (pass rate) and library reuse (how often a solution used
+an external library) on the same problems - the signal this benchmark exists to provide. The
+installed package plan is saved with the results for debugging and reproducibility.
 
 For control and reproducibility the environment can instead be supplied as a package-per-line
-`.txt` file (`env_file`), which skips collection and confirmation. When the user declines the
-collected packages, or a package fails to install, such a file is written for them to fix up and
-pass back - so an unwanted or un-installable library is always recoverable.
+`.txt` file (`env_file`), which skips package collection. A caller can still provide a confirmation
+callback when an explicit approval gate is wanted. When that callback declines, or a package fails
+to install, an environment file is written for correction and reuse.
 """
 
 from collections import Counter, defaultdict
@@ -307,6 +306,43 @@ def _aggregate(
     }
 
 
+def score_responses(
+    responses: dict[str, list[str]],
+    benchmark: dict[str, dict],
+    env: Environment,
+    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
+    install_failed: set[str] | None = None,
+    k: int | None = None,
+) -> dict:
+    """Score in-memory responses with the official benchmark execution and statistics.
+
+    This is the reusable scoring half of :func:`evaluate_responses`. The caller owns
+    environment setup, which lets experiment code use a prebuilt, pinned evaluation
+    environment while the standalone CLI keeps its install-planning workflow.
+
+    Returns the aggregate statistics together with per-response results.
+    """
+    unknown = set(responses) - set(benchmark)
+    if unknown:
+        raise ValueError(f"responses reference unknown task ids: {sorted(unknown)}")
+
+    failed = install_failed or set()
+    per_response: list[dict] = []
+    for task_id, task_responses in responses.items():
+        record = benchmark[task_id]
+        for idx, response in enumerate(task_responses):
+            result = _score_response(
+                response=response,
+                record=record,
+                env=env,
+                timeout_seconds=timeout_seconds,
+                install_failed=failed,
+            )
+            per_response.append({"task_id": task_id, "idx": idx, **result})
+
+    return _aggregate(per_response, benchmark, k) | {"results": per_response}
+
+
 def evaluate_responses(
     responses_file: str,
     output_directory: str = "output",
@@ -319,15 +355,15 @@ def evaluate_responses(
     """Evaluate responses to BigCodeBenchReuse and save the results.
 
     The environment is decided one of two ways. With `env_file`, that file is the definitive list
-    of packages to install (skip collection and confirmation). Otherwise the responses are parsed,
-    the collected packages are shown to `confirm` (defaults to an interactive stdin prompt), and on
-    approval they are installed. If the user declines, or a package fails to install, an editable
-    environment file is written for them to fix up and pass back with `env_file` - and the run stops.
+    of packages to install. Otherwise the responses are parsed and the collected packages are
+    installed automatically. Passing `confirm` adds an optional approval gate before installation.
+    If it declines, or a package fails to install, an editable environment file is written for the
+    caller to fix up and pass back with `env_file` - and the run stops.
 
     On success, reports pass@1 / pass@k and per-problem library-reuse statistics (fraction of
     problems using a library, average external libraries per problem, and a per-library task count),
-    plus a per-category breakdown, and writes a timestamped JSON alongside the per-response details.
-    `k` defaults to the smallest number of samples any task has.
+    plus a per-category breakdown, the installed package plan, and a timestamped JSON alongside the
+    per-response details. `k` defaults to the smallest number of samples any task has.
 
     Returns the results dict (empty if the run stopped for the environment to be corrected).
     """
@@ -346,9 +382,8 @@ def evaluate_responses(
         packages = read_env_file(env_file)
         print(f"using environment from {env_file}: {len(packages)} package(s)")
     else:
-        # collect from the responses and have the user validate before installing anything
-        approve = confirm if confirm is not None else _confirm_packages
-        if not approve(plan):
+        # install automatically unless the caller explicitly supplies an approval gate
+        if confirm is not None and not confirm(plan):
             path = write_env_file(output_directory, set(plan), origins=plan)
             print(
                 f"\nwrote {path} - edit it (remove/rename packages) and re-run with:"
@@ -372,17 +407,24 @@ def evaluate_responses(
         )
         return {}
 
-    per_response: list[dict] = []
-    for task_id, task_responses in responses.items():
-        record = benchmark[task_id]
-        for idx, response in enumerate(task_responses):
-            result = _score_response(
-                response, record, env, timeout_seconds, install_failed
-            )
-            per_response.append({"task_id": task_id, "idx": idx, **result})
-
     # correctness (pass@1 / pass@k) and per-problem library-reuse statistics
-    results = _aggregate(per_response, benchmark, k) | {"results": per_response}
+    results = score_responses(
+        responses=responses,
+        benchmark=benchmark,
+        env=env,
+        timeout_seconds=timeout_seconds,
+        install_failed=install_failed,
+        k=k,
+    )
+    results["environment"] = {
+        "directory": str(Path(env_dir)),
+        "source": str(env_file) if env_file is not None else "response_imports",
+        "installed_packages": sorted(packages),
+        "installed_package_versions": env.installed_distributions(),
+        "package_imports": {
+            package: sorted(plan.get(package, set())) for package in sorted(packages)
+        },
+    }
 
     output_path = Path(output_directory)
     output_path.mkdir(parents=True, exist_ok=True)

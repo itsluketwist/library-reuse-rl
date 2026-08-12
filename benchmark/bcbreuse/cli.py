@@ -3,7 +3,7 @@
 import argparse
 
 from bcbreuse.environment import _DEFAULT_TIMEOUT_SECONDS
-from bcbreuse.evaluate import evaluate_responses
+from bcbreuse.evaluate import _confirm_packages, evaluate_responses
 
 
 def main() -> None:
@@ -25,7 +25,7 @@ def main() -> None:
         "--env",
         default=None,
         help="path to an environment .txt (one pip package per line); "
-        "if omitted, packages are collected from the responses and confirmed interactively",
+        "if omitted, packages are collected from the responses and installed automatically",
     )
     parser.add_argument(
         "--timeout",
@@ -40,14 +40,13 @@ def main() -> None:
         help="k for pass@k (default: the smallest number of samples any task has)",
     )
     parser.add_argument(
-        "--yes",
+        "--confirm-installs",
         action="store_true",
-        help="skip the install confirmation prompt (for non-interactive runs)",
+        help="ask for confirmation before installing the collected packages",
     )
     args = parser.parse_args()
 
-    # --yes approves any package list without asking; otherwise the default interactive prompt runs
-    confirm = (lambda _plan: True) if args.yes else None
+    confirm = _confirm_packages if args.confirm_installs else None
     evaluate_responses(
         responses_file=args.responses_file,
         output_directory=args.output_directory,

@@ -191,6 +191,7 @@ data/build/vendor
 benchmark/vendor
 benchmark/artefacts
 .bcbeval-venv
+.bcbeval-venvs
 
 logs/*
 wandb/*

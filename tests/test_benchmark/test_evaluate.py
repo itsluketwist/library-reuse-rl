@@ -32,6 +32,10 @@ class _FakeEnv:
         self.installed |= set(packages)
         return set()  # nothing fails to install
 
+    def installed_distributions(self) -> dict[str, str]:
+        """Return deterministic installed versions for result-recording tests."""
+        return {package: "1.2.3" for package in sorted(self.installed)}
+
     def evaluate(
         self,
         program: str,
@@ -79,8 +83,8 @@ class TestLoadResponses:
             evaluate._load_responses(str(path))
 
 
-class TestConfirmationGate:
-    """Declining the install confirmation aborts and writes a fixable environment file."""
+class TestInstallationPlan:
+    """Packages install by default, with an optional confirmation gate."""
 
     def test_decline_writes_env_and_aborts(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setattr(evaluate, "load_dataset", lambda: _FAKE_BENCHMARK)
@@ -116,6 +120,48 @@ class TestConfirmationGate:
                 env_dir=str(tmp_path / "venv"),
                 confirm=lambda _plan: True,
             )
+
+    def test_approved_plan_installs_detected_response_packages(
+        self,
+        tmp_path,
+        monkeypatch,
+    ) -> None:
+        """The complete evaluator installs packages inferred from model responses."""
+        environments = []
+
+        class _RecordingEnv(_FakeEnv):
+            def __init__(self, cache_dir: str) -> None:
+                super().__init__(cache_dir)
+                environments.append(self)
+
+        monkeypatch.setattr(evaluate, "load_dataset", lambda: _FAKE_BENCHMARK)
+        monkeypatch.setattr(evaluate, "Environment", _RecordingEnv)
+        path = tmp_path / "resp.jsonl"
+        save_jsonl(
+            [
+                {
+                    "task_id": "BCBR/T000",
+                    "response": "```python\nimport sklearn\nprint(1)\n```",
+                }
+            ],
+            path,
+        )
+
+        result = evaluate.evaluate_responses(
+            responses_file=str(path),
+            output_directory=str(tmp_path / "out"),
+            env_dir=str(tmp_path / "venv"),
+        )
+
+        assert result["pass@1"] == 1.0
+        assert environments[0].installed == {"scikit-learn"}
+        assert result["environment"] == {
+            "directory": str(tmp_path / "venv"),
+            "source": "response_imports",
+            "installed_packages": ["scikit-learn"],
+            "installed_package_versions": {"scikit-learn": "1.2.3"},
+            "package_imports": {"scikit-learn": ["sklearn"]},
+        }
 
 
 class TestEnvFile:
@@ -166,6 +212,9 @@ class TestEnvFile:
         )
         assert result["n_responses"] == 1
         assert result["pass@1"] == 1.0
+        assert result["environment"]["source"] == str(env)
+        assert result["environment"]["installed_packages"] == ["numpy"]
+        assert result["environment"]["installed_package_versions"] == {"numpy": "1.2.3"}
 
 
 class TestStatistics:

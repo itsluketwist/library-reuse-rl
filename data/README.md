@@ -4,8 +4,9 @@ All dataset download/construction code and the built datasets live here (the exc
 **BigCodeBenchReuse** eval benchmark, which is built and bundled in `benchmark/`). The folder is
 called `data` (not `datasets`) so it never shadows the HuggingFace `datasets` library.
 
-- **`train/`** — built training splits (`{train,val,test}.jsonl` each). `product_choice` and
-  `library_usage` are small and committed; `skywork` is a large download, so it is gitignored.
+- **`train/`** — built training splits (`{train,val,test}.jsonl` each). `library_usage` is
+  committed; `skywork` is a large download and `product_choice` depends on an upstream seed
+  without a redistribution licence, so those two are gitignored and must be built locally.
 - **`eval/`** — the committed evaluation sets (`livecodebench.jsonl`, `apps_introductory.jsonl`).
 - **`build/`** — all the construction code (an installed package, `data.build.*`, run by path).
 - **`REPORT.md`** — auto-generated audit of the built library-reuse splits (`build/audit.py`).
@@ -13,7 +14,8 @@ called `data` (not `datasets`) so it never shadows the HuggingFace `datasets` li
 The `product_choice` split and the amplify seed are derived from amplifying.ai's **claude-code-picks**
 study — [blog](https://amplifying.ai/research/claude-code-picks) ·
 [repo](https://github.com/amplifying-ai/claude-code-picks). Credit to them for the prompts, the
-test repos, and the tool-frequency data we build on.
+test repos, and the tool-frequency data we build on. The split is not redistributed here because
+the upstream seed has no licence.
 
 ## Three task styles
 
@@ -98,7 +100,15 @@ python data/build/download_eval.py          # -> data/eval/
 ## Training / eval
 
 ```
-run_grpo -m <model> -d data/train/library_usage  -rp library_usage
+run_grpo -m <model> -d data/train/library_usage  -rp lu-v1
 run_grpo -m <model> -d data/train/product_choice -rp product_choice
 run_eval -m <model> -d library_usage,product_choice
 ```
+
+The eval dataset configuration stores an explicit `evaluator` beside every path. The
+library-usage evaluator examines every fenced answer code block and reports valid-code
+rate, reuse rate, appropriate-library rate, average distinct libraries used, library counts,
+and category breakdowns. BigCodeBenchReuse uses its package's complete official evaluator:
+it discovers and installs the generated responses' dependencies in an isolated environment,
+runs the official tests, and saves the official correctness and reuse statistics together with
+the requested packages and resolved environment versions.

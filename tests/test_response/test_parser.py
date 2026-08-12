@@ -61,6 +61,35 @@ print(add(1, 2))
         assert block.text == ""
 
 
+class TestParseCodeBlocks:
+    """Tests for retaining every code example while marking a test candidate."""
+
+    def test_parses_all_answer_blocks_and_marks_largest(self):
+        """All blocks are analysed, while only the largest is marked for tests."""
+        response = """<think>ignore ```python\nimport hidden\n```</think>
+```python
+import requests
+requests.get("https://example.com")
+```
+```python
+import numpy as np
+np.array([1])
+print("make this block longer")
+```
+"""
+
+        parsed = parse_response(response)
+        blocks = parsed.code_blocks
+
+        assert len(blocks) == 2
+        assert blocks[0].ext_libs == ["requests"]
+        assert blocks[1].ext_libs == ["numpy"]
+        assert not blocks[0].selected_for_tests
+        assert blocks[1].selected_for_tests
+        assert parsed.test_code_block is blocks[1]
+        assert parsed.code == blocks[1].text
+
+
 class TestLibraryUsage:
     """Tests for the internal (std) vs external (ext) library split."""
 
@@ -141,3 +170,5 @@ def total(values):
         assert parsed.valid is None
         assert parsed.logical_lines is None
         assert parsed.maintainability_index is None
+        assert parsed.code_blocks == []
+        assert parsed.test_code_block is None

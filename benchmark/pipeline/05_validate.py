@@ -13,7 +13,7 @@ and uninstall them again, so each problem is evaluated with exactly its own libr
 Apparent failures are dominated by sampling variance, not model capability, so we draw best-of-N
 (--attempts): a task is kept as soon as any sample reproduces the outputs. The run is resumable
 (only non-kept tasks are retried) and supports --limit / --model. Point BCB_BUILD_PYTHON at the
-seeded build venv (setup/setup_build_venv.sh).
+seeded build venv (benchmark/pipeline/setup_build_venv.sh).
 
 Usage: python benchmark/pipeline/05_validate.py [--limit N] [--model M] [--attempts N]
 """

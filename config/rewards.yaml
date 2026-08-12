@@ -29,7 +29,7 @@ product_choice:
 # library-usage task: reward reusing an external library in code, detected
 # programmatically from the imports (no execution). appropriate_lib_used is a bonus for
 # picking a library that suits the task's category (see useful_libs in the dataset).
-library_usage:
+lu-v1:
   correct_format: 0.1
   passes_syntax_check: 0.1
   external_lib_imported: 0.5

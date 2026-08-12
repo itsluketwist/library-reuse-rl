@@ -56,14 +56,15 @@ supported:
 
 Because the benchmark is library-agnostic, solutions may import arbitrary third-party libraries.
 The harness parses every response, collects the packages they import (mapping import names to PyPI
-distribution names, e.g. `sklearn` → `scikit-learn`), and **asks you to confirm before installing
-anything** into a disposable virtual environment. Only after confirmation does it create the venv,
-install the packages, and run the tests.
+distribution names, e.g. `sklearn` → `scikit-learn`), creates an isolated virtual environment,
+installs the packages automatically, and runs the tests. The saved result includes the environment
+directory, requested package list, import names that produced the install plan, and the resolved
+version of every installed distribution.
 
-- pass `--yes` to skip the confirmation for non-interactive runs;
+- pass `--confirm-installs` to add an interactive confirmation gate;
 - pass `--env env.txt` (one pip package per line) to pin the environment exactly and skip
   collection;
-- if you decline the collected packages, or a package fails to install, an editable `env.txt` is
+- if confirmation is declined, or a package fails to install, an editable `env.txt` is
   written for you to correct (remove unwanted libraries, fix names, pin versions) and re-run with
   `--env`.
 

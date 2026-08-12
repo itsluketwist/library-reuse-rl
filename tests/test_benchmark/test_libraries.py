@@ -40,6 +40,22 @@ class TestExtractAndImports:
         code = extract_code(self._RESPONSE)
         assert code is not None and "re.findall" in code
 
+    def test_extract_code_picks_largest_fenced_block(self) -> None:
+        """Executable BCBReuse answers select one largest candidate program."""
+        response = """```python
+print("short")
+```
+```python
+line = input()
+value = line.strip()
+print(value)
+```"""
+
+        code = extract_code(response)
+
+        assert code is not None and "value = line.strip()" in code
+        assert 'print("short")' not in code
+
     def test_extract_code_none_when_no_code(self) -> None:
         assert extract_code("just prose, no code here") is None
 

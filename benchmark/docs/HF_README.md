@@ -129,15 +129,17 @@ results = bcbreuse.evaluate_responses("your_responses.jsonl")
 ```
 
 The harness parses each response, collects the third-party packages the responses import (mapping
-import names to PyPI names, e.g. `sklearn` → `scikit-learn`), and **asks you to confirm before
-installing anything** into a disposable virtual environment. It then runs each response against its
-task's stdin/stdout tests and reports **pass@1 / pass@k** (test pass rate) and **library-reuse
+import names to PyPI names, e.g. `sklearn` → `scikit-learn`), and installs them into an isolated
+virtual environment. It then runs each response against its task's stdin/stdout tests and reports
+**pass@1 / pass@k** (test pass rate) and **library-reuse
 statistics** — the fraction that used a library, the average number of external libraries, and a
 per-library count — computed **both per task and per response**, plus a per-category breakdown.
+The result records the environment directory, requested packages, originating import names, and
+the resolved version of every installed distribution.
 
-Pass `--yes` to skip the confirmation, or `--env env.txt` (one pip package per line) to pin the
-environment exactly. If you decline the collected packages or an install fails, an editable
-`env.txt` is written for you to fix up and re-run with `--env`.
+Pass `--confirm-installs` to add an interactive approval gate, or `--env env.txt` (one pip package
+per line) to pin the environment exactly. If confirmation is declined or an install fails, an
+editable `env.txt` is written for you to fix up and re-run with `--env`.
 
 ## 📊  *leaderboard*
 

@@ -17,7 +17,8 @@ from src.utils.io import load_jsonl
 
 # interpreter used to execute model-generated code during the build (stage 04 runs the stdlib gold
 # solutions). defaults to the current interpreter; point BCB_BUILD_PYTHON at an isolated venv
-# (setup/setup_build_venv.sh) so untrusted generated code runs in a throwaway environment.
+# (benchmark/pipeline/setup_build_venv.sh) so untrusted generated code runs in a
+# throwaway environment.
 BUILD_PYTHON = os.environ.get("BCB_BUILD_PYTHON") or sys.executable
 
 

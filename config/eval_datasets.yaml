@@ -1,14 +1,31 @@
-# eval dataset config - nice names mapped to their dataset file paths
+# eval dataset config - every path is paired with an explicit scorer from
+# src/eval/scoring.py so similarly shaped datasets cannot be scored accidentally.
 
-livecodebench: "data/eval/livecodebench.jsonl"
-apps_introductory: "data/eval/apps_introductory.jsonl"
-skywork_test: "data/train/skywork/test.jsonl"
+livecodebench:
+  path: "data/eval/livecodebench.jsonl"
+  evaluator: implement_tested
+  python_executable: ".venv-eval/bin/python"
+apps_introductory:
+  path: "data/eval/apps_introductory.jsonl"
+  evaluator: implement_tested
+  python_executable: ".venv-eval/bin/python"
+skywork_test:
+  path: "data/train/skywork/test.jsonl"
+  evaluator: implement_tested
+  python_executable: ".venv-eval/bin/python"
 
 # library-reuse held-out test splits (built by data/build/amplify/build.py and
 # data/build/library/build.py); scored by the prose pick / import classification rather than
 # execution (src/eval/scoring.py)
-product_choice: "data/train/product_choice/test.jsonl"
-library_usage: "data/train/library_usage/test.jsonl"
+product_choice:
+  path: "data/train/product_choice/test.jsonl"
+  evaluator: product_choice
+library_usage:
+  path: "data/train/library_usage/test.jsonl"
+  evaluator: library_usage
 
 # BigCodeBenchReuse: library-agnostic stdin/stdout problems with executable test cases
-bcbreuse: "benchmark/bcbreuse/data/test.jsonl"
+bcbreuse:
+  path: "benchmark/bcbreuse/data/test.jsonl"
+  evaluator: bcbreuse
+  environment_root: ".bcbeval-venvs"

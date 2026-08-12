@@ -49,12 +49,16 @@ uv sync --locked
 source .venv/bin/activate
 ```
 
-Create the isolated venv used to run llm-generated code during evaluation (`v1` for the
-Skywork/library splits, `bcb` for BigCodeBench-Reuse):
+Create the isolated venv used by the ordinary stdin/stdout code benchmarks:
 
 ```shell
 bash setup/setup_eval_venv.sh v1
 ```
+
+BigCodeBenchReuse does not use this venv. Its official evaluator discovers the packages
+imported by the generated responses, creates an isolated cached environment under
+`.bcbeval-venvs/`, installs those packages, and then runs the benchmark tests. Results record
+the requested packages, their originating imports, and all resolved distribution versions.
 
 ## *usage*
 
@@ -63,7 +67,7 @@ and `run_eval` console scripts (installed into the venv by `uv sync`, see
 [`src/run_grpo.py`](src/run_grpo.py) and [`src/run_eval.py`](src/run_eval.py)):
 
 ```shell
-run_grpo -m qwen3-8b -d data/skywork
+run_grpo -m qwen3-8b -d data/train/library_usage -rp lu-v1
 
 run_eval -m qwen3-8b
 ```
@@ -72,15 +76,15 @@ Run either with `--help` to see all options (base/decoding/reward configuration,
 datasets to evaluate against, etc).
 
 On a slurm cluster, use the submission scripts in [`scripts/`](scripts/) instead - edit the
-configuration block at the top of each, then run e.g. `bash scripts/submit_grpo.sh`. This
-also takes care of automatically queuing a `run_eval` job once `run_grpo` finishes.
+configuration block at the top of each, then run e.g. `bash scripts/submit_grpo.sh`. Submit
+evaluation separately after the trained run ids have been registered in `config/models.yaml`.
 
 Pass `--debug` to either command to smoke-test the code end-to-end: it truncates the
 dataset(s) to a handful of samples, and defaults to the tiny `qwen3-debug` model (see
 [`config/models.yaml`](config/models.yaml)) if `-m`/`--model` isn't given.
 
 ```shell
-run_grpo -d data/skywork --debug
+run_grpo -d data/train/skywork --debug
 
 run_eval --debug
 ```
@@ -118,30 +122,27 @@ profile (name + weights) is recorded in the run's `train_results.json` and in th
 trained model's registry `properties` (see [`src/run_grpo.py`](src/run_grpo.py)), so a
 run's reward function stays recoverable.
 
-The reward logic lives in [`src/grpo/rewards.py`](src/grpo/rewards.py): `REWARD_COMPONENTS`
-is the set of valid component names (the keys allowed in a profile), and `compute_reward`
-has one `if weight := weights.get("name"):` block per component, adding its weight when
-satisfied.
+The reward logic lives in [`src/grpo/rewards/`](src/grpo/rewards/). The dataset row's
+`task_type` selects the reward class automatically; `-rp` selects that class's component
+weights. Incompatible combinations fail before training instead of silently becoming no-op
+components.
 
 **To add a new reward profile**, add a top-level entry to `config/rewards.yaml` using
 existing component names.
 
-**To add a new reward component**, in `src/grpo/rewards.py`:
+**To add a new reward component**, in `src/grpo/rewards/`:
 
-1. Add its name to the `REWARD_COMPONENTS` frozenset.
-2. Add a matching `if weight := weights.get("your_component_name"):` block in
-   `compute_reward`.
+1. Add its name to `REWARD_COMPONENTS` and the relevant task's supported-component set.
+2. Score it in the relevant reward class.
 3. Reference the new name in a `config/rewards.yaml` profile.
 
 ## *structure*
 
 - [`config/`](config/) - YAML config: the model registry (base models, and trained models
-  once `run_grpo` registers one), decoding profiles, and the eval dataset name → file mapping.
-- [`data/`](data/) - Scripts that download and format the datasets used by the project
-  ([`download_skywork.py`](data/download_skywork.py) for RL training data,
-  [`download_eval.py`](data/download_eval.py) for the held-out eval benchmarks). Run them
-  directly (e.g. `python data/download_skywork.py`) - their outputs are written alongside
-  them (`data/skywork/`, `data/eval/`) and are not committed.
+  once `run_grpo` registers one), decoding profiles, and each eval dataset's path, scorer,
+  and execution environment.
+- [`data/`](data/) - Built training/evaluation datasets and their construction pipelines;
+  see [`data/README.md`](data/README.md).
 - [`notebooks/`](notebooks/) - One-off, numbered notebooks for exploratory work that doesn't
   belong in `src/`.
 - [`output/`](output/) - Trained model outputs, named and registered automatically by

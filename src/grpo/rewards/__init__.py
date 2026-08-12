@@ -25,6 +25,39 @@ _REWARD_CLASSES: dict[str, type[LibraryReward]] = {
     "implement_tested": TestedImplementationReward,
 }
 
+# a profile may only contain components its selected reward class actually reads. keeping
+# this explicit makes a mismatched dataset/profile fail before an expensive training run.
+_SUPPORTED_COMPONENTS: dict[str, frozenset[str]] = {
+    "implement_tested": frozenset(
+        {
+            "correct_format",
+            "passes_syntax_check",
+            "passed_tests",
+            "internal_lib_imported",
+            "external_lib_imported",
+            "internal_lib_used",
+            "external_lib_used",
+        }
+    ),
+    "library_usage": frozenset(
+        {
+            "correct_format",
+            "passes_syntax_check",
+            "external_lib_imported",
+            "external_lib_used",
+            "appropriate_lib_used",
+        }
+    ),
+    "product_choice": frozenset(
+        {
+            "correct_format",
+            "names_external_lib",
+            "mentions_external_lib",
+            "avoids_diy",
+        }
+    ),
+}
+
 DEFAULT_REWARD_KIND = "implement_tested"
 
 
@@ -43,6 +76,13 @@ def build_reward(
     if kind not in _REWARD_CLASSES:
         raise ValueError(
             f"Unknown reward kind '{kind}'. Available: {sorted(_REWARD_CLASSES)}"
+        )
+
+    unsupported = sorted(set(weights) - _SUPPORTED_COMPONENTS[kind])
+    if unsupported:
+        raise ValueError(
+            f"Reward profile contains component(s) {unsupported} that '{kind}' does "
+            f"not score. Supported components: {sorted(_SUPPORTED_COMPONENTS[kind])}"
         )
     return _REWARD_CLASSES[kind](weights)
 

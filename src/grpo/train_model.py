@@ -224,6 +224,29 @@ def train_model_with_grpo(
         val_n=DEBUG_VAL_SAMPLES if debug else None,
     )
 
+    ################
+    # select reward
+    ################
+    # require one task type across train and validation; otherwise one reward callable
+    # would score some rows with the wrong semantics.
+    reward_kinds: set[str] = set()
+    for split in ("train", "val"):
+        split_dataset = dataset[split]
+        if "task_type" not in split_dataset.column_names:
+            reward_kinds.add(infer_reward_kind({}))
+        else:
+            reward_kinds.update(split_dataset["task_type"])
+    if len(reward_kinds) != 1:
+        raise ValueError(
+            f"Training dataset must contain exactly one reward kind; found "
+            f"{sorted(reward_kinds)}."
+        )
+
+    # build_reward also rejects profile components this task does not understand.
+    reward_kind = reward_kinds.pop()
+    logger.info(f"Reward kind: {reward_kind}")
+    reward_func = build_reward(kind=reward_kind, weights=reward_weights)
+
     ##########################
     # Load model and tokenizer
     ##########################
@@ -239,12 +262,6 @@ def train_model_with_grpo(
     # unsloth places the model (and colocated vllm engine) on the gpu at load time, so
     # this already reflects most of the run's steady-state model memory
     log_gpu_memory("after model load")
-
-    # pick the reward for this dataset's task (tested implementation, library usage, or
-    # product choice), configured with this run's reward_weights
-    reward_kind = infer_reward_kind(dataset["train"][0])
-    logger.info(f"Reward kind: {reward_kind}")
-    reward_func = build_reward(kind=reward_kind, weights=reward_weights)
 
     #############################
     # Initialize the GRPO trainer
@@ -281,6 +298,7 @@ def train_model_with_grpo(
     # added after log_metrics (which only formats scalars); _save_metrics_json below
     # json.dumps it into train_results.json regardless
     metrics["reward_profile"] = {"name": reward_profile, "weights": reward_weights}
+    metrics["reward_kind"] = reward_kind
     _save_metrics_json(metrics_dir, "train", metrics)
     trainer.state.save_to_json(metrics_dir / "trainer_state.json")
 

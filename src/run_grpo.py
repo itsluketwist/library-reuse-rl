@@ -102,13 +102,13 @@ parser.add_argument(
 parser.add_argument(
     "--library-prompt-style",
     type=str,
-    choices=["lib", "use", "std"],
+    choices=["lib", "use", "std", "base"],
     default="lib",
     help=(
         "System-prompt wording (see src/prompts.py): 'lib' lists the available "
         "libraries, 'use' also pushes the model to prefer them (both need the recipe's "
         "libraries_requirements_file), 'std' pushes the model to prefer the standard "
-        "library (independent of that file). Sets the output suffix."
+        "library (independent of that file), and 'base' skips the system prompt."
     ),
 )
 
@@ -156,7 +156,7 @@ def run_grpo(
     """
     Run GRPO RL training for the given model and dataset.
 
-    `dataset` is a directory of train/val/test.jsonl files (e.g. data/skywork); training
+    `dataset` is a directory of train/val/test.jsonl files (e.g. data/train/skywork); training
     runs against train.jsonl and uses val.jsonl for periodic evaluation if the recipe
     enables it. `seed` and `library_prompt_style` override the recipe's fields.
 

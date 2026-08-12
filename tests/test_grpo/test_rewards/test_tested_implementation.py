@@ -5,7 +5,7 @@ from src.grpo.rewards.tested_implementation import (
     TestedImplementationReward,
     compute_reward,
 )
-from src.response.parser import ParsedResponse
+from src.response.parser import ParsedCodeBlock, ParsedResponse
 from src.response.pipeline import ProcessedResponse
 
 
@@ -19,10 +19,9 @@ def _dummy_parsed(
     lib_usage: dict[str, list[dict]] | None = None,
 ) -> ParsedResponse:
     """Build a ParsedResponse for reward tests, with sensible defaults."""
-    return ParsedResponse(
-        reasoning=reasoning,
-        answer=answer if answer is not None else code,
-        code=code,
+    block = ParsedCodeBlock(
+        language="python",
+        text=code,
         valid=valid,
         error=None,
         std_libs=std_libs or [],
@@ -30,6 +29,12 @@ def _dummy_parsed(
         lib_usage=lib_usage or {},
         logical_lines=1,
         maintainability_index=100.0,
+        selected_for_tests=True,
+    )
+    return ParsedResponse(
+        reasoning=reasoning,
+        answer=answer if answer is not None else code,
+        code_blocks=[block],
     )
 
 

@@ -26,20 +26,16 @@ models=(
     "qwen3-8b"
 )
 
-# training dataset directories (each containing train/val/test.jsonl) — one set of
-# jobs is submitted per directory
-training_datasets=(
-    "data/skywork"
+# training jobs are dataset|reward-profile|prompt-style. keeping these together avoids
+# silently applying a reward or a python-specific system prompt to the wrong task.
+training_jobs=(
+    # "data/train/skywork|full|lib"
+    "data/train/library_usage|lu-v1|lib"
 )
 
 # grpo training recipe - hyperparameters, including the decoding settings used to
 # generate responses during rollout (see config/training.yaml)
 recipe_config="config/training.yaml"
-
-# system prompt wording during training (see src/prompts.py::PromptStyle)
-library_prompt_style="lib"
-# library_prompt_style="use"
-# library_prompt_style="std"
 
 # random seed for training
 seed=42
@@ -47,14 +43,9 @@ seed=42
 # true = tiny smoke test instead of full training (see --debug in src/run_grpo.py)
 debug=false
 
-# reward profile to use for this run (see config/rewards.yaml)
-reward_profile="full"
-
 ###############################################################################
 #                            submit jobs                                      #
 ###############################################################################
-
-reward_profile_flag="--reward-profile $reward_profile"
 
 # build debug flag string
 debug_flag=""
@@ -72,29 +63,37 @@ if [ ${#models[@]} -eq 0 ]; then
     echo "No models configured - uncomment/add at least one entry in the models array."
     exit 1
 fi
-if [ ${#training_datasets[@]} -eq 0 ]; then
-    echo "No training datasets configured - uncomment/add at least one entry in the training_datasets array."
+if [ ${#training_jobs[@]} -eq 0 ]; then
+    echo "No training jobs configured - add at least one entry to the training_jobs array."
     exit 1
 fi
+for training_job in "${training_jobs[@]}"; do
+    IFS="|" read -r training_dataset _reward_profile _prompt_style <<< "$training_job"
+    if [ ! -f "$training_dataset/train.jsonl" ] || \
+        [ ! -f "$training_dataset/val.jsonl" ]; then
+        echo "Training dataset is missing train.jsonl or val.jsonl: $training_dataset"
+        exit 1
+    fi
+done
 
 echo
-echo "Training ${#models[@]} models x ${#training_datasets[@]} datasets"
+echo "Training ${#models[@]} models x ${#training_jobs[@]} dataset configurations"
 echo "  Recipe: $recipe_config"
 echo "  Seed: $seed"
-echo "  Reward profile: $reward_profile"
-echo "  Library prompt style: $library_prompt_style"
 echo
 
 for model in "${models[@]}"; do
     echo "Submitting jobs for $model"
+    mkdir -p "logs/train-$model"
 
-    for training_dataset in "${training_datasets[@]}"; do
+    for training_job in "${training_jobs[@]}"; do
+        IFS="|" read -r training_dataset reward_profile library_prompt_style <<< "$training_job"
         dataset_name=$(basename "$training_dataset")
 
         # registry key this run's trained model gets registered under (config/models.yaml)
         run_id="${model}-$(uuidgen | tr '[:upper:]' '[:lower:]' | cut -c1-4)"
 
-        echo "  Submitting: $dataset_name [$recipe_config]"
+        echo "  Submitting: $dataset_name [$reward_profile] [$library_prompt_style]"
 
         train_job_id=$(sbatch --parsable <<EOF
 #!/bin/bash -l
@@ -122,7 +121,7 @@ run_grpo \
     --library-prompt-style $library_prompt_style \
     --output-root ${OUTPUT_BASE} \
     --run-id $run_id \
-    $reward_profile_flag \
+    --reward-profile $reward_profile \
     $debug_flag &
 wait $!
 

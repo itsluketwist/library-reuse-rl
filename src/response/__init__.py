@@ -2,6 +2,7 @@
 
 from src.response.evaluate import evaluate_record, execute_code, resolve_eval_python
 from src.response.parser import (
+    ParsedCodeBlock,
     ParsedResponse,
     code_metrics,
     parse_response,
@@ -12,6 +13,7 @@ from src.response.pipeline import ProcessedResponse, process_response
 
 
 __all__ = [
+    "ParsedCodeBlock",
     "ParsedResponse",
     "ProcessedResponse",
     "code_metrics",

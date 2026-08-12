@@ -193,7 +193,9 @@ def run_eval(
 
     recipe = load_full_yaml(decoding_config)
     libraries_requirements_file = recipe.get("libraries_requirements_file")
+    model_dtype = recipe.get("dtype", "auto")
     log(f"Libraries requirements file: {libraries_requirements_file or 'none'}")
+    log(f"Model dtype: {model_dtype}")
 
     # size vllm's adapter slot from the recipe's training rank (assumes same recipe)
     max_lora_rank = recipe.get("lora_r")
@@ -207,7 +209,22 @@ def run_eval(
 
     available_datasets = load_full_yaml(eval_datasets_config)
     dataset_names = datasets if datasets is not None else list(available_datasets)
-    dataset_files = {name: available_datasets[name] for name in dataset_names}
+    dataset_configs = {name: available_datasets[name] for name in dataset_names}
+    for name, dataset_config in dataset_configs.items():
+        if not isinstance(dataset_config, dict):
+            raise ValueError(
+                f"Dataset '{name}' in {eval_datasets_config} must define path and evaluator."
+            )
+        missing = {"path", "evaluator"} - set(dataset_config)
+        if missing:
+            raise ValueError(
+                f"Dataset '{name}' in {eval_datasets_config} is missing {sorted(missing)}."
+            )
+        dataset_path = Path(dataset_config["path"])
+        if not dataset_path.is_file():
+            raise FileNotFoundError(
+                f"Dataset '{name}' does not exist at {dataset_path}."
+            )
     output_paths = {
         name: eval_results_path(
             model=model,
@@ -223,9 +240,10 @@ def run_eval(
     evaluate_model(
         base=base,
         adapter_path=adapter_path,
-        dataset_files=dataset_files,
+        dataset_configs=dataset_configs,
         decoding_settings=decoding_settings,
         output_paths=output_paths,
+        model_dtype=model_dtype,
         max_lora_rank=max_lora_rank,
         libraries_requirements_file=libraries_requirements_file,
         prompt_style=prompt_style,

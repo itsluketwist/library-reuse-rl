@@ -17,7 +17,7 @@ def compute_reward(
 
     Only the components present in `weights` contribute, each scaled by its weight. Each
     `if` below is independent, so a response can earn any combination of components. This
-    is the execution-verified reward used for the stdin/stdout dataset (data/skywork).
+    is the execution-verified reward used for the stdin/stdout dataset (data/train/skywork).
 
     Returns a scalar reward.
     """
