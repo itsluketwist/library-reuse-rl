@@ -231,7 +231,7 @@ wheels = [
 ]
 
 [[package]]
-name = "bcb-reuse"
+name = "bcbreuse"
 version = "0.1.0"
 source = { editable = "benchmark" }
 dependencies = [
@@ -2849,7 +2849,7 @@ version = "0.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
-    { name = "bcb-reuse" },
+    { name = "bcbreuse" },
     { name = "beautifulsoup4" },
     { name = "datasets" },
     { name = "huggingface-hub" },
@@ -2889,7 +2889,7 @@ hpc = [
 requires-dist = [
     { name = "accelerate", marker = "sys_platform == 'linux' and extra == 'hpc'", specifier = ">=0.34.1" },
     { name = "anthropic" },
-    { name = "bcb-reuse", editable = "benchmark" },
+    { name = "bcbreuse", editable = "benchmark" },
     { name = "beautifulsoup4" },
     { name = "datasets", specifier = ">=3.4.1,!=4.0.*,!=4.1.0,<4.4.0" },
     { name = "flash-attn", marker = "sys_platform == 'linux' and extra == 'hpc'", specifier = "==2.8.3.post1" },
