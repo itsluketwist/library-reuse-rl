@@ -5,6 +5,7 @@ from typing import Any
 
 __all__ = [
     "evaluate_model",
+    "generate_api_responses",
     "generate_responses",
 ]
 
@@ -20,4 +21,8 @@ def __getattr__(name: str) -> Any:
         from .generate import generate_responses
 
         return generate_responses
+    if name == "generate_api_responses":
+        from .generate_api import generate_api_responses
+
+        return generate_api_responses
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

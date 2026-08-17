@@ -5,16 +5,7 @@ from typing import Any
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 
-
-def _stop_reason(finish_reason: str) -> str:
-    """
-    Map vllm's finish_reason to this project's stop_reason vocabulary: "stop" (natural
-    end-of-turn) becomes "eos", "length" (hit max_tokens) passes through. Anything else
-    passes through verbatim so it stays visible rather than inflating the overflow count.
-
-    Returns the mapped stop reason.
-    """
-    return {"stop": "eos", "length": "length"}.get(finish_reason, finish_reason)
+from .stop_reason import map_stop_reason
 
 
 def generate_responses(
@@ -34,6 +25,13 @@ def generate_responses(
     vllm handles chat templating, batching, and scheduling internally, and returns
     outputs in the same order as `prompts`.
 
+    `enable_thinking=False` matches the non-reasoning baseline the api-served models in
+    config/models.yaml are configured for (DeepSeek's "thinking" disabled, GPT's
+    "reasoning_effort" set to "none"): local Qwen3 models default their chat template to
+    thinking mode on, which otherwise burns the whole max_new_tokens budget on a reasoning
+    trace before ever emitting an answer, truncating every response with no code to score.
+    Templates that don't define the variable ignore it, so this is a no-op for other models.
+
     Returns a list of (response, stop_reason) tuples.
     """
     sampling_params = SamplingParams(
@@ -48,9 +46,10 @@ def generate_responses(
         sampling_params=sampling_params,
         use_tqdm=True,
         lora_request=lora_request,
+        chat_template_kwargs={"enable_thinking": False},
     )
 
     return [
-        (output.outputs[0].text, _stop_reason(output.outputs[0].finish_reason))
+        (output.outputs[0].text, map_stop_reason(output.outputs[0].finish_reason))
         for output in outputs
     ]

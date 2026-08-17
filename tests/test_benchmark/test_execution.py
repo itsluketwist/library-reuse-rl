@@ -24,6 +24,19 @@ class TestRunProgram:
         assert not ok
         assert "boom" in out or "ValueError" in out
 
+    def test_missing_interpreter_fails_cleanly(self, tmp_path) -> None:
+        """A python_executable that can't be launched (e.g. a venv whose interpreter
+        transiently vanished on a network filesystem) fails this one call rather than
+        raising and crashing the caller's whole evaluation run."""
+        missing_python = tmp_path / "no-such-venv" / "bin" / "python"
+
+        ok, message = run_program(
+            "print('hi')", stdin="", python_executable=missing_python
+        )
+
+        assert not ok
+        assert "no-such-venv" in message
+
 
 class TestEvaluateRecord:
     """evaluate_record checks a program against (stdin, expected) pairs."""

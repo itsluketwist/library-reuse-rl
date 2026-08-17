@@ -3,6 +3,18 @@
 # has actually been trained, pointing at that run's lora adapter. trained entries also
 # carry a "properties" block recording the knobs the run was launched with, since the
 # run-id key is non-descriptive - see src/utils/config.py and src/run_grpo.py
+#
+# entries default to "provider: vllm" (loaded as local weights, see src/eval/evaluate.py)
+# when the key is absent, so every local/trained entry below omits it. "provider: api"
+# entries are served over an OpenAI-compatible chat completions API instead (see
+# src/eval/generate_api.py) - "base" is the provider's model id, no local weights or
+# adapter apply, so "path" stays blank like an untrained base model, and "api_key_env"
+# names the .env variable holding the credential (see scripts/setup_job.sh). "extra_params",
+# if given, is merged into every chat.completions.create() call verbatim - e.g. DeepSeek's
+# reasoning models need "thinking" set explicitly, since the api defaults it to enabled.
+# "max_tokens_param" (default "max_tokens") names the request field the generation-length
+# cap is sent under - newer OpenAI reasoning-family models reject the legacy "max_tokens"
+# and require "max_completion_tokens" instead.
 
 qwen3-debug:
   base: "Qwen/Qwen3-0.6B"
@@ -14,4 +26,31 @@ qwen3-4b:
 
 qwen3-8b:
   base: "Qwen/Qwen3-8B"
+  path:
+
+# deepseek-chat/deepseek-reasoner (the old non-thinking/thinking aliases) were retired
+# 2026-07-24 in favour of deepseek-v4-flash/deepseek-v4-pro, which fold both modes into
+# one model behind a "thinking" request param (default: enabled) - disabled here to match
+# the old deepseek-chat's fast, non-reasoning behaviour.
+deepseek-v4-flash:
+  provider: api
+  base: "deepseek-v4-flash"
+  base_url: "https://api.deepseek.com"
+  api_key_env: "DEEPSEEK_API_KEY"
+  extra_params:
+    thinking:
+      type: disabled
+  path:
+
+# gpt-5.6-luna defaults reasoning_effort to "medium" (unlike the older non-reasoning
+# gpt-4.1-mini) - set to "none" here for a comparable fast/cheap chat baseline. it also
+# rejects the legacy "max_tokens" field (400: unsupported_parameter), requiring
+# "max_completion_tokens" instead.
+gpt-5.6-luna:
+  provider: api
+  base: "gpt-5.6-luna"
+  api_key_env: "OPENAI_API_KEY"
+  extra_params:
+    reasoning_effort: "none"
+  max_tokens_param: "max_completion_tokens"
   path:

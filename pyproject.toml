@@ -37,6 +37,9 @@ dependencies = [
     "huggingface_hub",
     "Jupyter",
     "llm-codegen-research",
+    # openai sdk for eval's "api" provider (src/eval/generate_api.py) - also speaks
+    # DeepSeek's OpenAI-compatible chat completions api, via base_url
+    "openai",
     "pre-commit",
     "pytest",
     "pyyaml",

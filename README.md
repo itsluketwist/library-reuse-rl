@@ -37,6 +37,7 @@ handling, code analysis, the `benchmark` pipeline, tooling) works anywhere.
 On the HPC (full training + evaluation stack):
 
 ```shell
+module load cuda/12.2.1-gcc-13.2.0
 uv sync --locked --extra hpc
 source .venv/bin/activate
 ```
