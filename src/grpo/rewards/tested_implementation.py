@@ -13,26 +13,15 @@ def compute_reward(
     weights: dict[str, float],
 ) -> float:
     """
-    Compute the tested-implementation reward, given whether the code passed evaluation.
+    Compute the execution-specific part of the tested-implementation reward.
 
-    Only the components present in `weights` contribute, each scaled by its weight. Each
-    `if` below is independent, so a response can earn any combination of components. This
-    is the execution-verified reward used for the stdin/stdout dataset (data/train/skywork).
+    correct_format and passes_syntax_check are shared with the other rewards (see
+    CodeReward.score_syntax / LibraryReward.score_correct_format) and added by
+    TestedImplementationReward.score, not here.
 
     Returns a scalar reward.
     """
     reward = 0.0
-
-    if weight := weights.get("correct_format"):
-        # response has the expected shape: reasoning, an answer, and a code fragment
-        # (structure only, not whether the code is valid python)
-        if parsed.reasoning.strip() and parsed.answer and parsed.code:
-            reward += weight
-
-    if weight := weights.get("passes_syntax_check"):
-        # the selected code fragment parses as valid python
-        if parsed.valid:
-            reward += weight
 
     if weight := weights.get("passed_tests"):
         # the code passed evaluation against the record's tests
@@ -70,8 +59,8 @@ class TestedImplementationReward(CodeReward):
     Reward for code verified by executing it against stdin/stdout test cases.
 
     Runs the completion's code against the row's `inputs`/`expected_outputs` (the
-    execution "pain point" this project otherwise avoids), then scores it with
-    compute_reward. This is the reward used for the existing Skywork dataset.
+    execution "pain point" this project otherwise avoids). This is the reward used for
+    the existing Skywork dataset.
     """
 
     # the class name starts with "Test", so tell pytest it is not a test class
@@ -94,8 +83,14 @@ class TestedImplementationReward(CodeReward):
                 "expected_outputs": row["expected_outputs"],
             },
         )
-        return compute_reward(
+        reward = 0.0
+        reward = self.score_correct_format(
+            reward, processed.reasoning, processed.answer, row
+        )
+        reward = self.score_syntax(reward, processed)
+        reward += compute_reward(
             parsed=processed,
             passed=processed.passed,
             weights=self.weights,
         )
+        return reward

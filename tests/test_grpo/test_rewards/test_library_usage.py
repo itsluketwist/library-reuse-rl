@@ -110,6 +110,17 @@ def longer_hand_written_example(value):
 
         assert score == 3.0
 
+    def test_correct_format_does_not_require_code(self):
+        """correct_format is shared with the other rewards - no code block needed."""
+        reward = LibraryUsageReward({"correct_format": 1.0})
+
+        score = reward.score(
+            "reasoning</think>\nJust use the requests library for this.",
+            {"local_modules": [], "useful_libs": []},
+        )
+
+        assert score == 1.0
+
     def test_correct_format_rejects_a_truncated_completion(self):
         """A truncated completion never earns correct_format, even with full shape."""
         weights = {"correct_format": 1.0}
