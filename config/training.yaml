@@ -5,7 +5,7 @@
 # hyperparameters - the dials actually varied between experiments
 # ==============================================================================
 
-libraries_requirements_file: setup/requirements/v1.txt  # libraries listed in the system prompt, see src/prompts.py
+# libraries_requirements_file: setup/requirements/v1.txt  # libraries listed in the system prompt, see src/prompts.py
 
 num_train_epochs: 1
 
@@ -26,7 +26,7 @@ rollout_decoding_profile: default  # which eval_decoding_profiles entry rollouts
 # ==============================================================================
 
 eval_strategy: "steps"  # run held-out evaluation periodically during training
-eval_steps: 500
+eval_steps: 10
 per_device_eval_batch_size: 16  # must be divisible by num_generations
 
 # named decoding profiles, shared by training rollouts (see rollout_decoding_profile

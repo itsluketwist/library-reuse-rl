@@ -94,8 +94,10 @@ class LibraryReward:
     def __init__(
         self,
         weights: dict[str, float],
+        eos_token_id: int | None = None,
     ) -> None:
         self.weights = weights
+        self.eos_token_id = eos_token_id
 
     def __call__(
         self,
@@ -139,6 +141,20 @@ class LibraryReward:
             return reward + weight
         return reward
 
+    def _is_truncated(
+        self,
+        row: dict[str, Any],
+    ) -> bool:
+        """
+        Whether the completion was cut off by the length limit instead of reaching eos.
+
+        Returns True if the completion's last token isn't eos_token_id.
+        """
+        completion_ids = row.get("completion_ids")
+        if self.eos_token_id is None or not completion_ids:
+            return False
+        return completion_ids[-1] != self.eos_token_id
+
 
 class CodeReward(LibraryReward):
     """
@@ -153,16 +169,18 @@ class CodeReward(LibraryReward):
         self,
         reward: float,
         parsed: ParsedResponse,
+        row: dict[str, Any],
     ) -> float:
         """
         Add the shared correct_format and passes_syntax_check components.
 
         Returns the updated reward.
         """
-        # correct format: reasoning, an answer, and a code fragment are all present
-        # (structure only, not whether the code is valid python)
+        # correct format: reasoning, an answer, a code fragment, and generation reached eos
         has_shape = bool(parsed.reasoning.strip() and parsed.answer and parsed.code)
-        reward = self._add(reward, "correct_format", has_shape)
+        reward = self._add(
+            reward, "correct_format", has_shape and not self._is_truncated(row)
+        )
         # syntax check: the selected code fragment parses as valid python
         reward = self._add(reward, "passes_syntax_check", bool(parsed.valid))
         return reward

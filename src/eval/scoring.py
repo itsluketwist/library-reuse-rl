@@ -227,13 +227,15 @@ def _score_library_usage(
             bool(usage.n_code_blocks)
             and usage.n_valid_code_blocks == usage.n_code_blocks
         )
+        # one working code block is enough to count the response as valid
+        any_block_valid = usage.n_valid_code_blocks > 0
         results.append(
             {
                 "idx": row["idx"],
                 "task_id": row.get("task_id"),
                 "stop_reason": stop_reason,
                 "category_id": row.get("category_id"),
-                "valid": all_blocks_valid,
+                "valid": any_block_valid,
                 "code_blocks": [
                     dataclasses.asdict(block) for block in parsed.code_blocks
                 ],

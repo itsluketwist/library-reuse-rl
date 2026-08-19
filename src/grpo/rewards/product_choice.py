@@ -37,11 +37,11 @@ class ProductChoiceReward(LibraryReward):
         )
 
         reward = 0.0
-        # correct format: some reasoning followed by an actual answer to score
+        # correct format: reasoning, an answer, and generation reached eos
         reward = self._add(
             reward,
             "correct_format",
-            bool(reasoning.strip() and answer),
+            bool(reasoning.strip() and answer) and not self._is_truncated(row),
         )
         # full credit: the primary pick is an external library/service
         reward = self._add(reward, "names_external_lib", pick.is_external)

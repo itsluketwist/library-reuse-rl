@@ -65,6 +65,13 @@ class TestProductChoiceReward:
         # no reasoning tag -> empty reasoning -> not correctly formatted
         assert reward.score("Use PostgreSQL.", _ROW) == 0.0
 
+    def test_correct_format_rejects_a_truncated_completion(self):
+        """correct_format never fires when generation didn't reach eos."""
+        reward = ProductChoiceReward({"correct_format": 1.0}, eos_token_id=2)
+
+        row = {**_ROW, "completion_ids": [1, 3]}  # last token isn't eos_token_id (2)
+        assert reward.score("reasoning</think>\nUse PostgreSQL.", row) == 0.0
+
     def test_build_reward_selects_this_class(self):
         """The factory resolves the product-choice kind to this reward."""
         reward = build_reward("product_choice", _WEIGHTS)

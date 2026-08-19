@@ -171,6 +171,42 @@ Item()
             "requests": 1,
         }
 
+    def test_one_valid_block_is_enough_for_valid_code_rate(self):
+        """A throwaway broken snippet alongside a working one still counts as valid."""
+        dataset = [
+            {
+                "idx": 0,
+                "task_type": "library_usage",
+                "category_id": "http-requests",
+                "useful_libs": [],
+                "local_modules": [],
+            }
+        ]
+        response = """r</think>
+```python
+import requests
+requests.get("https://example.com")
+```
+```python
+def broken(:
+```
+"""
+
+        analysis, results = score_dataset(
+            dataset,
+            _responses(response),
+            evaluator="library_usage",
+        )
+
+        assert results[0]["n_code_blocks"] == 2
+        assert results[0]["n_valid_code_blocks"] == 1
+        # one working block is enough, unlike all_code_blocks_valid below
+        assert results[0]["valid"]
+        assert not results[0]["all_code_blocks_valid"]
+        assert analysis["valid_code_rate"] == 1.0
+        # external_lib_used always comes from a block that parsed
+        assert analysis["external_lib_used_rate"] <= analysis["valid_code_rate"]
+
 
 class TestScoreEmptyDataset:
     """Tests for the empty-dataset edge case."""
