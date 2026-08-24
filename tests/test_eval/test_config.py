@@ -9,7 +9,7 @@ def test_every_eval_dataset_has_an_explicit_evaluator() -> None:
 
     assert datasets
     assert all({"path", "evaluator"} <= set(config) for config in datasets.values())
-    assert datasets["bcbreuse"]["evaluator"] == "bcbreuse"
+    assert datasets["libreusebench"]["evaluator"] == "libreusebench"
 
 
 def test_training_uses_one_epoch_and_eight_rollouts() -> None:

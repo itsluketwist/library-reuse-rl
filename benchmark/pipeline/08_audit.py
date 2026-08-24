@@ -64,12 +64,12 @@ def main() -> None:
     validated = _load("05_validated.jsonl")
 
     test_path = DATA_DIR / "test.jsonl"
-    val_path = DATA_DIR / "val.jsonl"
+    dev_path = DATA_DIR / "dev.jsonl"
     test = load_jsonl(test_path) if test_path.exists() else []
-    val = load_jsonl(val_path) if val_path.exists() else []
-    final = test + val
+    dev = load_jsonl(dev_path) if dev_path.exists() else []
+    final = test + dev
 
-    lines = ["# BigCodeBenchReuse build report", ""]
+    lines = ["# LibReuseBench build report", ""]
 
     lines += ["## Drop funnel", ""]
     lines.append(
@@ -98,7 +98,7 @@ def main() -> None:
         f"(shipping {counts['keep'] + counts['update']})"
     )
     lines.append(
-        f"- **final dataset: {len(final)} problems** (test {len(test)}, val {len(val)})"
+        f"- **final dataset: {len(final)} problems** (test {len(test)}, dev {len(dev)})"
     )
     lines.append("")
 

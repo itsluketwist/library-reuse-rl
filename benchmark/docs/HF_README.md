@@ -18,20 +18,20 @@ tags:
   - benchmark
   - library-reuse
   - bigcodebench
-pretty_name: "BigCodeBenchReuse: Library Reuse Benchmark"
+pretty_name: "LibReuseBench: Library Reuse Benchmark"
 configs:
   - config_name: default
     default: true
     data_files:
       - split: test
         path: data/test.jsonl
-      - split: validation
-        path: data/val.jsonl
+      - split: dev
+        path: data/dev.jsonl
 ---
 
-# BigCodeBenchReuse - Library Reuse Benchmark
+# LibReuseBench - Library Reuse Benchmark
 
-Welcome to BigCodeBenchReuse - a **library-agnostic, test-backed** benchmark for measuring whether
+Welcome to LibReuseBench - a **library-agnostic, test-backed** benchmark for measuring whether
 an LLM **reuses an existing library** when it is free to choose.
 
 Derived from [BigCodeBench](https://huggingface.co/datasets/bigcode/bigcodebench), every task is a
@@ -41,20 +41,20 @@ a meaningful signal to report *alongside* correctness, on the same tasks.
 
 [📋 dataset](#📋--dataset) | [💾 download](#💾--download) | [🤖 inference](#🤖--inference) | [🔍 evaluation](#🔍--evaluation) | [📊 leaderboard](#📊--leaderboard) | [🐤 canary](#🐤--canary-string)
 
-Also available on [PyPI](https://pypi.org/p/bcbreuse) and [GitHub](https://github.com/itsluketwist/library-reuse-rl).
+Also available on [PyPI](https://pypi.org/p/libreusebench) and [GitHub](https://github.com/itsluketwist/library-reuse-rl).
 
 ## 📋  *dataset*
 
 The dataset consists of **139** code-generation tasks (seeded from BigCodeBench), split into a
-**test** set and a small held-out **validation** set. Each task is dual-solvable: it ships with an
-independent standard-library reference solution *and* a third-party-library reference solution that
-reproduce the same test outputs.
+**test** set (129 tasks) and a small held-out **dev** set (10 tasks). Each task is dual-solvable:
+it ships with an independent standard-library reference solution *and* a third-party-library
+reference solution that reproduce the same test outputs.
 
 Each record is a JSON object containing:
 
 | Field | Description |
 |---|---|
-| `task_id` | Dataset-unique id (`BCBR/T000...` in test, `BCBR/V000...` in validation). |
+| `task_id` | Dataset-unique id (`LRB/T000...` in test, `LRB/D000...` in dev). |
 | `category` | Short topic tag (e.g. `statistics`, `text-processing`, `datetime-math`). |
 | `prompt` | The library-agnostic task: what to read from stdin and print to stdout. |
 | `test_inputs` | List of test-case standard inputs. |
@@ -80,21 +80,21 @@ Load the dataset with the [`datasets`](https://huggingface.co/docs/datasets/en/i
 from datasets import load_dataset
 
 # load individual splits
-test = load_dataset("itsluketwist/BigCodeBenchReuse", split="test")
-val = load_dataset("itsluketwist/BigCodeBenchReuse", split="validation")
+test = load_dataset("itsluketwist/LibReuseBench", split="test")
+dev = load_dataset("itsluketwist/LibReuseBench", split="dev")
 ```
 
-Or install the [`bcbreuse`](https://pypi.org/p/bcbreuse) package from PyPI and load directly:
+Or install the [`libreusebench`](https://pypi.org/p/libreusebench) package from PyPI and load directly:
 
 ```shell
-pip install bcbreuse
+pip install libreusebench
 ```
 
 ```python
-import bcbreuse
+import libreusebench
 
-# returns a dictionary of splits: {"test": [...], "val": [...]}
-dataset = bcbreuse.load_dataset()
+# returns a dictionary of splits: {"test": [...], "dev": [...]}
+dataset = libreusebench.load_dataset()
 ```
 
 ## 🤖  *inference*
@@ -104,13 +104,13 @@ one JSON record per line, keyed by `task_id`. Two formats are supported:
 
 **Format 1** - multiple responses per line:
 ```json
-{"task_id": "BCBR/T000", "responses": ["response 1", "response 2"]}
+{"task_id": "LRB/T000", "responses": ["response 1", "response 2"]}
 ```
 
 **Format 2** - single response per line (multiple lines per id are collated):
 ```json
-{"task_id": "BCBR/T000", "response": "response 1"}
-{"task_id": "BCBR/T000", "response": "response 2"}
+{"task_id": "LRB/T000", "response": "response 1"}
+{"task_id": "LRB/T000", "response": "response 2"}
 ```
 
 ## 🔍  *evaluation*
@@ -119,13 +119,13 @@ Use our evaluation framework to score responses for both ***correctness*** and *
 Evaluate from the command line or in a python script:
 
 ```shell
-bcbeval your_responses.jsonl
+libreuseeval your_responses.jsonl
 ```
 
 ```python
-import bcbreuse
+import libreusebench
 
-results = bcbreuse.evaluate_responses("your_responses.jsonl")
+results = libreusebench.evaluate_responses("your_responses.jsonl")
 ```
 
 The harness parses each response, collects the third-party packages the responses import (mapping

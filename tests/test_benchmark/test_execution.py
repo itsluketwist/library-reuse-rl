@@ -1,8 +1,8 @@
-"""Tests for the stdin/stdout execution used by the build pipeline (bcbreuse.environment)."""
+"""Tests for the stdin/stdout execution used by the build pipeline (libreusebench.environment)."""
 
 import sys
 
-from bcbreuse.environment import evaluate_record, run_program, temporary_packages
+from libreusebench.environment import evaluate_record, run_program, temporary_packages
 
 
 class TestRunProgram:

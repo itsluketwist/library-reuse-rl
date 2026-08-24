@@ -2,9 +2,9 @@
 
 Reshapes each surviving problem into the shipped row schema (task, tests, a nested ground_truth
 with both gold solutions, and a source provenance block) and writes them straight into the
-bcbreuse package's data directory, where they are bundled and committed as the benchmark. A small
-val split is held out; the rest is the test set. Each row gets a dataset-unique task_id assigned
-after shuffling: BCBR/T000... for the test split, BCBR/V000... for the validation split.
+libreusebench package's data directory, where they are bundled and committed as the benchmark. A
+small dev split is held out; the rest is the test set. Each row gets a dataset-unique task_id
+assigned after shuffling: LRB/T000... for the test split, LRB/D000... for the dev split.
 
 Only problems the author kept in stage 06 ship, and the build refuses to run while any validated
 problem is still unreviewed - so the released set is always fully human-checked.
@@ -21,7 +21,7 @@ from src.utils.io import save_jsonl
 
 
 SEED = 42
-VAL_FRAC = 0.1
+DEV_COUNT = 10
 
 
 def _shape(
@@ -51,7 +51,7 @@ def _shape(
 
 
 def main() -> None:
-    """Build the bigcodebench_reuse test/val splits from the author-approved problems."""
+    """Build the LibReuseBench test/dev splits from the author-approved problems."""
     problems = validated_problems()
 
     # every validated problem must have a verdict - the shipped set is fully human-reviewed
@@ -67,21 +67,21 @@ def main() -> None:
     approved = approved_problems()
     rows = [_shape(problem) for problem in approved]
 
-    # shuffle once with a fixed seed, then peel off a small val split
+    # shuffle once with a fixed seed, then peel off a small dev split
     rng = random.Random(SEED)
     rng.shuffle(rows)
-    n_val = max(1, round(len(rows) * VAL_FRAC)) if len(rows) >= 10 else 0
-    val_rows, test_rows = rows[:n_val], rows[n_val:]
+    n_dev = DEV_COUNT if len(rows) >= DEV_COUNT else len(rows)
+    dev_rows, test_rows = rows[:n_dev], rows[n_dev:]
 
     # assign the dataset-unique task_id per split, in the (post-shuffle) order they ship
-    test = [{"task_id": f"BCBR/T{i:03d}"} | row for i, row in enumerate(test_rows)]
-    val = [{"task_id": f"BCBR/V{i:03d}"} | row for i, row in enumerate(val_rows)]
+    test = [{"task_id": f"LRB/T{i:03d}"} | row for i, row in enumerate(test_rows)]
+    dev = [{"task_id": f"LRB/D{i:03d}"} | row for i, row in enumerate(dev_rows)]
 
     save_jsonl(test, DATA_DIR / "test.jsonl")
-    save_jsonl(val, DATA_DIR / "val.jsonl")
+    save_jsonl(dev, DATA_DIR / "dev.jsonl")
     print(
         f"built {len(rows)} approved problems ({len(problems) - len(approved)} rejected) "
-        f"-> test {len(test)}, val {len(val)} in {DATA_DIR}/"
+        f"-> test {len(test)}, dev {len(dev)} in {DATA_DIR}/"
     )
 
 

@@ -1,25 +1,25 @@
-"""Shared, non-LLM helpers for the BigCodeBenchReuse build pipeline.
+"""Shared, non-LLM helpers for the LibReuseBench build pipeline.
 
 Holds the stage paths, the BigCodeBench library analysis, and the hard-exclude buckets that the
 numbered build scripts use. Reusable library logic (import classification, the import->pip map,
-the prompt library scan) lives in the released `bcbreuse` package and is imported from there, so
-there is one source of truth shared by the build and the harness.
+the prompt library scan) lives in the released `libreusebench` package and is imported from there,
+so there is one source of truth shared by the build and the harness.
 """
 
 import os
 import sys
 from pathlib import Path
 
-from bcbreuse.libraries import analyse_source
+from libreusebench.libraries import analyse_source
 
 from src.utils.io import load_jsonl
 
 
 # interpreter used to execute model-generated code during the build (stage 04 runs the stdlib gold
-# solutions). defaults to the current interpreter; point BCB_BUILD_PYTHON at an isolated venv
+# solutions). defaults to the current interpreter; point LRB_BUILD_PYTHON at an isolated venv
 # (benchmark/pipeline/setup_build_venv.sh) so untrusted generated code runs in a
 # throwaway environment.
-BUILD_PYTHON = os.environ.get("BCB_BUILD_PYTHON") or sys.executable
+BUILD_PYTHON = os.environ.get("LRB_BUILD_PYTHON") or sys.executable
 
 
 # --- stage paths ----------------------------------------------------------------------
@@ -28,7 +28,7 @@ _BENCHMARK = Path(__file__).parent.parent  # the benchmark/ directory
 VENDOR_DIR = _BENCHMARK / "vendor"  # fetched BigCodeBench seed (gitignored)
 ARTEFACTS_DIR = _BENCHMARK / "artefacts"  # per-stage outputs (gitignored)
 # built splits go straight into the package, where they are bundled and committed as the benchmark
-DATA_DIR = _BENCHMARK / "bcbreuse" / "data"
+DATA_DIR = _BENCHMARK / "libreusebench" / "data"
 
 # the BigCodeBench version the whole build is pinned to
 BCB_VERSION = "v0.1.4"

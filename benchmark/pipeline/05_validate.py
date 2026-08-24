@@ -12,7 +12,7 @@ and uninstall them again, so each problem is evaluated with exactly its own libr
 
 Apparent failures are dominated by sampling variance, not model capability, so we draw best-of-N
 (--attempts): a task is kept as soon as any sample reproduces the outputs. The run is resumable
-(only non-kept tasks are retried) and supports --limit / --model. Point BCB_BUILD_PYTHON at the
+(only non-kept tasks are retried) and supports --limit / --model. Point LRB_BUILD_PYTHON at the
 seeded build venv (benchmark/pipeline/setup_build_venv.sh).
 
 Usage: python benchmark/pipeline/05_validate.py [--limit N] [--model M] [--attempts N]
@@ -20,10 +20,10 @@ Usage: python benchmark/pipeline/05_validate.py [--limit N] [--model M] [--attem
 
 import argparse
 
-from bcbreuse.environment import evaluate_record, temporary_packages
-from bcbreuse.libraries import analyse_source, find_named_libraries
 from build import BUILD_PYTHON, artefact_path, succeeded_ids
 from generation import DEFAULT_GEN_MODEL, complete_json
+from libreusebench.environment import evaluate_record, temporary_packages
+from libreusebench.libraries import analyse_source, find_named_libraries
 
 from src.utils.io import append_jsonl, load_jsonl
 

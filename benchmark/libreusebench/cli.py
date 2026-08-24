@@ -1,16 +1,16 @@
-"""Command-line entry point for evaluating BigCodeBenchReuse responses."""
+"""Command-line entry point for evaluating LibReuseBench responses."""
 
 import argparse
 
-from bcbreuse.environment import _DEFAULT_TIMEOUT_SECONDS
-from bcbreuse.evaluate import _confirm_packages, evaluate_responses
+from libreusebench.environment import _DEFAULT_TIMEOUT_SECONDS
+from libreusebench.evaluate import _confirm_packages, evaluate_responses
 
 
 def main() -> None:
     """Parse arguments and run the evaluation harness."""
     parser = argparse.ArgumentParser(
-        prog="bcbeval",
-        description="Evaluate model responses against the BigCodeBenchReuse benchmark.",
+        prog="libreuseeval",
+        description="Evaluate model responses against the LibReuseBench benchmark.",
     )
     parser.add_argument(
         "responses_file", help="JSONL of {task_id, response(s)} records"
@@ -19,7 +19,7 @@ def main() -> None:
         "--output-directory", default="output", help="where to write results"
     )
     parser.add_argument(
-        "--env-dir", default=".bcbeval-venv", help="cached venv for installs"
+        "--env-dir", default=".libreuseeval-venv", help="cached venv for installs"
     )
     parser.add_argument(
         "--env",

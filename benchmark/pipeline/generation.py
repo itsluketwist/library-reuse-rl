@@ -1,4 +1,4 @@
-"""Shared LLM client for the BigCodeBenchReuse pipeline.
+"""Shared LLM client for the LibReuseBench pipeline.
 
 `complete` / `complete_json` are the shared Anthropic client used by every stage; each stage's own
 prompt/parse logic lives with its script (the judge in 02_filter.py, the rewrite in 03_rewrite.py,

@@ -55,9 +55,9 @@ Create the isolated venv used by the ordinary stdin/stdout code benchmarks:
 bash setup/setup_eval_venv.sh v1
 ```
 
-BigCodeBenchReuse does not use this venv. Its official evaluator discovers the packages
+LibReuseBench does not use this venv. Its official evaluator discovers the packages
 imported by the generated responses, creates an isolated cached environment under
-`.bcbeval-venvs/`, installs those packages, and then runs the benchmark tests. Results record
+`.libreuseeval-venvs/`, installs those packages, and then runs the benchmark tests. Results record
 the requested packages, their originating imports, and all resolved distribution versions.
 
 ## *usage*

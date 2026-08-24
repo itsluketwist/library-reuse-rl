@@ -44,13 +44,13 @@ def _make_conversation(
     }
 
 
-def _make_bcbreuse_eval_conversation(
+def _make_libreusebench_eval_conversation(
     example: dict,
     system_prompt: str | None,
 ) -> dict:
-    """Build chat messages and normalise a BigCodeBenchReuse evaluation record.
+    """Build chat messages and normalise a LibReuseBench evaluation record.
 
-    BigCodeBenchReuse keeps executable inputs at the top level under `test_inputs`;
+    LibReuseBench keeps executable inputs at the top level under `test_inputs`;
     its nested `ground_truth` contains reference programs rather than test cases.
 
     Returns the fields needed by the evaluation pipeline.
@@ -128,9 +128,9 @@ def load_eval_dataset(
     """Load an evaluation dataset file and build chat prompts.
 
     Handles the flat {prompt, inputs, expected_outputs, source} schema from
-    data/download_eval.py, the nested Skywork ground_truth schema, and BigCodeBenchReuse's
+    data/download_eval.py, the nested Skywork ground_truth schema, and LibReuseBench's
     {prompt, test_inputs, expected_outputs, ground_truth: {gold_stdlib, gold_extlib, ...}}
-    schema. BCBReuse test_inputs are also exposed as inputs for the common result pipeline.
+    schema. LibReuseBench test_inputs are also exposed as inputs for the common result pipeline.
 
     `n` truncates the dataset to at most that many rows (e.g. for a quick debug
     smoke test) - leave as None to use the full dataset.
@@ -152,12 +152,12 @@ def load_eval_dataset(
         dataset = dataset.select(range(min(n, len(dataset))))
         logger.info(f"Truncated dataset to {len(dataset)} rows")
 
-    # bcbreuse ground_truth contains gold programs, not the executable test cases;
+    # libreusebench ground_truth contains gold programs, not the executable test cases;
     # detect its top-level test_inputs before treating ground_truth as skywork format.
     columns = set(dataset.column_names)
     if {"test_inputs", "expected_outputs"} <= columns:
         dataset = dataset.map(
-            lambda example: _make_bcbreuse_eval_conversation(
+            lambda example: _make_libreusebench_eval_conversation(
                 example,
                 system_prompt=system_prompt,
             ),

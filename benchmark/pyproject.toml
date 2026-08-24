@@ -1,4 +1,4 @@
-# Package specification for the BigCodeBenchReuse benchmark.
+# Package specification for the LibReuseBench benchmark.
 # https://packaging.python.org/en/latest/specifications/pyproject-toml/#pyproject-toml-spec
 
 [build-system]
@@ -6,18 +6,18 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["bcbreuse"]
+packages = ["libreusebench"]
 
 [tool.setuptools.package-data]
 # ship the benchmark splits, plus the canary string marking them as eval-only data
-bcbreuse = ["data/*.jsonl", "CANARY.txt"]
+libreusebench = ["data/*.jsonl", "CANARY.txt"]
 
 [project]
-name = "bcbreuse"
+name = "libreusebench"
 readme = "docs/PYPI_README.md"
 # bump the version here before triggering a release
 version = "0.1.0"
-description = "BigCodeBenchReuse - a library-agnostic, test-backed benchmark for measuring library reuse."
+description = "LibReuseBench - a library-agnostic, test-backed benchmark for measuring library reuse."
 authors = [{ name = "Lukas Twist", email = "itsluketwist@gmail.com" }]
 license-files = ["LICENSE"]
 classifiers = [
@@ -40,4 +40,4 @@ dev = [
 ]
 
 [project.scripts]
-bcbeval = "bcbreuse.cli:main"
+libreuseeval = "libreusebench.cli:main"
