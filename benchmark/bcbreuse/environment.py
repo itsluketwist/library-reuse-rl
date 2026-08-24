@@ -21,7 +21,7 @@ from typing import NamedTuple
 try:  # resource limits are posix-only
     import resource
 except ImportError:  # pragma: no cover - windows
-    resource = None  # type: ignore[assignment]
+    resource = None  # ty: ignore[invalid-assignment]
 
 
 # generous enough for heavy scientific libraries (sklearn/scipy/statsmodels import slowly), so a

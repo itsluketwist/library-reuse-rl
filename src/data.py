@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+from typing import cast
 
 import datasets
 from datasets import Dataset, DatasetDict
@@ -84,22 +85,23 @@ def load_train_dataset(
     """
     dataset_dir = Path(dataset_dir)
     split_n = {"train": train_n, "val": val_n}
-    splits = {}
+    dataset = DatasetDict()
     for split in ("train", "val"):
         split_file = dataset_dir / f"{split}.jsonl"
         logger.info(f"Loading {split} split from {split_file}")
-        split_dataset = datasets.load_dataset("json", data_files=str(split_file))[
-            "train"
-        ]
+        # load_dataset's static type is a union of dataset kinds; a local json load
+        # always gives a DatasetDict with one "train" split, so narrow for the checker
+        split_dataset = cast(
+            Dataset,
+            datasets.load_dataset("json", data_files=str(split_file))["train"],
+        )
 
         n = split_n[split]
         if n is not None:
             split_dataset = split_dataset.select(range(min(n, len(split_dataset))))
             logger.info(f"Truncated {split} split to {len(split_dataset)} rows")
 
-        splits[split] = split_dataset
-
-    dataset = DatasetDict(splits)
+        dataset[split] = split_dataset
 
     # the skywork schema nests tests under ground_truth (flattened via _make_conversation);
     # the new product-choice/library-usage schemas carry no tests, just the raw
@@ -136,7 +138,12 @@ def load_eval_dataset(
     Returns the dataset with its raw "prompt" column replaced by a chat-messages
     list, and "inputs"/"expected_outputs" columns present at the top level.
     """
-    dataset = datasets.load_dataset("json", data_files=str(dataset_file))["train"]
+    # load_dataset's static type is a union of dataset kinds; a local json load always
+    # gives a DatasetDict with one "train" split, so narrow for the checker
+    dataset = cast(
+        Dataset,
+        datasets.load_dataset("json", data_files=str(dataset_file))["train"],
+    )
 
     # add idx before any truncation so it matches the original file's row number
     dataset = dataset.add_column("idx", list(range(len(dataset))))

@@ -13,7 +13,7 @@ def _dummy_parsed(
     reasoning: str = "thinking",
     answer: str | None = None,
     code: str = "print(1)",
-    valid: bool = True,
+    valid: bool | None = True,
     std_libs: list[str] | None = None,
     ext_libs: list[str] | None = None,
     lib_usage: dict[str, list[dict]] | None = None,

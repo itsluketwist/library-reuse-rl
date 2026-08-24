@@ -101,6 +101,28 @@ bcbreuse = { path = "benchmark", editable = true }
 [tool.pytest.ini_options]
 pythonpath = ["benchmark/pipeline"]
 
+# ty can't follow the bcbreuse editable install (it uses a custom import finder), and the
+# pipeline scripts are run by path - point ty at both directories so `bcbreuse`, `build`
+# and `review` imports resolve (mirroring pytest's pythonpath above)
+[tool.ty.environment]
+extra-paths = ["benchmark", "benchmark/pipeline"]
+
+# these files import the GPU stack from the [hpc] extra (torch, transformers, trl, unsloth,
+# vllm), which only installs on linux - ignore just the missing imports when checking locally
+[[tool.ty.overrides]]
+include = [
+    "src/eval/evaluate.py",
+    "src/eval/generate.py",
+    "src/grpo/config.py",
+    "src/grpo/train_model.py",
+    "src/models.py",
+    "src/run_grpo.py",
+    "src/utils/log.py",
+]
+
+[tool.ty.overrides.rules]
+unresolved-import = "ignore"
+
 [tool.uv]
 no-build-isolation-package = ["flash-attn"]
 # lock for both the HPC (linux) and local dev (macos); the hpc extra is linux-marked, so it

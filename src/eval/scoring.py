@@ -93,7 +93,8 @@ def _score_tested(
     Returns the (analysis, results) pair.
     """
     del environment_dir
-    results = []
+    # each result is a heterogeneous record (strs, bools, lists, ...), so type as Any
+    results: list[dict[str, Any]] = []
     n_passed = 0
     for row, (response, stop_reason) in zip(dataset, responses):
         processed = process_response(
@@ -215,7 +216,8 @@ def _score_library_usage(
     Returns the (analysis, results) pair.
     """
     del python_executable, environment_dir
-    results = []
+    # each result is a heterogeneous record (strs, bools, lists, ...), so type as Any
+    results: list[dict[str, Any]] = []
     for row, (response, stop_reason) in zip(dataset, responses):
         parsed = parse_response(response)
         usage = analyse_library_usage(parsed, row.get("local_modules"))

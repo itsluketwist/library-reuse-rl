@@ -57,7 +57,9 @@ class TestRowsFromColumns:
 
     def test_skips_columns_of_the_wrong_length(self):
         """A column that isn't a list of length n is ignored, not fatal."""
-        rows = rows_from_columns({"a": [1, 2], "bad": "notalist", "short": [1]}, n=2)
+        # "bad" is deliberately not a list, to exercise the wrong-type handling
+        columns: dict = {"a": [1, 2], "bad": "notalist", "short": [1]}
+        rows = rows_from_columns(columns, n=2)
 
         assert rows == [{"a": 1}, {"a": 2}]
 
