@@ -3,7 +3,7 @@
 The eval loop (src/eval/evaluate.py) generates one response per prompt; this module turns
 those responses into per-row results and an analysis summary using the evaluator explicitly
 configured beside the dataset. Tested-implementation datasets execute code, product-choice
-and library-usage use the deterministic checks their rewards use, and BigCodeBenchReuse
+and library-usage use the deterministic checks their rewards use, and LibReuseBench
 delegates to its official scorer.
 """
 
@@ -13,7 +13,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Iterable
 
-from bcbreuse.evaluate import evaluate_responses as evaluate_bcb_responses
+from libreusebench.evaluate import evaluate_responses as evaluate_lrb_responses
 
 from src.grpo.rewards.library_usage import analyse_library_usage
 from src.response.parser import parse_response, strip_reasoning
@@ -93,7 +93,8 @@ def _score_tested(
     Returns the (analysis, results) pair.
     """
     del environment_dir
-    results = []
+    # each result is a heterogeneous record (strs, bools, lists, ...), so type as Any
+    results: list[dict[str, Any]] = []
     n_passed = 0
     for row, (response, stop_reason) in zip(dataset, responses):
         processed = process_response(
@@ -215,7 +216,8 @@ def _score_library_usage(
     Returns the (analysis, results) pair.
     """
     del python_executable, environment_dir
-    results = []
+    # each result is a heterogeneous record (strs, bools, lists, ...), so type as Any
+    results: list[dict[str, Any]] = []
     for row, (response, stop_reason) in zip(dataset, responses):
         parsed = parse_response(response)
         usage = analyse_library_usage(parsed, row.get("local_modules"))
@@ -227,13 +229,15 @@ def _score_library_usage(
             bool(usage.n_code_blocks)
             and usage.n_valid_code_blocks == usage.n_code_blocks
         )
+        # one working code block is enough to count the response as valid
+        any_block_valid = usage.n_valid_code_blocks > 0
         results.append(
             {
                 "idx": row["idx"],
                 "task_id": row.get("task_id"),
                 "stop_reason": stop_reason,
                 "category_id": row.get("category_id"),
-                "valid": all_blocks_valid,
+                "valid": any_block_valid,
                 "code_blocks": [
                     dataclasses.asdict(block) for block in parsed.code_blocks
                 ],
@@ -279,17 +283,18 @@ def _score_library_usage(
     return analysis, results
 
 
-def _score_bcbreuse(
+def _score_libreusebench(
     dataset: Iterable[dict],
     responses: list[tuple[str, str]],
     python_executable: str | None = None,
     environment_dir: str | None = None,
 ) -> tuple[dict, list[dict]]:
-    """Run the complete official BigCodeBenchReuse evaluation workflow.
+    """Run the complete official LibReuseBench evaluation workflow.
 
     The official evaluator discovers packages from the responses, installs them into
     its cached environment, executes the selected code, and aggregates the results.
-    The evaluator installs its discovered package plan automatically.
+    Eval runs are unattended (including on HPC/Slurm), so this passes `confirm=None`
+    to install the discovered package plan automatically rather than prompting on stdin.
 
     Returns the official analysis and per-response results.
     """
@@ -304,18 +309,19 @@ def _score_bcbreuse(
         for row, (_response, stop_reason) in zip(rows, responses)
     }
 
-    with tempfile.TemporaryDirectory(prefix="bcbreuse-eval-") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="libreusebench-eval-") as temp_dir:
         responses_file = Path(temp_dir) / "responses.jsonl"
         save_jsonl(response_records, responses_file)
-        official = evaluate_bcb_responses(
+        official = evaluate_lrb_responses(
             responses_file=str(responses_file),
             output_directory=temp_dir,
-            env_dir=environment_dir or ".bcbeval-venv",
+            env_dir=environment_dir or ".libreuseeval-venv",
+            confirm=None,
         )
 
     if not official:
         raise RuntimeError(
-            "BigCodeBenchReuse could not prepare the generated responses' package "
+            "LibReuseBench could not prepare the generated responses' package "
             "environment; see the evaluator log above for failed packages."
         )
 
@@ -324,7 +330,7 @@ def _score_bcbreuse(
         result["stop_reason"] = stop_reasons[(result["task_id"], result["idx"])]
 
     return {
-        "task": "bcbreuse",
+        "task": "libreusebench",
         "n_total": official["n_responses"],
         **official,
     }, results
@@ -334,7 +340,7 @@ _SCORERS = {
     "implement_tested": _score_tested,
     "product_choice": _score_product_choice,
     "library_usage": _score_library_usage,
-    "bcbreuse": _score_bcbreuse,
+    "libreusebench": _score_libreusebench,
 }
 
 

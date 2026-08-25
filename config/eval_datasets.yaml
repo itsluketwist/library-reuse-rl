@@ -24,8 +24,8 @@ library_usage:
   path: "data/train/library_usage/test.jsonl"
   evaluator: library_usage
 
-# BigCodeBenchReuse: library-agnostic stdin/stdout problems with executable test cases
-bcbreuse:
-  path: "benchmark/bcbreuse/data/test.jsonl"
-  evaluator: bcbreuse
-  environment_root: ".bcbeval-venvs"
+# LibReuseBench: library-agnostic stdin/stdout problems with executable test cases
+libreusebench:
+  path: "benchmark/libreusebench/data/test.jsonl"
+  evaluator: libreusebench
+  environment_root: ".libreuseeval-venvs"

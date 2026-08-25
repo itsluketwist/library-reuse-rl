@@ -14,10 +14,10 @@ Usage: python benchmark/pipeline/04_make_tests.py [--limit N] [--model M]
 
 import argparse
 
-from bcbreuse.environment import run_program
-from bcbreuse.libraries import analyse_source
 from build import BUILD_PYTHON, artefact_path, succeeded_ids
 from generation import DEFAULT_GEN_MODEL, complete_json
+from libreusebench.environment import run_program
+from libreusebench.libraries import analyse_source
 
 from src.utils.io import append_jsonl, load_jsonl
 

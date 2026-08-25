@@ -64,6 +64,7 @@ DEFAULT_REWARD_KIND = "implement_tested"
 def build_reward(
     kind: str,
     weights: dict[str, float],
+    eos_token_id: int | None = None,
 ) -> LibraryReward:
     """
     Build the reward callable for a task `kind`, bound to `weights`.
@@ -84,7 +85,7 @@ def build_reward(
             f"Reward profile contains component(s) {unsupported} that '{kind}' does "
             f"not score. Supported components: {sorted(_SUPPORTED_COMPONENTS[kind])}"
         )
-    return _REWARD_CLASSES[kind](weights)
+    return _REWARD_CLASSES[kind](weights, eos_token_id=eos_token_id)
 
 
 def infer_reward_kind(

@@ -13,7 +13,7 @@ def _dummy_parsed(
     reasoning: str = "thinking",
     answer: str | None = None,
     code: str = "print(1)",
-    valid: bool = True,
+    valid: bool | None = True,
     std_libs: list[str] | None = None,
     ext_libs: list[str] | None = None,
     lib_usage: dict[str, list[dict]] | None = None,
@@ -39,25 +39,11 @@ def _dummy_parsed(
 
 
 class TestComputeRewardComponents:
-    """Tests for the individual reward components inside compute_reward."""
+    """Tests for the individual reward components inside compute_reward.
 
-    def test_correct_format_requires_reasoning_answer_and_code(self):
-        """Correct format needs non-empty reasoning, answer, and code - not validity."""
-        weights = {"correct_format": 1.0}
-
-        assert compute_reward(_dummy_parsed(), False, weights) == 1.0
-        assert compute_reward(_dummy_parsed(reasoning=""), False, weights) == 0.0
-        assert compute_reward(_dummy_parsed(answer=""), False, weights) == 0.0
-        assert compute_reward(_dummy_parsed(code=""), False, weights) == 0.0
-        # invalid code doesn't affect format, since format is about response shape
-        assert compute_reward(_dummy_parsed(valid=False), False, weights) == 1.0
-
-    def test_passes_syntax_check_only_cares_about_validity(self):
-        """Syntax check is true whenever valid, regardless of format/emptiness."""
-        weights = {"passes_syntax_check": 1.0}
-
-        assert compute_reward(_dummy_parsed(), False, weights) == 1.0
-        assert compute_reward(_dummy_parsed(valid=False), False, weights) == 0.0
+    correct_format and passes_syntax_check are shared components, tested against
+    LibraryReward/CodeReward directly in test_base.py rather than here.
+    """
 
     def test_passed_tests_reflects_the_passed_argument(self):
         """Passed-tests just reports the caller's evaluation outcome."""
@@ -118,6 +104,31 @@ class TestTestedImplementationReward:
             ("aa", {"inputs": ["1\n"], "expected_outputs": ["1\n"]}),
             ("bbb", {"inputs": ["2\n"], "expected_outputs": ["2\n"]}),
         ]
+
+    def test_score_composes_shared_format_and_syntax_with_compute_reward(
+        self, monkeypatch
+    ):
+        """score adds the shared correct_format/passes_syntax_check, then compute_reward."""
+        monkeypatch.setattr(
+            "src.grpo.rewards.tested_implementation.process_response",
+            lambda response, record: ProcessedResponse(
+                **vars(_dummy_parsed(code="", answer="just use requests", valid=None)),
+                passed=True,
+                output="",
+            ),
+        )
+
+        weights = {
+            "correct_format": 1.0,
+            "passes_syntax_check": 1.0,
+            "passed_tests": 1.0,
+        }
+        reward = TestedImplementationReward(weights)
+
+        score = reward.score("aa", {"inputs": ["1\n"], "expected_outputs": ["1\n"]})
+
+        # correct_format fires without code; passes_syntax_check does not (no valid block)
+        assert score == 1.0 + 1.0
 
     def test_build_reward_selects_this_class(self):
         """The factory resolves the tested-implementation kind to this reward."""

@@ -1,6 +1,6 @@
-# BigCodeBenchReuse — construction
+# LibReuseBench — construction
 
-How the [BigCodeBenchReuse](HF_README.md) benchmark is built, and how the pieces fit together.
+How the [LibReuseBench](HF_README.md) benchmark is built, and how the pieces fit together.
 This is the internal/reviewer-facing doc; `PYPI_README.md` / `HF_README.md` are the release cards.
 
 ## Why this benchmark exists
@@ -11,7 +11,7 @@ functionality. Training uses the amplify-derived splits in `train_dataset/`, ver
 they give no independent correctness signal. The legacy Skywork `implement_tested` data executes
 real tests but rarely needs a library.
 
-BigCodeBenchReuse is the missing **external** signal: real executable test cases **and** a genuine
+LibReuseBench is the missing **external** signal: real executable test cases **and** a genuine
 temptation to reach for a library — while never telling the model which one to use. The harness
 reports both correctness (test pass rate) and library reuse on the same problems.
 
@@ -29,14 +29,14 @@ reports both correctness (test pass rate) and library reuse on the same problems
 
 ```
 benchmark/
-  bcbreuse/            # the installable framework package (pip install bcbreuse)
+  libreusebench/       # the installable framework package (pip install libreusebench)
     libraries.py        # extract code/imports, import->pip map, stdlib/external, prompt scan
     environment.py      # run stdin/stdout programs; venv that installs response libraries
     load.py             # load the bundled splits
     evaluate.py         # the harness: scan -> install -> run -> aggregate
-    cli.py              # `bcbeval`
-    data/               # bundled, committed splits (test.jsonl, val.jsonl) + CANARY.txt
-  pipeline/             # dataset construction (build-time; calls into bcbreuse + repo src)
+    cli.py              # `libreuseeval`
+    data/               # bundled, committed splits (test.jsonl, dev.jsonl) + CANARY.txt
+  pipeline/             # dataset construction (build-time; calls into libreusebench + repo src)
     01_fetch_bcb.py … 08_audit.py (06_review is a notebook)
     build.py            # stage paths, BCB analysis, hard-exclude buckets
     generation.py       # LLM prompts + parsers (Anthropic)
@@ -44,14 +44,14 @@ benchmark/
   pyproject.toml        # standalone package spec (+ LICENSE)
 ```
 
-`bcbreuse` is the self-contained core (depends only on `llm_cgr`), shared by the build and the
-harness and publishable on its own. The pipeline is build-time only and imports `bcbreuse` plus a
-few repo `src` utilities. Tests live in the main repo under `tests/test_benchmark/`.
+`libreusebench` is the self-contained core (depends only on `llm_cgr`), shared by the build and the
+harness and publishable on its own. The pipeline is build-time only and imports `libreusebench`
+plus a few repo `src` utilities. Tests live in the main repo under `tests/test_benchmark/`.
 
 ## Build pipeline
 
 Run in order from the repo root (no `PYTHONPATH` needed — the scripts import sibling build helpers
-and the installed `bcbreuse` package). Each stage reads the previous stage's artefact under
+and the installed `libreusebench` package). Each stage reads the previous stage's artefact under
 `benchmark/artefacts/` (gitignored, so runs are resumable). The LLM stages (02, 03, 04, 05) are
 resumable — only records that have not yet succeeded are retried, so a rerun (optionally with a
 stronger model) picks up just the failures — and take `--limit N` / `--model M`. Stage 05 also
@@ -69,7 +69,7 @@ python benchmark/pipeline/03_rewrite.py      # -> artefacts/03_rewritten.jsonl
 python benchmark/pipeline/04_make_tests.py   # -> artefacts/04_tests.jsonl
 python benchmark/pipeline/05_validate.py     # -> artefacts/05_validated.jsonl
 # 06 review is an interactive notebook (06_review.ipynb) -> artefacts/06_reviews.jsonl
-python benchmark/pipeline/07_build.py        # -> bcbreuse/data/{test,val}.jsonl  (bundled)
+python benchmark/pipeline/07_build.py        # -> libreusebench/data/{test,dev}.jsonl  (bundled)
 python benchmark/pipeline/08_audit.py        # -> docs/REPORT.md
 ```
 
@@ -100,18 +100,18 @@ python benchmark/pipeline/08_audit.py        # -> docs/REPORT.md
   `artefacts/06_reviews.jsonl` (resumable; its keep/update/reject summary is captured in the audit
   REPORT), and the build refuses to run until every problem has one.
 - **07 build** — write the author-approved survivors straight into the package's `data/`, holding
-  out a small val split.
+  out a small dev split.
 - **08 audit** — write `docs/REPORT.md`: the drop funnel (incl. the review outcome) and coverage by
   category / seed library.
 
 ## Row schema
 
-Each row carries a dataset-unique `task_id` (`BCBR/T000...` in the test split, `BCBR/V000...` in
-val, assigned after shuffling), the task and its tests, a `ground_truth` block with both gold
+Each row carries a dataset-unique `task_id` (`LRB/T000...` in the test split, `LRB/D000...` in the
+dev split, assigned after shuffling), the task and its tests, a `ground_truth` block with both gold
 solutions, and a `source` provenance block pointing back to BigCodeBench.
 
 ```json
-{ "task_id": "BCBR/T000", "category": "html-parsing",
+{ "task_id": "LRB/T000", "category": "html-parsing",
   "prompt": "<library-agnostic spec: read stdin, print stdout>",
   "test_inputs": ["...", "..."], "expected_outputs": ["...", "..."],
   "ground_truth": {
@@ -123,20 +123,22 @@ solutions, and a `source` provenance block pointing back to BigCodeBench.
 
 ## The harness (parse → install → run)
 
-`bcbreuse.evaluate_responses` (CLI: `bcbeval responses.jsonl`) is the released evaluator, and
+`libreusebench.evaluate_responses` (CLI: `libreuseeval responses.jsonl`) is the released evaluator, and
 responses are keyed by `task_id` (`{task_id, response}` or `{task_id, responses: [...]}`). It first
 **parses every response** and gathers the union of third-party packages they import, mapping each
-import name to its pip distribution (`sklearn` → `scikit-learn`, via `IMPORT_TO_PIP`). It then
-**creates the venv, installs the packages automatically, and runs** each response against its task's
-tests (`--confirm-installs` adds an optional interactive checkpoint), aggregating
-**pass@1 / pass@k** and overall **per-problem library-reuse statistics**. Point `--env-dir` at an
-isolated location. The saved result records the environment directory, requested packages,
-originating import names, and the resolved version of every installed distribution.
+import name to its pip distribution (`sklearn` → `scikit-learn`, via `IMPORT_TO_PIP`). It then asks
+for confirmation before it **creates the venv, installs the packages, and runs** each response
+against its task's tests (`--unsafe-installs` skips the interactive checkpoint and installs
+automatically), aggregating **pass@1 / pass@k** and overall **per-problem library-reuse
+statistics**. Point `--env-dir` at an isolated location. The saved result records the environment
+directory, requested packages, originating import names, and the resolved version of every
+installed distribution.
 
 For control and reproducibility the environment can instead be pinned with `--env env.txt` (one pip
-package per line), which skips collection. If confirmation is declined or a package fails to
-install, the harness writes that editable `env.txt` for correction —
+package per line), which skips both collection and confirmation. If confirmation is declined or a
+package fails to install, the harness writes that editable `env.txt` for correction —
 remove unwanted or un-installable libraries, fix names/versions, and re-run with `--env`.
 
-The repo's `run_eval -d bcbreuse` invokes this same complete evaluator and uses a separate cached
-environment for each evaluation output.
+The repo's `run_eval -d libreusebench` invokes this same complete evaluator, passing `confirm=None`
+to install automatically since it runs unattended, and uses a separate cached environment for each
+evaluation output.

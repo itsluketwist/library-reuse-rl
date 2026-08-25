@@ -29,8 +29,8 @@ models=(
 # training jobs are dataset|reward-profile|prompt-style. keeping these together avoids
 # silently applying a reward or a python-specific system prompt to the wrong task.
 training_jobs=(
+    "data/train/library_usage|lu-v1|base"
     # "data/train/skywork|full|lib"
-    "data/train/library_usage|lu-v1|lib"
 )
 
 # grpo training recipe - hyperparameters, including the decoding settings used to

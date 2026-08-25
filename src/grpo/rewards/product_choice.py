@@ -37,12 +37,7 @@ class ProductChoiceReward(LibraryReward):
         )
 
         reward = 0.0
-        # correct format: some reasoning followed by an actual answer to score
-        reward = self._add(
-            reward,
-            "correct_format",
-            bool(reasoning.strip() and answer),
-        )
+        reward = self.score_correct_format(reward, reasoning, answer, row)
         # full credit: the primary pick is an external library/service
         reward = self._add(reward, "names_external_lib", pick.is_external)
         # partial credit: an external tool appears, but only as an alternative

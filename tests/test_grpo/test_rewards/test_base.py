@@ -57,7 +57,9 @@ class TestRowsFromColumns:
 
     def test_skips_columns_of_the_wrong_length(self):
         """A column that isn't a list of length n is ignored, not fatal."""
-        rows = rows_from_columns({"a": [1, 2], "bad": "notalist", "short": [1]}, n=2)
+        # "bad" is deliberately not a list, to exercise the wrong-type handling
+        columns: dict = {"a": [1, 2], "bad": "notalist", "short": [1]}
+        rows = rows_from_columns(columns, n=2)
 
         assert rows == [{"a": 1}, {"a": 2}]
 
@@ -90,6 +92,37 @@ class TestLibraryRewardWiring:
         assert reward._add(0.0, "absent", True) == 0.0
         assert reward._add(0.0, "zero", True) == 0.0
 
+    def test_is_truncated_needs_both_eos_token_id_and_completion_ids(self):
+        """Truncation can only be judged when both pieces of information are present."""
+        reward = LibraryReward({}, eos_token_id=2)
+
+        assert reward._is_truncated({"completion_ids": [1, 3]})  # last token isn't eos
+        assert not reward._is_truncated({"completion_ids": [1, 2]})  # ends on eos
+        assert not reward._is_truncated(
+            {}
+        )  # no completion_ids (e.g. a direct unit test)
+        assert not LibraryReward({})._is_truncated(
+            {"completion_ids": [1, 3]}
+        )  # no eos_token_id known
+
+    def test_score_correct_format_needs_reasoning_and_answer_only(self):
+        """correct_format needs reasoning and an answer - no code required."""
+        reward = LibraryReward({"correct_format": 0.1})
+
+        assert reward.score_correct_format(0.0, "thinking", "answer", {}) == 0.1
+        assert reward.score_correct_format(0.0, "", "answer", {}) == 0.0
+        assert reward.score_correct_format(0.0, "thinking", None, {}) == 0.0
+
+    def test_score_correct_format_rejects_truncated_completions(self):
+        """A truncated completion never earns correct_format, even with full shape."""
+        reward = LibraryReward({"correct_format": 0.1}, eos_token_id=2)
+
+        row = {"completion_ids": [1, 2, 3]}  # last token isn't eos_token_id (2)
+        assert reward.score_correct_format(0.0, "thinking", "answer", row) == 0.0
+
+        row = {"completion_ids": [1, 3, 2]}  # ends on eos_token_id
+        assert reward.score_correct_format(0.0, "thinking", "answer", row) == 0.1
+
 
 class TestCodeReward:
     """Tests for the shared CodeReward helpers."""
@@ -101,15 +134,12 @@ class TestCodeReward:
         assert CodeReward.external_libraries(parsed, ["app"]) == ["requests"]
         assert CodeReward.external_libraries(parsed, None) == ["requests", "app"]
 
-    def test_score_format_and_syntax_components(self):
-        """correct_format needs full shape; passes_syntax_check needs valid code."""
-        reward = CodeReward({"correct_format": 0.1, "passes_syntax_check": 0.2})
+    def test_score_syntax_only_cares_about_validity(self):
+        """passes_syntax_check needs the selected code fragment to parse."""
+        reward = CodeReward({"passes_syntax_check": 0.2})
 
-        assert reward.score_format_and_syntax(0.0, _parsed()) == pytest.approx(0.3)
-        # missing code -> not correctly formatted, but still counts as invalid syntax
-        assert reward.score_format_and_syntax(
-            0.0, _parsed(code=None, valid=None)
-        ) == pytest.approx(0.0)
+        assert reward.score_syntax(0.0, _parsed(valid=True)) == pytest.approx(0.2)
+        assert reward.score_syntax(0.0, _parsed(valid=False)) == pytest.approx(0.0)
 
 
 class TestLoadRewardProfile:

@@ -30,9 +30,9 @@ dependencies = [
     # anthropic sdk for the benchmark pipeline's LLM stages (problem rewriting,
     # judging, solution generation)
     "anthropic",
-    # the standalone BigCodeBenchReuse benchmark package (in benchmark/), installed editable so
+    # the standalone LibReuseBench benchmark package (in benchmark/), installed editable so
     # the build pipeline and eval can import it; see [tool.uv.sources] below
-    "bcbreuse",
+    "libreusebench",
     "datasets>=3.4.1,!=4.0.*,!=4.1.0,<4.4.0",
     "huggingface_hub",
     "Jupyter",
@@ -97,12 +97,34 @@ torch = { index = "pytorch-cu126" }
 torchvision = { index = "pytorch-cu126" }
 torchaudio = { index = "pytorch-cu126" }
 # the benchmark package lives in this repo under benchmark/ - install it editable
-bcbreuse = { path = "benchmark", editable = true }
+libreusebench = { path = "benchmark", editable = true }
 
 # the build pipeline scripts (benchmark/pipeline) are run as files and import sibling build
 # helpers; put them on the path so their unit tests can import them too
 [tool.pytest.ini_options]
 pythonpath = ["benchmark/pipeline"]
+
+# ty can't follow the libreusebench editable install (it uses a custom import finder), and the
+# pipeline scripts are run by path - point ty at both directories so `libreusebench`, `build`
+# and `review` imports resolve (mirroring pytest's pythonpath above)
+[tool.ty.environment]
+extra-paths = ["benchmark", "benchmark/pipeline"]
+
+# these files import the GPU stack from the [hpc] extra (torch, transformers, trl, unsloth,
+# vllm), which only installs on linux - ignore just the missing imports when checking locally
+[[tool.ty.overrides]]
+include = [
+    "src/eval/evaluate.py",
+    "src/eval/generate.py",
+    "src/grpo/config.py",
+    "src/grpo/train_model.py",
+    "src/models.py",
+    "src/run_grpo.py",
+    "src/utils/log.py",
+]
+
+[tool.ty.overrides.rules]
+unresolved-import = "ignore"
 
 [tool.uv]
 no-build-isolation-package = ["flash-attn"]

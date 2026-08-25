@@ -194,14 +194,14 @@ class TestLoadTrainDatasetNewSchema:
         assert example["task_type"] == "product_choice"
 
 
-def _make_bcbreuse_record(
+def _make_libreusebench_record(
     prompt: str,
     test_inputs: list[str],
     expected_outputs: list[str],
 ) -> dict:
-    """Build a minimal BigCodeBenchReuse-format record."""
+    """Build a minimal LibReuseBench-format record."""
     return {
-        "task_id": "BCBR/V000",
+        "task_id": "LRB/D000",
         "category": "array-processing",
         "prompt": prompt,
         "test_inputs": test_inputs,
@@ -261,13 +261,13 @@ class TestLoadEvalDataset:
             {"role": "user", "content": "solve this"},
         ]
 
-    def test_loads_bcbreuse_without_treating_gold_solutions_as_tests(
+    def test_loads_libreusebench_without_treating_gold_solutions_as_tests(
         self,
         tmp_path: Path,
     ) -> None:
-        """BCBReuse top-level tests and nested gold programs remain distinguishable."""
-        dataset_file = tmp_path / "bcbreuse.jsonl"
-        record = _make_bcbreuse_record(
+        """LibReuseBench top-level tests and nested gold programs remain distinguishable."""
+        dataset_file = tmp_path / "libreusebench.jsonl"
+        record = _make_libreusebench_record(
             "echo the input",
             ["hello\n"],
             ["hello"],
@@ -284,6 +284,6 @@ class TestLoadEvalDataset:
         assert example["inputs"] == ["hello\n"]
         assert example["expected_outputs"] == ["hello"]
         assert example["test_inputs"] == ["hello\n"]
-        assert example["task_id"] == "BCBR/V000"
+        assert example["task_id"] == "LRB/D000"
         assert example["category"] == "array-processing"
         assert example["ground_truth"]["gold_extlib_packages"] == ["numpy==2.5.1"]

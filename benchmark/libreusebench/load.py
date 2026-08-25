@@ -1,4 +1,4 @@
-"""Load the bundled BigCodeBenchReuse benchmark splits."""
+"""Load the bundled LibReuseBench benchmark splits."""
 
 from pathlib import Path
 
@@ -7,7 +7,7 @@ from llm_cgr import load_jsonl
 
 # the split files are bundled alongside the package code (see pyproject package-data)
 _DATA_DIR = Path(__file__).parent / "data"
-_SPLITS = ("test", "val")
+_SPLITS = ("test", "dev")
 
 
 def load_dataset(
@@ -15,7 +15,7 @@ def load_dataset(
 ) -> dict[str, list[dict]]:
     """Load the benchmark splits from the bundled JSONL files.
 
-    Pass a split name ("test" or "val") to load just one, or None for all available.
+    Pass a split name ("test" or "dev") to load just one, or None for all available.
 
     Returns a dict mapping split name to its list of task records.
     """

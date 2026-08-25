@@ -25,6 +25,7 @@ print(line)
             response=response, record=record, python_executable=PYTHON
         )
 
+        assert result.code is not None
         assert result.code.strip() == "line = input()\nprint(line)"
         assert result.passed is True
 
@@ -77,5 +78,6 @@ print(result)
             python_executable=PYTHON,
         )
 
+        assert result.code is not None
         assert "result = line.strip()" in result.code
         assert result.passed is True

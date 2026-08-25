@@ -23,7 +23,7 @@ from typing import NamedTuple
 try:  # resource limits are posix-only
     import resource
 except ImportError:  # pragma: no cover - windows
-    resource = None  # type: ignore[assignment]
+    resource = None  # ty: ignore[invalid-assignment]
 
 
 # generous enough for heavy scientific libraries (sklearn/scipy/statsmodels import slowly), so a
@@ -89,7 +89,10 @@ def execute(
             # up, so a passing flaky launch doesn't get recorded as a wrong answer.
             launch_error = exc
     else:
-        return False, f"could not launch interpreter {python_executable}: {launch_error}"
+        return (
+            False,
+            f"could not launch interpreter {python_executable}: {launch_error}",
+        )
 
     if result.returncode == 0:
         return True, result.stdout
@@ -284,9 +287,11 @@ class Environment:
         self,
         cache_dir: str | Path,
     ) -> None:
+        # resolved to absolute: execute() runs the interpreter with a different subprocess cwd
+        # per call, and a relative path would then resolve against that cwd instead of this one
         # resolved to absolute: `execute()` runs candidate programs with cwd set to a fresh
         # temp dir for sandboxing, so a relative cache_dir would never resolve to the venv
-        self.cache_dir = Path(cache_dir).resolve()
+        self.cache_dir = Path(cache_dir).resolve().resolve()
         self._installed: set[str] = set()
         if not self.python.exists():
             # concurrent slurm jobs can target the same (unversioned) cache_dir - an
@@ -298,8 +303,12 @@ class Environment:
             with open(lock_path, "a") as lock_file:
                 fcntl.flock(lock_file, fcntl.LOCK_EX)
                 try:
-                    if not self.python.exists():  # re-check: a waited-out racer may have built it
-                        venv.EnvBuilder(with_pip=True, clear=False).create(self.cache_dir)
+                    if (
+                        not self.python.exists()
+                    ):  # re-check: a waited-out racer may have built it
+                        venv.EnvBuilder(with_pip=True, clear=False).create(
+                            self.cache_dir
+                        )
                 finally:
                     fcntl.flock(lock_file, fcntl.LOCK_UN)
 

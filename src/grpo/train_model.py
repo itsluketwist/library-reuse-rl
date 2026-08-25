@@ -113,6 +113,19 @@ def _save_metrics_json(
     save_json(all_metrics, all_results_path)
 
 
+def _periodic_eval_history(log_history: list[dict]) -> dict[str, dict]:
+    """
+    Pull the periodic validation rounds out of trainer.state.log_history.
+
+    Returns a dict mapping step (as a string) -> that round's metrics.
+    """
+    return {
+        str(entry["step"]): {k: v for k, v in entry.items() if k != "step"}
+        for entry in log_history
+        if any(key.startswith("eval_") for key in entry)
+    }
+
+
 def train_model_with_grpo(
     model_name_or_path: str,
     dataset_dir: str | Path,
@@ -245,7 +258,6 @@ def train_model_with_grpo(
     # build_reward also rejects profile components this task does not understand.
     reward_kind = reward_kinds.pop()
     logger.info(f"Reward kind: {reward_kind}")
-    reward_func = build_reward(kind=reward_kind, weights=reward_weights)
 
     ##########################
     # Load model and tokenizer
@@ -262,6 +274,13 @@ def train_model_with_grpo(
     # unsloth places the model (and colocated vllm engine) on the gpu at load time, so
     # this already reflects most of the run's steady-state model memory
     log_gpu_memory("after model load")
+
+    # built here, not above, so it can use the tokenizer's eos_token_id
+    reward_func = build_reward(
+        kind=reward_kind,
+        weights=reward_weights,
+        eos_token_id=tokenizer.eos_token_id,
+    )
 
     #############################
     # Initialize the GRPO trainer
@@ -302,6 +321,9 @@ def train_model_with_grpo(
     _save_metrics_json(metrics_dir, "train", metrics)
     trainer.state.save_to_json(metrics_dir / "trainer_state.json")
 
+    # captured before the final evaluate() below adds its own log_history entry
+    eval_step_history = _periodic_eval_history(trainer.state.log_history)
+
     ##################################
     # Save model and create model card
     ##################################
@@ -332,10 +354,12 @@ def train_model_with_grpo(
     ##########
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
-        metrics = trainer.evaluate()
-        metrics["eval_samples"] = len(dataset["val"])
-        trainer.log_metrics("eval", metrics)
-        _save_metrics_json(metrics_dir, "eval", metrics)
+        final_metrics = trainer.evaluate()
+        final_metrics["eval_samples"] = len(dataset["val"])
+        trainer.log_metrics("eval", final_metrics)
+        # "final" first so it's the headline number when the json file is read
+        eval_results = {"final": final_metrics, "steps": eval_step_history}
+        _save_metrics_json(metrics_dir, "eval", eval_results)
 
     #############
     # push to hub

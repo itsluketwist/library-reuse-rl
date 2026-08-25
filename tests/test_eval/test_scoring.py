@@ -171,6 +171,42 @@ Item()
             "requests": 1,
         }
 
+    def test_one_valid_block_is_enough_for_valid_code_rate(self):
+        """A throwaway broken snippet alongside a working one still counts as valid."""
+        dataset = [
+            {
+                "idx": 0,
+                "task_type": "library_usage",
+                "category_id": "http-requests",
+                "useful_libs": [],
+                "local_modules": [],
+            }
+        ]
+        response = """r</think>
+```python
+import requests
+requests.get("https://example.com")
+```
+```python
+def broken(:
+```
+"""
+
+        analysis, results = score_dataset(
+            dataset,
+            _responses(response),
+            evaluator="library_usage",
+        )
+
+        assert results[0]["n_code_blocks"] == 2
+        assert results[0]["n_valid_code_blocks"] == 1
+        # one working block is enough, unlike all_code_blocks_valid below
+        assert results[0]["valid"]
+        assert not results[0]["all_code_blocks_valid"]
+        assert analysis["valid_code_rate"] == 1.0
+        # external_lib_used always comes from a block that parsed
+        assert analysis["external_lib_used_rate"] <= analysis["valid_code_rate"]
+
 
 class TestScoreEmptyDataset:
     """Tests for the empty-dataset edge case."""
@@ -183,8 +219,8 @@ class TestScoreEmptyDataset:
         assert results == []
 
 
-class TestScoreBigCodeBenchReuse:
-    """The BCBReuse route uses its complete official evaluator."""
+class TestScoreLibReuseBench:
+    """The LibReuseBench route uses its complete official evaluator."""
 
     def test_official_statistics_are_saved(self, monkeypatch, tmp_path):
         """Responses go through official install-and-score orchestration."""
@@ -194,10 +230,12 @@ class TestScoreBigCodeBenchReuse:
             responses_file,
             output_directory,
             env_dir,
+            confirm,
         ):
             seen["records"] = load_jsonl(responses_file)
             seen["output_directory"] = output_directory
             seen["env_dir"] = env_dir
+            seen["confirm"] = confirm
             return {
                 "n_tasks": 1,
                 "n_responses": 1,
@@ -217,7 +255,7 @@ class TestScoreBigCodeBenchReuse:
                 },
                 "results": [
                     {
-                        "task_id": "BCBR/T000",
+                        "task_id": "LRB/T000",
                         "idx": 0,
                         "passed": True,
                         "external_libs": ["pandas"],
@@ -226,13 +264,13 @@ class TestScoreBigCodeBenchReuse:
             }
 
         monkeypatch.setattr(
-            "src.eval.scoring.evaluate_bcb_responses",
+            "src.eval.scoring.evaluate_lrb_responses",
             fake_evaluate_responses,
         )
         dataset = [
             {
                 "idx": 0,
-                "task_id": "BCBR/T000",
+                "task_id": "LRB/T000",
                 "category": "tables",
                 "test_inputs": ["1\n"],
                 "expected_outputs": ["1"],
@@ -242,37 +280,38 @@ class TestScoreBigCodeBenchReuse:
         analysis, results = score_dataset(
             dataset,
             _responses("```python\nimport pandas as pd\nprint(1)\n```"),
-            evaluator="bcbreuse",
+            evaluator="libreusebench",
             environment_dir=str(tmp_path / "env"),
         )
 
         assert seen["records"] == [
             {
-                "task_id": "BCBR/T000",
+                "task_id": "LRB/T000",
                 "response": "```python\nimport pandas as pd\nprint(1)\n```",
             }
         ]
         assert seen["env_dir"] == str(tmp_path / "env")
-        assert analysis["task"] == "bcbreuse"
+        assert seen["confirm"] is None  # unattended eval runs install automatically
+        assert analysis["task"] == "libreusebench"
         assert analysis["pass@1"] == 1.0
         assert analysis["library_use"]["per_task"]["using_lib_rate"] == 1.0
         assert analysis["environment"]["installed_packages"] == ["pandas"]
         assert analysis["environment"]["installed_package_versions"] == {
             "pandas": "2.3.1"
         }
-        assert results[0]["task_id"] == "BCBR/T000"
+        assert results[0]["task_id"] == "LRB/T000"
         assert results[0]["stop_reason"] == "stop"
 
     def test_environment_setup_failure_is_fatal(self, monkeypatch):
         """An official evaluator abort caused by failed installs fails the run."""
         monkeypatch.setattr(
-            "src.eval.scoring.evaluate_bcb_responses",
+            "src.eval.scoring.evaluate_lrb_responses",
             lambda **_kwargs: {},
         )
         dataset = [
             {
                 "idx": 0,
-                "task_id": "BCBR/T000",
+                "task_id": "LRB/T000",
                 "category": "tables",
                 "test_inputs": ["1\n"],
                 "expected_outputs": ["1"],
@@ -283,5 +322,5 @@ class TestScoreBigCodeBenchReuse:
             score_dataset(
                 dataset,
                 _responses("```python\nprint(1)\n```"),
-                evaluator="bcbreuse",
+                evaluator="libreusebench",
             )

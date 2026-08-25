@@ -1,4 +1,4 @@
-"""Evaluate model responses against BigCodeBenchReuse: parse, install, run, and aggregate.
+"""Evaluate model responses against LibReuseBench: parse, install, run, and aggregate.
 
 The flow is: parse every response and work out the union of third-party packages they import;
 create the venv, install those packages, and run each response against its task's stdin/stdout
@@ -6,10 +6,11 @@ tests. Reporting gives both correctness (pass rate) and library reuse (how often
 an external library) on the same problems - the signal this benchmark exists to provide. The
 installed package plan is saved with the results for debugging and reproducibility.
 
-For control and reproducibility the environment can instead be supplied as a package-per-line
-`.txt` file (`env_file`), which skips package collection. A caller can still provide a confirmation
-callback when an explicit approval gate is wanted. When that callback declines, or a package fails
-to install, an environment file is written for correction and reuse.
+Since responses can name arbitrary third-party packages, installation is confirmed on stdin by
+default (`confirm_packages`) - pass `confirm=None` to install automatically instead, for unattended
+runs. For control and reproducibility the environment can instead be supplied as a package-per-line
+`.txt` file (`env_file`), which skips both collection and confirmation. When confirmation declines,
+or a package fails to install, an environment file is written for correction and reuse.
 """
 
 from collections import Counter, defaultdict
@@ -19,15 +20,15 @@ from math import comb
 from pathlib import Path
 from typing import Any
 
-from bcbreuse.environment import _DEFAULT_TIMEOUT_SECONDS, Environment
-from bcbreuse.libraries import (
+from libreusebench.environment import _DEFAULT_TIMEOUT_SECONDS, Environment
+from libreusebench.libraries import (
     extract_code,
     imported_libraries,
     pip_package,
     required_import_names,
     required_pip_packages,
 )
-from bcbreuse.load import load_dataset
+from libreusebench.load import load_dataset
 from llm_cgr import load_jsonl, save_json
 
 
@@ -83,7 +84,7 @@ def plan_installs(
     return dict(origins)
 
 
-def _confirm_packages(
+def confirm_packages(
     plan: dict[str, set[str]],
 ) -> bool:
     """Show the third-party packages that will be pip-installed and ask for confirmation on stdin.
@@ -106,7 +107,7 @@ def _confirm_packages(
 
 
 # the editable environment file the user fixes up and passes back with --env
-_ENV_FILENAME = "bcbreuse_env.txt"
+_ENV_FILENAME = "libreusebench_env.txt"
 
 
 def read_env_file(
@@ -142,10 +143,10 @@ def write_env_file(
     origins = origins or {}
     failed = failed or set()
     lines = [
-        "# BigCodeBenchReuse eval environment",
+        "# LibReuseBench eval environment",
         "# one pip package per line; blank lines and '#' comments are ignored.",
         "# edit as needed (remove unwanted libraries, fix names, pin versions), then re-run:",
-        "#   bcbeval <responses.jsonl> --env <this file>",
+        "#   libreuseeval <responses.jsonl> --env <this file>",
         "",
     ]
     for package in sorted(packages):
@@ -332,19 +333,21 @@ def score_responses(
 def evaluate_responses(
     responses_file: str,
     output_directory: str = "output",
-    env_dir: str = ".bcbeval-venv",
+    env_dir: str = ".libreuseeval-venv",
     timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
     env_file: str | None = None,
     k: int | None = None,
-    confirm: Callable[[dict[str, set[str]]], bool] | None = None,
+    confirm: Callable[[dict[str, set[str]]], bool] | None = confirm_packages,
 ) -> dict:
-    """Evaluate responses to BigCodeBenchReuse and save the results.
+    """Evaluate responses to LibReuseBench and save the results.
 
     The environment is decided one of two ways. With `env_file`, that file is the definitive list
     of packages to install. Otherwise the responses are parsed and the collected packages are
-    installed automatically. Passing `confirm` adds an optional approval gate before installation.
-    If it declines, or a package fails to install, an editable environment file is written for the
-    caller to fix up and pass back with `env_file` - and the run stops.
+    confirmed (by default, on stdin via `confirm_packages`) before installing. Pass `confirm=None`
+    to install automatically without asking - only do this in unattended contexts, since responses
+    can name arbitrary third-party packages. If confirmation declines, or a package fails to
+    install, an editable environment file is written for the caller to fix up and pass back with
+    `env_file` - and the run stops.
 
     On success, reports pass@1 / pass@k and per-problem library-reuse statistics (fraction of
     problems using a library, average external libraries per problem, and a per-library task count),
@@ -353,7 +356,7 @@ def evaluate_responses(
 
     Returns the results dict (empty if the run stopped for the environment to be corrected).
     """
-    print(f"Evaluating BigCodeBenchReuse responses from {responses_file}")
+    print(f"Evaluating LibReuseBench responses from {responses_file}")
     benchmark = _benchmark_by_id()
     responses = _load_responses(responses_file)
 
@@ -373,7 +376,7 @@ def evaluate_responses(
             path = write_env_file(output_directory, set(plan), origins=plan)
             print(
                 f"\nwrote {path} - edit it (remove/rename packages) and re-run with:"
-                f"\n  bcbeval {responses_file} --env {path}"
+                f"\n  libreuseeval {responses_file} --env {path}"
             )
             return {}
         packages = set(plan)
@@ -389,7 +392,7 @@ def evaluate_responses(
         print(
             f"\ncould not install {sorted(install_failed)}."
             f"\nwrote {path} - fix the offending package(s) and re-run with:"
-            f"\n  bcbeval {responses_file} --env {path}"
+            f"\n  libreuseeval {responses_file} --env {path}"
         )
         return {}
 
@@ -414,7 +417,7 @@ def evaluate_responses(
 
     output_path = Path(output_directory)
     output_path.mkdir(parents=True, exist_ok=True)
-    file_path = output_path / f"bcbreuse_eval_{datetime.now().isoformat()}.json"
+    file_path = output_path / f"libreusebench_eval_{datetime.now().isoformat()}.json"
     save_json(data=results, file_path=str(file_path))
 
     summary = f"pass@1 {results['pass@1']:.3f}"

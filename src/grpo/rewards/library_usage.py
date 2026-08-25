@@ -71,7 +71,8 @@ class LibraryUsageReward(CodeReward):
         parsed = self.parse(content)
 
         reward = 0.0
-        reward = self.score_format_and_syntax(reward, parsed)
+        reward = self.score_correct_format(reward, parsed.reasoning, parsed.answer, row)
+        reward = self.score_syntax(reward, parsed)
 
         # unlike executable tasks, every code example contributes reuse evidence.
         analysis = analyse_library_usage(parsed, row.get("local_modules"))

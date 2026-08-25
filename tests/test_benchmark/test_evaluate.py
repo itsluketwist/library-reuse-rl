@@ -1,11 +1,11 @@
-"""Tests for the harness flow in bcbreuse/evaluate.py: parse, plan installs, confirm, key by id.
+"""Tests for the harness flow in libreusebench/evaluate.py: parse, plan installs, confirm, key by id.
 
 Exercises the pure logic only - no venv is created and nothing is pip-installed (the confirmation
 gate is declined, or a fake benchmark is injected).
 """
 
 import pytest
-from bcbreuse import evaluate
+from libreusebench import evaluate
 
 from src.utils.io import save_jsonl
 
@@ -13,7 +13,7 @@ from src.utils.io import save_jsonl
 _FAKE_BENCHMARK = {
     "test": [
         {
-            "task_id": "BCBR/T000",
+            "task_id": "LRB/T000",
             "category": "misc",
             "test_inputs": ["1\n"],
             "expected_outputs": ["1"],
@@ -51,8 +51,8 @@ class TestPlanInstalls:
 
     def test_maps_and_aggregates(self) -> None:
         responses = {
-            "BCBR/T000": ["```python\nimport sklearn\nimport numpy as np\n```"],
-            "BCBR/T001": ["```python\nimport numpy\n```"],
+            "LRB/T000": ["```python\nimport sklearn\nimport numpy as np\n```"],
+            "LRB/T001": ["```python\nimport numpy\n```"],
         }
         plan = evaluate.plan_installs(responses)
         assert plan["scikit-learn"] == {"sklearn"}  # import name remapped to pip name
@@ -66,31 +66,31 @@ class TestLoadResponses:
         path = tmp_path / "resp.jsonl"
         save_jsonl(
             [
-                {"task_id": "BCBR/T000", "responses": ["x", "y"]},
-                {"task_id": "BCBR/T001", "response": "z"},
+                {"task_id": "LRB/T000", "responses": ["x", "y"]},
+                {"task_id": "LRB/T001", "response": "z"},
             ],
             path,
         )
         assert evaluate._load_responses(str(path)) == {
-            "BCBR/T000": ["x", "y"],
-            "BCBR/T001": ["z"],
+            "LRB/T000": ["x", "y"],
+            "LRB/T001": ["z"],
         }
 
     def test_missing_response_field_errors(self, tmp_path) -> None:
         path = tmp_path / "resp.jsonl"
-        save_jsonl([{"task_id": "BCBR/T000"}], path)
+        save_jsonl([{"task_id": "LRB/T000"}], path)
         with pytest.raises(ValueError):
             evaluate._load_responses(str(path))
 
 
 class TestInstallationPlan:
-    """Packages install by default, with an optional confirmation gate."""
+    """Packages are confirmed by default before installing, unless the caller opts out."""
 
     def test_decline_writes_env_and_aborts(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setattr(evaluate, "load_dataset", lambda: _FAKE_BENCHMARK)
         path = tmp_path / "resp.jsonl"
         save_jsonl(
-            [{"task_id": "BCBR/T000", "response": "```python\nimport numpy\n```"}],
+            [{"task_id": "LRB/T000", "response": "```python\nimport numpy\n```"}],
             path,
         )
 
@@ -109,10 +109,31 @@ class TestInstallationPlan:
             "numpy"
         }
 
+    def test_default_confirm_asks_before_installing(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        """With no `confirm` override, the default gate prompts on stdin and can decline."""
+        monkeypatch.setattr(evaluate, "load_dataset", lambda: _FAKE_BENCHMARK)
+        monkeypatch.setattr("builtins.input", lambda _prompt="": "n")
+        path = tmp_path / "resp.jsonl"
+        save_jsonl(
+            [{"task_id": "LRB/T000", "response": "```python\nimport numpy\n```"}],
+            path,
+        )
+
+        env_dir = tmp_path / "venv"
+        result = evaluate.evaluate_responses(
+            responses_file=str(path),
+            output_directory=str(tmp_path / "out"),
+            env_dir=str(env_dir),
+        )
+        assert result == {}
+        assert not env_dir.exists()  # venv never created when declined
+
     def test_unknown_task_id_errors(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setattr(evaluate, "load_dataset", lambda: _FAKE_BENCHMARK)
         path = tmp_path / "resp.jsonl"
-        save_jsonl([{"task_id": "BCBR/T999", "response": "x"}], path)
+        save_jsonl([{"task_id": "LRB/T999", "response": "x"}], path)
         with pytest.raises(ValueError):
             evaluate.evaluate_responses(
                 responses_file=str(path),
@@ -140,7 +161,7 @@ class TestInstallationPlan:
         save_jsonl(
             [
                 {
-                    "task_id": "BCBR/T000",
+                    "task_id": "LRB/T000",
                     "response": "```python\nimport sklearn\nprint(1)\n```",
                 }
             ],
@@ -151,6 +172,7 @@ class TestInstallationPlan:
             responses_file=str(path),
             output_directory=str(tmp_path / "out"),
             env_dir=str(tmp_path / "venv"),
+            confirm=lambda _plan: True,
         )
 
         assert result["pass@1"] == 1.0
@@ -195,7 +217,7 @@ class TestEnvFile:
 
         resp = tmp_path / "resp.jsonl"
         save_jsonl(
-            [{"task_id": "BCBR/T000", "response": "```python\nprint(1)\n```"}], resp
+            [{"task_id": "LRB/T000", "response": "```python\nprint(1)\n```"}], resp
         )
         env = tmp_path / "env.txt"
         env.write_text("numpy\n")
@@ -232,12 +254,12 @@ class TestStatistics:
         # T000 has two responses (one using libs, one not); T001 has one, no libs
         per_response = [
             {
-                "task_id": "BCBR/T000",
+                "task_id": "LRB/T000",
                 "passed": True,
                 "external_libs": ["numpy", "pandas"],
             },
-            {"task_id": "BCBR/T000", "passed": False, "external_libs": []},
-            {"task_id": "BCBR/T001", "passed": False, "external_libs": []},
+            {"task_id": "LRB/T000", "passed": False, "external_libs": []},
+            {"task_id": "LRB/T001", "passed": False, "external_libs": []},
         ]
         res = evaluate._aggregate(per_response)
 

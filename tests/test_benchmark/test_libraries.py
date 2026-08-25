@@ -1,6 +1,7 @@
-"""Tests for the shared library analysis in bcbreuse.libraries (and the build hard-exclude)."""
+"""Tests for the shared library analysis in libreusebench.libraries (and the build hard-exclude)."""
 
-from bcbreuse.libraries import (
+from build import hard_exclude_reason
+from libreusebench.libraries import (
     analyse_source,
     extract_code,
     find_named_libraries,
@@ -8,7 +9,6 @@ from bcbreuse.libraries import (
     pip_package,
     required_pip_packages,
 )
-from build import hard_exclude_reason
 
 
 class TestPipPackage:
@@ -41,7 +41,7 @@ class TestExtractAndImports:
         assert code is not None and "re.findall" in code
 
     def test_extract_code_picks_largest_fenced_block(self) -> None:
-        """Executable BCBReuse answers select one largest candidate program."""
+        """Executable LibReuseBench answers select one largest candidate program."""
         response = """```python
 print("short")
 ```

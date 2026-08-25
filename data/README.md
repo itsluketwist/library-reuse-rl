@@ -1,7 +1,7 @@
 # Datasets
 
 All dataset download/construction code and the built datasets live here (the exception is the
-**BigCodeBenchReuse** eval benchmark, which is built and bundled in `benchmark/`). The folder is
+**LibReuseBench** eval benchmark, which is built and bundled in `benchmark/`). The folder is
 called `data` (not `datasets`) so it never shadows the HuggingFace `datasets` library.
 
 - **`train/`** — built training splits (`{train,val,test}.jsonl` each). `library_usage` is
@@ -108,7 +108,7 @@ run_eval -m <model> -d library_usage,product_choice
 The eval dataset configuration stores an explicit `evaluator` beside every path. The
 library-usage evaluator examines every fenced answer code block and reports valid-code
 rate, reuse rate, appropriate-library rate, average distinct libraries used, library counts,
-and bare/repository-phrasing breakdowns. BigCodeBenchReuse uses its package's complete official
+and bare/repository-phrasing breakdowns. LibReuseBench uses its package's complete official
 evaluator:
 it discovers and installs the generated responses' dependencies in an isolated environment,
 runs the official tests, and saves the official correctness and reuse statistics together with

@@ -13,4 +13,4 @@ uv venv "$BUILD_VENV" --python 3.12.12 --seed --clear
 echo
 echo "build venv ready at $BUILD_VENV"
 echo "run the build stages with:"
-echo "  BCB_BUILD_PYTHON=\"\$(pwd)/$BUILD_VENV/bin/python\" python benchmark/pipeline/04_make_tests.py"
+echo "  LRB_BUILD_PYTHON=\"\$(pwd)/$BUILD_VENV/bin/python\" python benchmark/pipeline/04_make_tests.py"

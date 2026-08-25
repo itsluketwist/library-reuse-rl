@@ -7,10 +7,12 @@ completions protocol, so one client implementation covers both, distinguished on
 """
 
 import os
+from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any
+from typing import Any, cast
 
 from openai import OpenAI
+from openai.types.chat import ChatCompletionMessageParam
 
 from .stop_reason import map_stop_reason
 
@@ -69,7 +71,7 @@ def _complete_one(
     """
     completion = client.chat.completions.create(
         model=model,
-        messages=prompt,
+        messages=cast(Iterable[ChatCompletionMessageParam], prompt),
         temperature=decoding_settings["temperature"],
         top_p=decoding_settings["top_p"],
         extra_body=extra_params,

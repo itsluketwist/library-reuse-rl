@@ -110,6 +110,30 @@ def longer_hand_written_example(value):
 
         assert score == 3.0
 
+    def test_correct_format_does_not_require_code(self):
+        """correct_format is shared with the other rewards - no code block needed."""
+        reward = LibraryUsageReward({"correct_format": 1.0})
+
+        score = reward.score(
+            "reasoning</think>\nJust use the requests library for this.",
+            {"local_modules": [], "useful_libs": []},
+        )
+
+        assert score == 1.0
+
+    def test_correct_format_rejects_a_truncated_completion(self):
+        """A truncated completion never earns correct_format, even with full shape."""
+        weights = {"correct_format": 1.0}
+        reward = LibraryUsageReward(weights, eos_token_id=2)
+
+        row = {"local_modules": [], "useful_libs": [], "completion_ids": [1, 3]}
+        score = reward.score(
+            _completion("import requests\nrequests.get('http://x')"),
+            row,
+        )
+
+        assert score == 0.0
+
     def test_build_reward_selects_this_class(self):
         """The factory resolves the library-usage kind to this reward."""
         reward = build_reward("library_usage", _WEIGHTS)

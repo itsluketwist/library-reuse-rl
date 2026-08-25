@@ -1,16 +1,16 @@
-"""Command-line entry point for evaluating BigCodeBenchReuse responses."""
+"""Command-line entry point for evaluating LibReuseBench responses."""
 
 import argparse
 
-from bcbreuse.environment import _DEFAULT_TIMEOUT_SECONDS
-from bcbreuse.evaluate import _confirm_packages, evaluate_responses
+from libreusebench.environment import _DEFAULT_TIMEOUT_SECONDS
+from libreusebench.evaluate import confirm_packages, evaluate_responses
 
 
 def main() -> None:
     """Parse arguments and run the evaluation harness."""
     parser = argparse.ArgumentParser(
-        prog="bcbeval",
-        description="Evaluate model responses against the BigCodeBenchReuse benchmark.",
+        prog="libreuseeval",
+        description="Evaluate model responses against the LibReuseBench benchmark.",
     )
     parser.add_argument(
         "responses_file", help="JSONL of {task_id, response(s)} records"
@@ -19,7 +19,7 @@ def main() -> None:
         "--output-directory", default="output", help="where to write results"
     )
     parser.add_argument(
-        "--env-dir", default=".bcbeval-venv", help="cached venv for installs"
+        "--env-dir", default=".libreuseeval-venv", help="cached venv for installs"
     )
     parser.add_argument(
         "--env",
@@ -40,13 +40,13 @@ def main() -> None:
         help="k for pass@k (default: the smallest number of samples any task has)",
     )
     parser.add_argument(
-        "--confirm-installs",
+        "--unsafe-installs",
         action="store_true",
-        help="ask for confirmation before installing the collected packages",
+        help="skip confirmation and install the collected packages automatically",
     )
     args = parser.parse_args()
 
-    confirm = _confirm_packages if args.confirm_installs else None
+    confirm = None if args.unsafe_installs else confirm_packages
     evaluate_responses(
         responses_file=args.responses_file,
         output_directory=args.output_directory,

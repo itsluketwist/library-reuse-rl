@@ -1,4 +1,4 @@
-# BigCodeBenchReuse build report
+# LibReuseBench build report
 
 ## Drop funnel
 
@@ -8,7 +8,7 @@
 - 04 tests minted: 173
 - 05 validated (dual-solvable): 139 of 172
 - 06 reviewed: 139 keep, 0 update, 0 reject, 0 pending of 139 (shipping 139)
-- **final dataset: 139 problems** (test 125, val 14)
+- **final dataset: 139 problems** (test 129, dev 10)
 
 **02 verdicts**
 
@@ -39,6 +39,7 @@
 - text-processing-nlp: 4
 - data-normalization: 4
 - data-transformation: 3
+- statistics-computation: 2
 - json-serialization: 2
 - data-preprocessing: 2
 - database-querying: 2
@@ -46,8 +47,10 @@
 - string-manipulation: 2
 - datetime-timezone-conversion: 2
 - data-encoding: 2
-- statistics-computation: 2
 - statistics-correlation: 2
+- arithmetic: 1
+- statistics-calculation: 1
+- nlp-text-processing: 1
 - data-transformation-scaling: 1
 - statistics-aggregation: 1
 - data-transformation-csv: 1
@@ -132,9 +135,6 @@
 - text-processing-frequency: 1
 - data-analysis-and-sorting: 1
 - string-analysis-entropy: 1
-- arithmetic: 1
-- statistics-calculation: 1
-- nlp-text-processing: 1
 
 **Final by seed library**
 

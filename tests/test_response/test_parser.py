@@ -153,6 +153,7 @@ def total(values):
         parsed = parse_response(response)
 
         assert "numpy" in parsed.reasoning
+        assert parsed.answer is not None
         assert "Here's the solution" in parsed.answer
         assert parsed.valid is True
         assert parsed.ext_libs == ["numpy"]
