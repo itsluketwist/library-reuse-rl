@@ -293,7 +293,8 @@ def _score_libreusebench(
 
     The official evaluator discovers packages from the responses, installs them into
     its cached environment, executes the selected code, and aggregates the results.
-    The evaluator installs its discovered package plan automatically.
+    Eval runs are unattended (including on HPC/Slurm), so this passes `confirm=None`
+    to install the discovered package plan automatically rather than prompting on stdin.
 
     Returns the official analysis and per-response results.
     """
@@ -315,6 +316,7 @@ def _score_libreusebench(
             responses_file=str(responses_file),
             output_directory=temp_dir,
             env_dir=environment_dir or ".libreuseeval-venv",
+            confirm=None,
         )
 
     if not official:

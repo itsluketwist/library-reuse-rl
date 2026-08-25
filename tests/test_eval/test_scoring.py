@@ -230,10 +230,12 @@ class TestScoreLibReuseBench:
             responses_file,
             output_directory,
             env_dir,
+            confirm,
         ):
             seen["records"] = load_jsonl(responses_file)
             seen["output_directory"] = output_directory
             seen["env_dir"] = env_dir
+            seen["confirm"] = confirm
             return {
                 "n_tasks": 1,
                 "n_responses": 1,
@@ -289,6 +291,7 @@ class TestScoreLibReuseBench:
             }
         ]
         assert seen["env_dir"] == str(tmp_path / "env")
+        assert seen["confirm"] is None  # unattended eval runs install automatically
         assert analysis["task"] == "libreusebench"
         assert analysis["pass@1"] == 1.0
         assert analysis["library_use"]["per_task"]["using_lib_rate"] == 1.0

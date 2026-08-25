@@ -185,13 +185,14 @@ data/train/product_choice
 # commit it; re-run data/build/amplify/vendor_seed.py to regenerate it locally.
 data/build/vendor
 
-# bigcodebenchreuse: fetched seed + per-stage build artefacts (regenerable via
-# benchmark/pipeline/*.py). the built splits under benchmark/bcbreuse/data ARE committed
+# libreusebench: fetched seed + per-stage build artefacts (regenerable via
+# benchmark/pipeline/*.py). the built splits under benchmark/libreusebench/data ARE committed
 # (they are the benchmark). the harness's cached install venv is disposable.
 benchmark/vendor
 benchmark/artefacts
-.bcbeval-venv
-.bcbeval-venvs
+benchmark/results/example
+.libreuseeval-venv
+.libreuseeval-venvs
 
 logs/*
 wandb/*

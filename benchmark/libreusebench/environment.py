@@ -264,7 +264,9 @@ class Environment:
         self,
         cache_dir: str | Path,
     ) -> None:
-        self.cache_dir = Path(cache_dir)
+        # resolved to absolute: execute() runs the interpreter with a different subprocess cwd
+        # per call, and a relative path would then resolve against that cwd instead of this one
+        self.cache_dir = Path(cache_dir).resolve()
         self._installed: set[str] = set()
         if not self.python.exists():
             venv.EnvBuilder(with_pip=True, clear=False).create(self.cache_dir)

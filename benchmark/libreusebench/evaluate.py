@@ -6,10 +6,11 @@ tests. Reporting gives both correctness (pass rate) and library reuse (how often
 an external library) on the same problems - the signal this benchmark exists to provide. The
 installed package plan is saved with the results for debugging and reproducibility.
 
-For control and reproducibility the environment can instead be supplied as a package-per-line
-`.txt` file (`env_file`), which skips package collection. A caller can still provide a confirmation
-callback when an explicit approval gate is wanted. When that callback declines, or a package fails
-to install, an environment file is written for correction and reuse.
+Since responses can name arbitrary third-party packages, installation is confirmed on stdin by
+default (`confirm_packages`) - pass `confirm=None` to install automatically instead, for unattended
+runs. For control and reproducibility the environment can instead be supplied as a package-per-line
+`.txt` file (`env_file`), which skips both collection and confirmation. When confirmation declines,
+or a package fails to install, an environment file is written for correction and reuse.
 """
 
 from collections import Counter, defaultdict
@@ -83,7 +84,7 @@ def plan_installs(
     return dict(origins)
 
 
-def _confirm_packages(
+def confirm_packages(
     plan: dict[str, set[str]],
 ) -> bool:
     """Show the third-party packages that will be pip-installed and ask for confirmation on stdin.
@@ -336,15 +337,17 @@ def evaluate_responses(
     timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
     env_file: str | None = None,
     k: int | None = None,
-    confirm: Callable[[dict[str, set[str]]], bool] | None = None,
+    confirm: Callable[[dict[str, set[str]]], bool] | None = confirm_packages,
 ) -> dict:
     """Evaluate responses to LibReuseBench and save the results.
 
     The environment is decided one of two ways. With `env_file`, that file is the definitive list
     of packages to install. Otherwise the responses are parsed and the collected packages are
-    installed automatically. Passing `confirm` adds an optional approval gate before installation.
-    If it declines, or a package fails to install, an editable environment file is written for the
-    caller to fix up and pass back with `env_file` - and the run stops.
+    confirmed (by default, on stdin via `confirm_packages`) before installing. Pass `confirm=None`
+    to install automatically without asking - only do this in unattended contexts, since responses
+    can name arbitrary third-party packages. If confirmation declines, or a package fails to
+    install, an editable environment file is written for the caller to fix up and pass back with
+    `env_file` - and the run stops.
 
     On success, reports pass@1 / pass@k and per-problem library-reuse statistics (fraction of
     problems using a library, average external libraries per problem, and a per-library task count),

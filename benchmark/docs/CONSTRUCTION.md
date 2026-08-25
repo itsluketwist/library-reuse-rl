@@ -126,17 +126,19 @@ solutions, and a `source` provenance block pointing back to BigCodeBench.
 `libreusebench.evaluate_responses` (CLI: `libreuseeval responses.jsonl`) is the released evaluator, and
 responses are keyed by `task_id` (`{task_id, response}` or `{task_id, responses: [...]}`). It first
 **parses every response** and gathers the union of third-party packages they import, mapping each
-import name to its pip distribution (`sklearn` → `scikit-learn`, via `IMPORT_TO_PIP`). It then
-**creates the venv, installs the packages automatically, and runs** each response against its task's
-tests (`--confirm-installs` adds an optional interactive checkpoint), aggregating
-**pass@1 / pass@k** and overall **per-problem library-reuse statistics**. Point `--env-dir` at an
-isolated location. The saved result records the environment directory, requested packages,
-originating import names, and the resolved version of every installed distribution.
+import name to its pip distribution (`sklearn` → `scikit-learn`, via `IMPORT_TO_PIP`). It then asks
+for confirmation before it **creates the venv, installs the packages, and runs** each response
+against its task's tests (`--unsafe-installs` skips the interactive checkpoint and installs
+automatically), aggregating **pass@1 / pass@k** and overall **per-problem library-reuse
+statistics**. Point `--env-dir` at an isolated location. The saved result records the environment
+directory, requested packages, originating import names, and the resolved version of every
+installed distribution.
 
 For control and reproducibility the environment can instead be pinned with `--env env.txt` (one pip
-package per line), which skips collection. If confirmation is declined or a package fails to
-install, the harness writes that editable `env.txt` for correction —
+package per line), which skips both collection and confirmation. If confirmation is declined or a
+package fails to install, the harness writes that editable `env.txt` for correction —
 remove unwanted or un-installable libraries, fix names/versions, and re-run with `--env`.
 
-The repo's `run_eval -d libreusebench` invokes this same complete evaluator and uses a separate cached
-environment for each evaluation output.
+The repo's `run_eval -d libreusebench` invokes this same complete evaluator, passing `confirm=None`
+to install automatically since it runs unattended, and uses a separate cached environment for each
+evaluation output.

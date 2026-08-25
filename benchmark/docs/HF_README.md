@@ -129,17 +129,18 @@ results = libreusebench.evaluate_responses("your_responses.jsonl")
 ```
 
 The harness parses each response, collects the third-party packages the responses import (mapping
-import names to PyPI names, e.g. `sklearn` → `scikit-learn`), and installs them into an isolated
-virtual environment. It then runs each response against its task's stdin/stdout tests and reports
-**pass@1 / pass@k** (test pass rate) and **library-reuse
+import names to PyPI names, e.g. `sklearn` → `scikit-learn`), and asks for confirmation before
+installing them into an isolated virtual environment. It then runs each response against its
+task's stdin/stdout tests and reports **pass@1 / pass@k** (test pass rate) and **library-reuse
 statistics** — the fraction that used a library, the average number of external libraries, and a
 per-library count — computed **both per task and per response**.
 The result records the environment directory, requested packages, originating import names, and
 the resolved version of every installed distribution.
 
-Pass `--confirm-installs` to add an interactive approval gate, or `--env env.txt` (one pip package
-per line) to pin the environment exactly. If confirmation is declined or an install fails, an
-editable `env.txt` is written for you to fix up and re-run with `--env`.
+Pass `--unsafe-installs` to skip the interactive approval gate and install automatically, or
+`--env env.txt` (one pip package per line) to pin the environment exactly. If confirmation is
+declined or an install fails, an editable `env.txt` is written for you to fix up and re-run with
+`--env`.
 
 ## 📊  *leaderboard*
 
