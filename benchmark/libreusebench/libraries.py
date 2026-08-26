@@ -126,13 +126,29 @@ def extract_code(
 def imported_libraries(
     response: str,
 ) -> set[str]:
-    """The external (non-stdlib) libraries the response's code imports and uses.
+    """The external (non-stdlib) libraries the response's code imports.
 
-    This is the reuse signal: which third-party libraries the model reached for.
+    This counts any import, whether or not the code goes on to call or access it - see
+    `used_libraries` for the stricter, actually-used signal.
 
     Returns the external library import names.
     """
     return set(select_code_block(response).ext_libs)
+
+
+def used_libraries(
+    response: str,
+) -> set[str]:
+    """The external (non-stdlib) libraries the response's code both imports and actually uses.
+
+    A library only counts once the code calls or accesses one of its members, not merely
+    imports it (`CodeBlock.lib_usage`) - this is the stricter reuse signal, since an unused
+    import can inflate `imported_libraries` without the model reaching for the library at all.
+
+    Returns the external library import names that are actually used.
+    """
+    block = select_code_block(response)
+    return {name for name in block.ext_libs if name in block.lib_usage}
 
 
 def _declared_installs(

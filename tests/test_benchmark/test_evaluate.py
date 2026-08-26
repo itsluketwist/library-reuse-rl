@@ -239,6 +239,67 @@ class TestEnvFile:
         assert result["environment"]["installed_package_versions"] == {"numpy": "1.2.3"}
 
 
+class TestScoreResponse:
+    """A response's imported and actually-used external libraries are tracked separately."""
+
+    def _evaluate_one(
+        self,
+        response: str,
+        tmp_path,
+        monkeypatch,
+    ) -> dict:
+        """Run a single response through the full evaluator with a fake, always-passing env.
+
+        Returns its per-response result dict.
+        """
+        monkeypatch.setattr(evaluate, "load_dataset", lambda: _FAKE_BENCHMARK)
+        monkeypatch.setattr(evaluate, "Environment", _FakeEnv)
+        path = tmp_path / "resp.jsonl"
+        save_jsonl([{"task_id": "LRB/T000", "response": response}], path)
+
+        result = evaluate.evaluate_responses(
+            responses_file=str(path),
+            output_directory=str(tmp_path / "out"),
+            env_dir=str(tmp_path / "venv"),
+            confirm=lambda _plan: True,
+        )
+        return result["results"][0]
+
+    def test_imported_but_unused_library_is_not_counted_as_used(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        # numpy is imported but never called
+        response = "```python\nimport numpy\nprint(1)\n```"
+        result = self._evaluate_one(response, tmp_path, monkeypatch)
+        assert result["external_libs"] == ["numpy"]
+        assert result["external_lib"] is True
+        assert result["used_external_libs"] == []
+        assert result["external_lib_used"] is False
+
+    def test_called_library_counts_as_both_imported_and_used(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        response = "```python\nimport numpy\nprint(numpy.array([1]))\n```"
+        result = self._evaluate_one(response, tmp_path, monkeypatch)
+        assert result["external_libs"] == ["numpy"]
+        assert result["external_lib"] is True
+        assert result["used_external_libs"] == ["numpy"]
+        assert result["external_lib_used"] is True
+
+    def test_no_code_reports_no_libraries(self, tmp_path, monkeypatch) -> None:
+        result = self._evaluate_one("just prose, no code here", tmp_path, monkeypatch)
+        assert result == {
+            "task_id": "LRB/T000",
+            "idx": 0,
+            "passed": False,
+            "external_libs": [],
+            "external_lib": False,
+            "used_external_libs": [],
+            "external_lib_used": False,
+            "reason": "no code",
+        }
+
+
 class TestStatistics:
     """pass@k uses the unbiased estimator; library stats are aggregated per problem."""
 
@@ -251,27 +312,53 @@ class TestStatistics:
         )  # one correct of two -> pass@2 certain
 
     def test_aggregate_per_task_and_per_response(self) -> None:
-        # T000 has two responses (one using libs, one not); T001 has one, no libs
+        # T000 has two responses (one importing+using libs, one not); T001 has one, no libs
         per_response = [
             {
                 "task_id": "LRB/T000",
                 "passed": True,
                 "external_libs": ["numpy", "pandas"],
+                "used_external_libs": ["pandas"],  # numpy imported but never called
             },
-            {"task_id": "LRB/T000", "passed": False, "external_libs": []},
-            {"task_id": "LRB/T001", "passed": False, "external_libs": []},
+            {
+                "task_id": "LRB/T000",
+                "passed": False,
+                "external_libs": [],
+                "used_external_libs": [],
+            },
+            {
+                "task_id": "LRB/T001",
+                "passed": False,
+                "external_libs": [],
+                "used_external_libs": [],
+            },
         ]
         res = evaluate._aggregate(per_response)
 
         assert res["n_tasks"] == 2 and res["n_responses"] == 3
-        per_task = res["library_use"]["per_task"]
-        assert per_task["using_lib_rate"] == 0.5  # 1 of 2 tasks used a library (union)
-        assert per_task["avg_extlibs"] == 1.0  # ({numpy,pandas}=2 + {}=0) / 2
-        assert per_task["library_counts"] == {"numpy": 1, "pandas": 1}
 
-        per_resp = res["library_use"]["per_response"]
+        imported_task = res["library_use"]["imported"]["per_task"]
         assert (
-            round(per_resp["using_lib_rate"], 3) == 0.333
-        )  # 1 of 3 responses used a library
-        assert round(per_resp["avg_extlibs"], 3) == 0.667  # (2 + 0 + 0) / 3
-        assert per_resp["library_counts"] == {"numpy": 1, "pandas": 1}
+            imported_task["using_lib_rate"] == 0.5
+        )  # 1 of 2 tasks imported a library (union)
+        assert imported_task["avg_extlibs"] == 1.0  # ({numpy,pandas}=2 + {}=0) / 2
+        assert imported_task["library_counts"] == {"numpy": 1, "pandas": 1}
+
+        imported_resp = res["library_use"]["imported"]["per_response"]
+        assert (
+            round(imported_resp["using_lib_rate"], 3) == 0.333
+        )  # 1 of 3 responses imported a library
+        assert round(imported_resp["avg_extlibs"], 3) == 0.667  # (2 + 0 + 0) / 3
+        assert imported_resp["library_counts"] == {"numpy": 1, "pandas": 1}
+
+        used_task = res["library_use"]["used"]["per_task"]
+        assert (
+            used_task["using_lib_rate"] == 0.5
+        )  # 1 of 2 tasks actually used a library
+        assert used_task["avg_extlibs"] == 0.5  # ({pandas}=1 + {}=0) / 2
+        assert used_task["library_counts"] == {"pandas": 1}  # numpy never used
+
+        used_resp = res["library_use"]["used"]["per_response"]
+        assert round(used_resp["using_lib_rate"], 3) == 0.333
+        assert round(used_resp["avg_extlibs"], 3) == 0.333  # (1 + 0 + 0) / 3
+        assert used_resp["library_counts"] == {"pandas": 1}

@@ -11,6 +11,7 @@ from libreusebench.libraries import (
     extract_code,
     imported_libraries,
     required_pip_packages,
+    used_libraries,
 )
 from libreusebench.load import load_dataset
 
@@ -27,4 +28,5 @@ __all__ = [
     "extract_code",
     "imported_libraries",
     "required_pip_packages",
+    "used_libraries",
 ]

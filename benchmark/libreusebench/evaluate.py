@@ -2,9 +2,10 @@
 
 The flow is: parse every response and work out the union of third-party packages they import;
 create the venv, install those packages, and run each response against its task's stdin/stdout
-tests. Reporting gives both correctness (pass rate) and library reuse (how often a solution used
-an external library) on the same problems - the signal this benchmark exists to provide. The
-installed package plan is saved with the results for debugging and reproducibility.
+tests. Reporting gives correctness (pass rate) and library reuse on the same problems - the
+signal this benchmark exists to provide - tracked at two strengths: how often a solution imported
+an external library, and the stricter how often it actually called or accessed one. The installed
+package plan is saved with the results for debugging and reproducibility.
 
 Since responses can name arbitrary third-party packages, installation is confirmed on stdin by
 default (`confirm_packages`) - pass `confirm=None` to install automatically instead, for unattended
@@ -27,6 +28,7 @@ from libreusebench.libraries import (
     pip_package,
     required_import_names,
     required_pip_packages,
+    used_libraries,
 )
 from libreusebench.load import load_dataset
 from llm_cgr import load_jsonl, save_json
@@ -174,13 +176,25 @@ def _score_response(
 ) -> dict[str, Any]:
     """Run one response against its task's tests and score it (packages already installed).
 
-    Returns a per-response result dict (passed, used_external, install_failed, ...).
+    Tracks library reuse at two strengths: `external_libs` is every third-party library the
+    response imports, `used_external_libs` is the subset it actually calls or accesses - an
+    unused import inflates the former without showing real reuse.
+
+    Returns a per-response result dict (passed, external_lib, external_lib_used, ...).
     """
     code = extract_code(response)
     if code is None:
-        return {"passed": False, "used_external": False, "reason": "no code"}
+        return {
+            "passed": False,
+            "external_libs": [],
+            "external_lib": False,
+            "used_external_libs": [],
+            "external_lib_used": False,
+            "reason": "no code",
+        }
 
     external = imported_libraries(response)
+    used = used_libraries(response)
     # any of this response's own packages that failed the up-front install (explains a failure)
     missing = sorted(required_pip_packages(response) & install_failed)
     passed, message = env.evaluate(
@@ -191,8 +205,10 @@ def _score_response(
     )
     return {
         "passed": passed,
-        "used_external": bool(external),
         "external_libs": sorted(external),
+        "external_lib": bool(external),
+        "used_external_libs": sorted(used),
+        "external_lib_used": bool(used),
         "install_failed": missing,
         "reason": "" if passed else message,
     }
@@ -254,12 +270,13 @@ def _aggregate(
 
     Responses are grouped by task. Pass rates use the unbiased pass@k estimator (k defaults to the
     smallest number of samples any task has, so it is well-defined everywhere). Library-use is
-    reported both per task (a task "uses a library" if any of its responses imported one) and per
-    response, each with a using-rate, an average, and a per-library count.
+    tracked at two strengths - "imported" (any third-party library named in an import) and "used"
+    (the subset actually called or accessed) - each reported both per task (true if any of its
+    responses hit the bar) and per response, with a using-rate, an average, and a per-library count.
 
     Returns the results dict (without the per-response detail, which the caller attaches).
     """
-    # group by task: sample count, correct count, and the union of external libraries used
+    # group by task: sample count, correct count, and the union of libraries imported/used
     tasks: dict[str, dict] = {}
     for row in per_response:
         task = tasks.setdefault(
@@ -267,12 +284,14 @@ def _aggregate(
             {
                 "n": 0,
                 "correct": 0,
-                "libs": set(),
+                "imported_libs": set(),
+                "used_libs": set(),
             },
         )
         task["n"] += 1
         task["correct"] += int(row["passed"])
-        task["libs"].update(row.get("external_libs", []))
+        task["imported_libs"].update(row.get("external_libs", []))
+        task["used_libs"].update(row.get("used_external_libs", []))
 
     values = list(tasks.values())
     samples_min = min((t["n"] for t in values), default=0)
@@ -285,10 +304,18 @@ def _aggregate(
         "pass@1": _mean(t["correct"] / t["n"] for t in values),
         "pass@k": _mean(_pass_at_k(t["n"], t["correct"], k) for t in values),
         "library_use": {
-            "per_task": _lib_stats([t["libs"] for t in values]),
-            "per_response": _lib_stats(
-                [set(row.get("external_libs", [])) for row in per_response]
-            ),
+            "imported": {
+                "per_task": _lib_stats([t["imported_libs"] for t in values]),
+                "per_response": _lib_stats(
+                    [set(row.get("external_libs", [])) for row in per_response]
+                ),
+            },
+            "used": {
+                "per_task": _lib_stats([t["used_libs"] for t in values]),
+                "per_response": _lib_stats(
+                    [set(row.get("used_external_libs", [])) for row in per_response]
+                ),
+            },
         },
     }
 
@@ -349,10 +376,11 @@ def evaluate_responses(
     install, an editable environment file is written for the caller to fix up and pass back with
     `env_file` - and the run stops.
 
-    On success, reports pass@1 / pass@k and per-problem library-reuse statistics (fraction of
-    problems using a library, average external libraries per problem, and a per-library task count),
-    plus the installed package plan and a timestamped JSON alongside the per-response details. `k`
-    defaults to the smallest number of samples any task has.
+    On success, reports pass@1 / pass@k and per-problem library-reuse statistics, split into
+    "imported" (fraction of problems naming a library, average external libraries per problem, and
+    a per-library task count) and the stricter "used" (the same statistics but only counting
+    libraries actually called or accessed), plus the installed package plan and a timestamped JSON
+    alongside the per-response details. `k` defaults to the smallest number of samples any task has.
 
     Returns the results dict (empty if the run stopped for the environment to be corrected).
     """
@@ -405,6 +433,9 @@ def evaluate_responses(
         install_failed=install_failed,
         k=k,
     )
+    # pop and re-add the per-response detail so "environment" is saved above it, keeping the
+    # summary stats together before the detailed breakdown
+    per_response_results = results.pop("results")
     results["environment"] = {
         "directory": str(Path(env_dir)),
         "source": str(env_file) if env_file is not None else "response_imports",
@@ -414,15 +445,20 @@ def evaluate_responses(
             package: sorted(plan.get(package, set())) for package in sorted(packages)
         },
     }
+    results["results"] = per_response_results
 
     output_path = Path(output_directory)
     output_path.mkdir(parents=True, exist_ok=True)
     file_path = output_path / f"libreusebench_eval_{datetime.now().isoformat()}.json"
+    # save the file's own name last, so the saved json is self-describing
+    results["results_file"] = str(file_path)
     save_json(data=results, file_path=str(file_path))
 
     summary = f"pass@1 {results['pass@1']:.3f}"
     if results["k"] > 1:
         summary += f" | pass@{results['k']} {results['pass@k']:.3f}"
-    lib_use = results["library_use"]["per_task"]["using_lib_rate"]
-    print(f"{summary} | lib-use {lib_use:.3f} | saved {file_path}")
+    lib_imported = results["library_use"]["imported"]["per_task"]["using_lib_rate"]
+    lib_used = results["library_use"]["used"]["per_task"]["using_lib_rate"]
+    summary += f" | lib-imported {lib_imported:.3f} | lib-used {lib_used:.3f}"
+    print(f"{summary} | saved {file_path}")
     return results

@@ -35,7 +35,9 @@ dataset = libreusebench.load_dataset()
 # {"test": [...], "dev": [...]}
 
 results = libreusebench.evaluate_responses("your_responses.jsonl")
-print(results["pass@1"], results["library_use"]["per_task"]["using_lib_rate"])
+print(results["pass@1"])
+print(results["library_use"]["imported"]["per_task"]["using_lib_rate"])  # named a library
+print(results["library_use"]["used"]["per_task"]["using_lib_rate"])  # actually called/accessed it
 ```
 
 A CLI command is also available:
