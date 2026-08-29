@@ -1,0 +1,1242 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-4B",
+    "adapter": null,
+    "provider": "vllm",
+    "dataset": "bcbreuse",
+    "dataset_file": "benchmark/bcbreuse/data/test.jsonl",
+    "evaluator": "bcbreuse",
+    "python_executable": null,
+    "environment_dir": ".bcbeval-venvs/qwen3-4b/bcbreuse-default",
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "prompt_style": "base",
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 8192
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "bcbreuse",
+    "n_total": 125,
+    "n_tasks": 125,
+    "n_responses": 125,
+    "k": 1,
+    "pass@1": 0.352,
+    "pass@k": 0.352,
+    "library_use": {
+      "per_task": {
+        "using_lib_rate": 0.016,
+        "avg_extlibs": 0.016,
+        "library_counts": {
+          "sklearn": 1,
+          "pytz": 1
+        }
+      },
+      "per_response": {
+        "using_lib_rate": 0.016,
+        "avg_extlibs": 0.016,
+        "library_counts": {
+          "sklearn": 1,
+          "pytz": 1
+        }
+      }
+    },
+    "environment": {
+      "directory": ".bcbeval-venvs/qwen3-4b/bcbreuse-default",
+      "source": "response_imports",
+      "installed_packages": [
+        "pytz",
+        "scikit-learn"
+      ],
+      "installed_package_versions": {
+        "cffi": "2.1.1",
+        "click": "8.4.2",
+        "cryptography": "50.0.0",
+        "defusedxml": "0.7.1",
+        "joblib": "1.5.3",
+        "narwhals": "2.24.0",
+        "nltk": "3.10.3",
+        "numpy": "2.5.2",
+        "pandas": "3.0.5",
+        "pip": "25.0.1",
+        "pycparser": "3.0",
+        "python-dateutil": "2.9.0.post0",
+        "pytz": "2026.3.post1",
+        "regex": "2026.7.19",
+        "scikit-learn": "1.9.0",
+        "scipy": "1.18.0",
+        "six": "1.17.0",
+        "threadpoolctl": "3.6.0",
+        "tqdm": "4.70.0"
+      },
+      "package_imports": {
+        "pytz": [
+          "pytz"
+        ],
+        "scikit-learn": [
+          "sklearn"
+        ]
+      }
+    }
+  },
+  "results": [
+    {
+      "task_id": "BCBR/T000",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T001",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T002",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 19, in <module>\nAssertionError: test 10: expected 'Error', got 'Country,Population\\nBoolPop,1'",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T003",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T004",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 18, in <module>\n  File \"<stdin>\", line 11, in _run\n  File \"<program>\", line 6, in <module>\nEOFError: EOF when reading a line",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T005",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T006",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T007",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T008",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T009",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T010",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T011",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T012",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T013",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T014",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T015",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T016",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T017",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T018",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T019",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T020",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T021",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 18, in <module>\n  File \"<stdin>\", line 11, in _run\n  File \"<program>\", line 39, in <module>\n  File \"<program>\", line 6, in main\nValueError: invalid literal for int() with base 10: '2,2'",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T022",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 19, in <module>\nAssertionError: test 5: expected '6300.625000', got '2700.125000'",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T023",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T024",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T025",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T026",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T027",
+      "idx": 0,
+      "passed": false,
+      "used_external": true,
+      "external_libs": [
+        "sklearn"
+      ],
+      "install_failed": [],
+      "reason": "timeout after 30.0s",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T028",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T029",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T030",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T031",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 19, in <module>\nAssertionError: test 1: expected '{\"text\": [\"National Aeronautics and Space Administration rocks\", \"Visit the United States of America\"]}', got '{\"text\":[\"National Aeronautics and Space Administration rocks\",\"Visit the United States of America\"]}'",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T032",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T033",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T034",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T035",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 18, in <module>\n  File \"<stdin>\", line 11, in _run\n  File \"<program>\", line 1\n    a a a\n      ^\nSyntaxError: invalid syntax",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T036",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 18, in <module>\n  File \"<stdin>\", line 11, in _run\n  File \"<program>\", line 5, in <module>\nEOFError: EOF when reading a line",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T037",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T038",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 18, in <module>\n  File \"<stdin>\", line 11, in _run\n  File \"<program>\", line 17, in <module>\nIndexError: no such group",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T039",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T040",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T041",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 19, in <module>\nAssertionError: test 10: expected 'key,mean,median\\na,2.0000,2.0000\\nb,NaN,NaN', got 'key,mean,median\\na,2.0000,2.0000\\nb,0.5000,0.5000'",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T042",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T043",
+      "idx": 0,
+      "passed": true,
+      "used_external": true,
+      "external_libs": [
+        "pytz"
+      ],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T044",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T045",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T046",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T047",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T048",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T049",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T050",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T051",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T052",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 18, in <module>\n  File \"<stdin>\", line 11, in _run\n  File \"<program>\", line 23, in <module>\nZeroDivisionError: float division by zero",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T053",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 18, in <module>\n  File \"<stdin>\", line 11, in _run\n  File \"<program>\", line 28, in <module>\n  File \"<program>\", line 18, in main\nEOFError: EOF when reading a line",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T054",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T055",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T056",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 18, in <module>\n  File \"<stdin>\", line 11, in _run\n  File \"<program>\", line 47, in <module>\n  File \"<program>\", line 18, in main\nZeroDivisionError: division by zero",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T057",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T058",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T059",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T060",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T061",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 19, in <module>\nAssertionError: test 4: expected '{\"a\": [1.0, 2.0, 3.0], \"b\": [4.0, 5.0, 6.0]}', got '{\"a\": [1, 2, 3], \"b\": [4, 5, 6]}'",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T062",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T063",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T064",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T065",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T066",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 19, in <module>\nAssertionError: test 1: expected 'category,count,mean,min,max\\nHealth,1,3.00,3,3\\nSports,1,19.00,19,19\\nTechnology,1,8.00,8,8', got ''",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T067",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T068",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T069",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T070",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T071",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 19, in <module>\nAssertionError: test 8: expected 'Position 0: 3.0\\nPosition 1: 2.3333', got 'Position 0: 1.3333\\nPosition 1: 2.3333'",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T072",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T073",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 19, in <module>\nAssertionError: test 1: expected '[1.000000, 2.000000, 3.000000, 4.000000, 5.000000]', got '[1.000000,2.000000,3.000000,4.000000,5.000000]'",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T074",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 19, in <module>\nAssertionError: test 5: expected 'a 0.540302\\nb 1.000000\\na 2.000000\\nc 3.000000', got 'a 0.540302\\nb 1.000000\\na -0.416147\\nc 3.000000'",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T075",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 19, in <module>\nAssertionError: test 3: expected 'Score,Category\\n100,', got 'Score,Category'",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T076",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T077",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T078",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T079",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T080",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T081",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T082",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T083",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T084",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 19, in <module>\nAssertionError: test 1: expected 'id text\\n1\\tHello<br>World\\n2\\tGood<br>Morning', got 'id text\\n1\\tHello\\\\nWorld<br>\\n2\\tGood\\\\nMorning<br>'",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T085",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T086",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 19, in <module>\nAssertionError: test 5: expected '\" Quoted text \" and \\' single quotes \\' - test .', got '\" Quoted text \" and \\'single quotes\\' - test .'",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T087",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T088",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T089",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 18, in <module>\n  File \"<stdin>\", line 11, in _run\n  File \"<program>\", line 5, in <module>\nEOFError: EOF when reading a line",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T090",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 19, in <module>\nAssertionError: test 1: expected '6091201', got ''",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T091",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T092",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T093",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T094",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T095",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T096",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 19, in <module>\nAssertionError: test 1: expected '{\"x\": [[1, 1], [3, 1], [2, 1]], \"y\": [[10, 1], [15, 1], [1, 1]], \"z\": [[5, 2], [7, 1]]}', got '{\\n  \"x\": [\\n    [\\n      1,\\n      1\\n    ],\\n    [\\n      3,\\n      1\\n    ],\\n    [\\n      2,\\n      1\\n    ]\\n  ],\\n  \"y\": [\\n    [\\n      10,\\n      1\\n    ],\\n    [\\n      15,\\n      1\\n    ],\\n    [\\n      1,\\n      1\\n    ]\\n  ],\\n  \"z\": [\\n    [\\n      5,\\n      2\\n    ],\\n    [\\n      7,\\n      1\\n    ]\\n  ]\\n}'",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T097",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T098",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 19, in <module>\nAssertionError: test 1: expected 'Age,Weight,shoe_size\\n1.404000,-0.701695,-1.224745\\n-0.555070,-0.712504,0.000000\\n-0.848930,1.414200,1.224745', got 'Error: Missing required columns'",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T099",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 18, in <module>\n  File \"<stdin>\", line 11, in _run\n  File \"<program>\", line 65, in <module>\n  File \"<program>\", line 53, in main\nValueError: could not convert string to float: '10,40'",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T100",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T101",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 18, in <module>\n  File \"<stdin>\", line 11, in _run\n  File \"<program>\", line 12, in <module>\n  File \"/users/k23048714/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/_strptime.py\", line 653, in _strptime_datetime\n    tt, fraction, gmtoff_fraction = _strptime(data_string, format)\n                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/users/k23048714/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/_strptime.py\", line 435, in _strptime\n    raise ValueError(\"unconverted data remains: %s\" %\nValueError: unconverted data remains: T10:15:00",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T102",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T103",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T104",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T105",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T106",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T107",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 18, in <module>\n  File \"<stdin>\", line 11, in _run\n  File \"<program>\", line 26, in <module>\n  File \"<program>\", line 17, in main\nValueError: max() iterable argument is empty",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T108",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T109",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T110",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T111",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T112",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T113",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T114",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T115",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T116",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T117",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T118",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T119",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 19, in <module>\nAssertionError: test 7: expected 'ID,Name,Age\\nX1,Bob,', got 'ID,Name,Age\\nX1,Bob,None'",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T120",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T121",
+      "idx": 0,
+      "passed": true,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T122",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 18, in <module>\n  File \"<stdin>\", line 11, in _run\n  File \"<program>\", line 36, in <module>\n  File \"<program>\", line 12, in main\nEOFError: EOF when reading a line",
+      "stop_reason": "eos"
+    },
+    {
+      "task_id": "BCBR/T123",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "external_libs": [],
+      "install_failed": [],
+      "reason": "Traceback (most recent call last):\n  File \"<stdin>\", line 19, in <module>\nAssertionError: test 1: expected '10 15\\n7 8', got ''",
+      "stop_reason": "length"
+    },
+    {
+      "task_id": "BCBR/T124",
+      "idx": 0,
+      "passed": false,
+      "used_external": false,
+      "reason": "no code",
+      "stop_reason": "length"
+    }
+  ]
+}

@@ -12,10 +12,13 @@ echo ">>> Running eval jobs locally (no slurm) >>>"
 # need network access - both run fine on this node, one after another.
 models=(
     # "qwen3-debug"
-    "qwen3-4b"
-    "qwen3-8b"
-    "deepseek-v4-flash"
-    "gpt-5.6-luna"
+    # "qwen3-4b"
+    # "qwen3-8b"
+    # "deepseek-v4-flash"
+    # "gpt-5.6-luna"
+    "gpt-5.6-terra"
+    # "glm-5.2"
+    "kimi-k3"
 )
 
 # comma-separated eval dataset names (config/eval_datasets.yaml)

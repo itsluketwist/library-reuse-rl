@@ -46,7 +46,7 @@ def generate_responses(
         sampling_params=sampling_params,
         use_tqdm=True,
         lora_request=lora_request,
-        chat_template_kwargs={"enable_thinking": False},
+        chat_template_kwargs={"enable_thinking": True},
     )
 
     return [
