@@ -8,6 +8,7 @@ from libreusebench.libraries import (
     imported_libraries,
     pip_package,
     required_pip_packages,
+    used_libraries,
 )
 
 
@@ -62,6 +63,12 @@ print(value)
     def test_imported_libraries_excludes_stdlib(self) -> None:
         # `re` is stdlib, so it is not an external library
         assert imported_libraries(self._RESPONSE) == set()
+
+    def test_used_libraries_requires_actual_use(self) -> None:
+        response = "```python\nimport pandas\nimport numpy\nprint(pandas.Series([1]).sum())\n```"
+        # pandas is called, numpy is only imported - so only pandas counts as used
+        assert imported_libraries(response) == {"pandas", "numpy"}
+        assert used_libraries(response) == {"pandas"}
 
     def test_required_pip_packages_maps_external(self) -> None:
         response = "```python\nimport bs4\nprint(bs4)\n```"
