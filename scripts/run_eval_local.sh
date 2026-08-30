@@ -12,10 +12,10 @@ echo ">>> Running eval jobs locally (no slurm) >>>"
 # need network access - both run fine on this node, one after another.
 models=(
     # "qwen3-debug"
-    # "qwen3-4b"
-    # "qwen3-8b"
-    # "deepseek-v4-flash"
-    # "gpt-5.6-luna"
+    "qwen3-4b"
+    "qwen3-8b"
+    "deepseek-v4-flash"
+    "gpt-5.6-luna"
     "gpt-5.6-terra"
     # "glm-5.2"
     "kimi-k3"
@@ -23,11 +23,11 @@ models=(
 
 # comma-separated eval dataset names (config/eval_datasets.yaml)
 # product_choice is gitignored and must have been built locally.
-datasets="library_usage,bcbreuse"
+datasets="library_usage,libreusebench"
 
 # decoding profiles to evaluate with (eval_decoding_profiles in config/training.yaml)
 decoding_profiles=(
-    "greedy"
+    # "greedy"
     "default"
     # "qwen3"
 )
