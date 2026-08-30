@@ -204,3 +204,6 @@ config/models.yaml.lock
 
 # temporary ignore
 CLAUDE.md
+
+# experiment results
+output/
