@@ -193,6 +193,8 @@ benchmark/artefacts
 benchmark/results/example
 .libreuseeval-venv
 .libreuseeval-venvs
+.bcbeval-venv
+.bcbeval-venvs
 
 logs/*
 wandb/*
