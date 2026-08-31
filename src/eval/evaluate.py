@@ -149,7 +149,7 @@ def evaluate_model(
 
                 # validated non-None above (api_key_env is required when provider == "api")
                 assert api_key_env is not None
-                responses = generate_api_responses(
+                api_responses = generate_api_responses(
                     model=base,
                     base_url=base_url,
                     api_key_env=api_key_env,
@@ -158,6 +158,10 @@ def evaluate_model(
                     extra_params=extra_params,
                     max_tokens_param=max_tokens_param,
                 )
+                # generate_api_responses only ever samples once per prompt; wrap each in a
+                # single-sample list so this matches generate_responses' per-prompt shape
+                # (a list of samples) that score_dataset expects from either provider
+                responses = [[response] for response in api_responses]
             else:
                 from .generate import generate_responses
 
@@ -169,7 +173,8 @@ def evaluate_model(
                 )
 
         # score the responses the way this dataset's task is verified (execution for the
-        # tested split, prose pick / import classification for the new splits)
+        # tested split, prose pick / import classification for the new splits); score_dataset
+        # takes care of which evaluators want every sample vs just the first
         analysis, results = score_dataset(
             dataset=dataset,
             responses=responses,
