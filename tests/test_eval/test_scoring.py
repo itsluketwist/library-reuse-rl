@@ -8,9 +8,18 @@ from src.eval.scoring import score_dataset
 from src.utils.io import load_jsonl
 
 
-def _responses(*texts: str) -> list[tuple[str, str]]:
-    """Pair each response text with a 'stop' stop-reason."""
-    return [(text, "stop") for text in texts]
+def _responses(*texts: str) -> list[list[tuple[str, str]]]:
+    """One sampled response per row, each paired with a 'stop' stop-reason."""
+    return [[(text, "stop")] for text in texts]
+
+
+def _multi_responses(*rows: list[str]) -> list[list[tuple[str, str]]]:
+    """Pair each row's sampled response texts with a 'stop' stop-reason.
+
+    Each argument is one dataset row's list of sampled response texts (see
+    MULTI_SAMPLE_EVALUATORS - these evaluators score every sample, not just one).
+    """
+    return [[(text, "stop") for text in row] for row in rows]
 
 
 class TestScoreProductChoice:
@@ -207,6 +216,40 @@ def broken(:
         # external_lib_used always comes from a block that parsed
         assert analysis["external_lib_used_rate"] <= analysis["valid_code_rate"]
 
+    def test_multiple_samples_are_all_scored_and_aggregated_per_task(self):
+        """With n_samples > 1, every sample is scored; per-task rates are any-of-k."""
+        dataset = [
+            {
+                "idx": 0,
+                "task_type": "library_usage",
+                "category_id": "http-requests",
+                "useful_libs": ["requests"],
+                "local_modules": [],
+            }
+        ]
+        # one of the two samples for this task reused the useful library
+        responses = _multi_responses(
+            [
+                "r</think>\n```python\nimport requests\nrequests.get('x')\n```",
+                "r</think>\n```python\nimport math\nprint(math.pi)\n```",
+            ]
+        )
+
+        analysis, results = score_dataset(
+            dataset,
+            responses,
+            evaluator="library_usage",
+        )
+
+        assert len(results) == 2
+        assert [r["sample_idx"] for r in results] == [0, 1]
+        # per-response: only half the samples used the library
+        assert analysis["external_lib_used_rate"] == 0.5
+        assert analysis["library_use"]["using_lib_rate"] == 0.5
+        # per-task: this task's samples used it at least once
+        assert analysis["library_use_per_task"]["using_lib_rate"] == 1.0
+        assert analysis["library_use_per_task"]["appropriate_lib_rate"] == 1.0
+
 
 class TestScoreEmptyDataset:
     """Tests for the empty-dataset edge case."""
@@ -301,6 +344,61 @@ class TestScoreLibReuseBench:
         }
         assert results[0]["task_id"] == "LRB/T000"
         assert results[0]["stop_reason"] == "stop"
+
+    def test_multiple_samples_are_all_submitted_for_their_task(self, monkeypatch):
+        """Every sample for a row becomes its own response record for the same task_id."""
+        seen = {}
+
+        def fake_evaluate_responses(responses_file, output_directory, env_dir, confirm):
+            seen["records"] = load_jsonl(responses_file)
+            return {
+                "n_tasks": 1,
+                "n_responses": 2,
+                "k": 2,
+                "pass@1": 0.5,
+                "pass@k": 1.0,
+                "library_use": {
+                    "per_task": {"using_lib_rate": 0.0},
+                    "per_response": {"using_lib_rate": 0.0},
+                },
+                "environment": {},
+                "results": [
+                    {"task_id": "LRB/T000", "idx": 0, "passed": True},
+                    {"task_id": "LRB/T000", "idx": 1, "passed": False},
+                ],
+            }
+
+        monkeypatch.setattr(
+            "src.eval.scoring.evaluate_lrb_responses",
+            fake_evaluate_responses,
+        )
+        dataset = [
+            {
+                "idx": 0,
+                "task_id": "LRB/T000",
+                "category": "tables",
+                "test_inputs": ["1\n"],
+                "expected_outputs": ["1"],
+            }
+        ]
+        responses = [
+            [("print(1)", "stop"), ("print(2)", "length")],
+        ]
+
+        analysis, results = score_dataset(
+            dataset,
+            responses,
+            evaluator="libreusebench",
+        )
+
+        assert seen["records"] == [
+            {"task_id": "LRB/T000", "response": "print(1)"},
+            {"task_id": "LRB/T000", "response": "print(2)"},
+        ]
+        assert analysis["pass@1"] == 0.5
+        # each sample's own stop_reason is matched back by its sample idx
+        assert results[0]["stop_reason"] == "stop"
+        assert results[1]["stop_reason"] == "length"
 
     def test_environment_setup_failure_is_fatal(self, monkeypatch):
         """An official evaluator abort caused by failed installs fails the run."""

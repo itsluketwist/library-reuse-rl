@@ -113,6 +113,7 @@ def evaluate_model(
         )
 
         with log_timer("generation"):
+            # one list of sampled responses per prompt (see decoding_settings' n_samples)
             responses = generate_responses(
                 llm=llm,
                 prompts=list(dataset["prompt"]),
@@ -121,7 +122,8 @@ def evaluate_model(
             )
 
         # score the responses the way this dataset's task is verified (execution for the
-        # tested split, prose pick / import classification for the new splits)
+        # tested split, prose pick / import classification for the new splits); score_dataset
+        # takes care of which evaluators want every sample vs just the first
         analysis, results = score_dataset(
             dataset=dataset,
             responses=responses,

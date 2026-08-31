@@ -205,36 +205,69 @@ def _score_product_choice(
     return analysis, results
 
 
+def _task_library_use(
+    task_results: list[list[dict]],
+) -> dict[str, Any]:
+    """Per-task library-use stats: a task counts as using a library if any of its
+    sampled responses did (see MULTI_SAMPLE_EVALUATORS).
+
+    Returns the same shape as _library_statistics, plus appropriate-use rates.
+    """
+    used_sets = [
+        set().union(*(r["used_external_libs"] for r in task)) if task else set()
+        for task in task_results
+    ]
+    appropriate_hits = [
+        any(r["appropriate_lib_used"] for r in task) for task in task_results
+    ]
+    stats = _library_statistics(used_sets)
+    stats["appropriate_lib_rate"] = _rate(sum(appropriate_hits), len(task_results))
+    stats["appropriate_given_use_rate"] = _rate(
+        sum(appropriate_hits),
+        sum(bool(used) for used in used_sets),
+    )
+    return stats
+
+
 def _score_library_usage(
     dataset: Iterable[dict],
-    responses: list[tuple[str, str]],
+    responses: list[list[tuple[str, str]]],
     python_executable: str | None = None,
     environment_dir: str | None = None,
 ) -> tuple[dict, list[dict]]:
     """Score library-usage rows by the imports (external reuse vs stdlib/local).
+
+    Each row may carry multiple sampled responses (see eval_decoding_profiles'
+    n_samples); every sample is scored and kept as its own result row, tagged with
+    `sample_idx`. The `library_use`/rate fields in `analysis` are per response (the
+    existing behaviour, now spanning every sample); `library_use_per_task` adds the
+    per-task view (a task "uses a library" if any of its samples did).
 
     Returns the (analysis, results) pair.
     """
     del python_executable, environment_dir
     # each result is a heterogeneous record (strs, bools, lists, ...), so type as Any
     results: list[dict[str, Any]] = []
-    for row, (response, stop_reason) in zip(dataset, responses):
-        parsed = parse_response(response)
-        usage = analyse_library_usage(parsed, row.get("local_modules"))
-        external = usage.external_libs
-        used = usage.used_external_libs
-        useful = set(row.get("useful_libs") or [])
-        appropriate = sorted(lib for lib in used if lib in useful)
-        all_blocks_valid = (
-            bool(usage.n_code_blocks)
-            and usage.n_valid_code_blocks == usage.n_code_blocks
-        )
-        # one working code block is enough to count the response as valid
-        any_block_valid = usage.n_valid_code_blocks > 0
-        results.append(
-            {
+    task_results: list[list[dict]] = []
+    for row, samples in zip(dataset, responses):
+        row_results = []
+        for sample_idx, (response, stop_reason) in enumerate(samples):
+            parsed = parse_response(response)
+            usage = analyse_library_usage(parsed, row.get("local_modules"))
+            external = usage.external_libs
+            used = usage.used_external_libs
+            useful = set(row.get("useful_libs") or [])
+            appropriate = sorted(lib for lib in used if lib in useful)
+            all_blocks_valid = (
+                bool(usage.n_code_blocks)
+                and usage.n_valid_code_blocks == usage.n_code_blocks
+            )
+            # one working code block is enough to count the response as valid
+            any_block_valid = usage.n_valid_code_blocks > 0
+            result = {
                 "idx": row["idx"],
                 "task_id": row.get("task_id"),
+                "sample_idx": sample_idx,
                 "stop_reason": stop_reason,
                 "category_id": row.get("category_id"),
                 "valid": any_block_valid,
@@ -252,7 +285,9 @@ def _score_library_usage(
                 "appropriate_lib_used": bool(appropriate),
                 "phrasing_mode": row.get("phrasing_mode"),
             }
-        )
+            results.append(result)
+            row_results.append(result)
+        task_results.append(row_results)
 
     n_total = len(results)
     n_used = sum(r["external_lib_used"] for r in results)
@@ -273,6 +308,7 @@ def _score_library_usage(
         "external_lib_used_rate": _rate(n_used, n_total),
         "appropriate_lib_rate": _rate(n_appropriate, n_total),
         "library_use": library_use,
+        "library_use_per_task": _task_library_use(task_results),
         "external_lib_used_rate_by_phrasing_mode": _per_phrasing_mode_rate(
             results, "external_lib_used"
         ),
@@ -285,11 +321,15 @@ def _score_library_usage(
 
 def _score_libreusebench(
     dataset: Iterable[dict],
-    responses: list[tuple[str, str]],
+    responses: list[list[tuple[str, str]]],
     python_executable: str | None = None,
     environment_dir: str | None = None,
 ) -> tuple[dict, list[dict]]:
     """Run the complete official LibReuseBench evaluation workflow.
+
+    Each row may carry multiple sampled responses (see eval_decoding_profiles'
+    n_samples); every sample is submitted for the task, so the official evaluator's
+    pass@k (see benchmark/libreusebench/evaluate.py's _pass_at_k) reflects them.
 
     The official evaluator discovers packages from the responses, installs them into
     its cached environment, executes the selected code, and aggregates the results.
@@ -302,11 +342,13 @@ def _score_libreusebench(
     rows = list(dataset)
     response_records = [
         {"task_id": row["task_id"], "response": response}
-        for row, (response, _stop_reason) in zip(rows, responses)
+        for row, samples in zip(rows, responses)
+        for response, _stop_reason in samples
     ]
     stop_reasons = {
-        (row["task_id"], 0): stop_reason
-        for row, (_response, stop_reason) in zip(rows, responses)
+        (row["task_id"], sample_idx): stop_reason
+        for row, samples in zip(rows, responses)
+        for sample_idx, (_response, stop_reason) in enumerate(samples)
     }
 
     with tempfile.TemporaryDirectory(prefix="libreusebench-eval-") as temp_dir:
@@ -336,22 +378,37 @@ def _score_libreusebench(
     }, results
 
 
-_SCORERS = {
+# split by responses shape so each dict stays internally homogeneous (a type checker can't
+# verify a single dict mixing both signatures against a single call site)
+_SINGLE_SAMPLE_SCORERS = {
     "implement_tested": _score_tested,
     "product_choice": _score_product_choice,
+}
+_MULTI_SAMPLE_SCORERS = {
     "library_usage": _score_library_usage,
     "libreusebench": _score_libreusebench,
 }
+_SCORERS = {**_SINGLE_SAMPLE_SCORERS, **_MULTI_SAMPLE_SCORERS}
+
+# evaluators that score every sampled response per row (see eval_decoding_profiles'
+# n_samples); the rest only ever score the first sample - score_dataset takes care of
+# that split itself, so callers (evaluate_model, fireworks/fw_rlvr/scoring.py) never need
+# to know which evaluators are multi-sample
+MULTI_SAMPLE_EVALUATORS = set(_MULTI_SAMPLE_SCORERS)
 
 
 def score_dataset(
     dataset: Iterable[dict],
-    responses: list[tuple[str, str]],
+    responses: list[list[tuple[str, str]]],
     evaluator: str,
     python_executable: str | None = None,
     environment_dir: str | None = None,
 ) -> tuple[dict, list[dict]]:
     """Score a whole eval dataset with its configured evaluator.
+
+    `responses` holds every sampled response per row (see generate_responses'
+    n_samples support). MULTI_SAMPLE_EVALUATORS score every sample; the rest only ever
+    look at the first, which this takes care of internally.
 
     Returns the (analysis, results) pair for the dataset's task.
     """
@@ -359,13 +416,13 @@ def score_dataset(
     if not rows:
         return {"task": evaluator, "n_total": 0}, []
 
-    if evaluator not in _SCORERS:
-        raise ValueError(
-            f"Unknown evaluator '{evaluator}'. Available: {sorted(_SCORERS)}"
+    if evaluator in _MULTI_SAMPLE_SCORERS:
+        return _MULTI_SAMPLE_SCORERS[evaluator](
+            rows, responses, python_executable, environment_dir
         )
-    return _SCORERS[evaluator](
-        rows,
-        responses,
-        python_executable,
-        environment_dir,
-    )
+    if evaluator in _SINGLE_SAMPLE_SCORERS:
+        single_responses = [samples[0] for samples in responses]
+        return _SINGLE_SAMPLE_SCORERS[evaluator](
+            rows, single_responses, python_executable, environment_dir
+        )
+    raise ValueError(f"Unknown evaluator '{evaluator}'. Available: {sorted(_SCORERS)}")

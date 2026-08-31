@@ -17,7 +17,7 @@ repos:
     rev: '7.0.0'
     hooks:
       - id: isort
-        args: ["--line-length=88", "--multi-line=3", "--lines-after-imports=2", "--trailing-comma"]
+        args: ["--line-length=88", "--multi-line=3", "--lines-after-imports=2", "--trailing-comma", "--use-parentheses"]
 
 # ruff linter and formatter
 -   repo: https://github.com/astral-sh/ruff-pre-commit
