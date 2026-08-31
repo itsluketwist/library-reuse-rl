@@ -22,9 +22,9 @@ _TASK_METRICS = {
         "external_lib_used_rate",
         "appropriate_lib_rate",
     ],
-    "bcbreuse": [
+    "libreusebench": [
         "pass@1",
-        "lib_use_rate",
+        "lib_used_rate",
     ],
 }
 
@@ -56,10 +56,11 @@ def _load_results(run_dir: Path) -> list[dict]:
             row["valid_code_rate"] = analysis.get("valid_code_rate")
             row["external_lib_used_rate"] = analysis.get("external_lib_used_rate")
             row["appropriate_lib_rate"] = analysis.get("appropriate_lib_rate")
-        elif analysis.get("task") == "bcbreuse":
+        elif analysis.get("task") == "libreusebench":
             row["pass@1"] = analysis.get("pass@1")
-            row["lib_use_rate"] = (
+            row["lib_used_rate"] = (
                 analysis.get("library_use", {})
+                .get("used", {})
                 .get("per_task", {})
                 .get("using_lib_rate")
             )

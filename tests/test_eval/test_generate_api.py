@@ -53,10 +53,52 @@ class TestGenerateApiResponses:
                 },
             )
 
-        assert responses == [("hi there", "eos"), ("1 2 3...", "length")]
+        assert responses == [[("hi there", "eos")], [("1 2 3...", "length")]]
         mock_openai_cls.assert_called_once_with(
             api_key="test-key", base_url="https://api.deepseek.com", max_retries=5
         )
+
+    def test_n_samples_requests_one_call_per_sample_per_prompt(self, monkeypatch):
+        """decoding_settings' n_samples requests that many independent completions per
+        prompt (not the API's own `n` param, which not every provider supports), and
+        groups them back under their prompt in order."""
+        monkeypatch.setenv("FAKE_API_KEY", "test-key")
+
+        completions = [
+            _fake_completion("a1", "stop"),
+            _fake_completion("a2", "stop"),
+            _fake_completion("a3", "length"),
+            _fake_completion("b1", "stop"),
+            _fake_completion("b2", "stop"),
+            _fake_completion("b3", "stop"),
+        ]
+
+        with patch("src.eval.generate_api.OpenAI") as mock_openai_cls:
+            mock_client = mock_openai_cls.return_value
+            mock_client.chat.completions.create.side_effect = completions
+
+            responses = generate_api_responses(
+                model="deepseek-v4-flash",
+                base_url="https://api.deepseek.com",
+                api_key_env="FAKE_API_KEY",
+                prompts=[
+                    [{"role": "user", "content": "prompt a"}],
+                    [{"role": "user", "content": "prompt b"}],
+                ],
+                decoding_settings={
+                    "temperature": 1.0,
+                    "top_p": 1.0,
+                    "max_new_tokens": 128,
+                    "n_samples": 3,
+                },
+                max_workers=1,  # keep requests in submission order for this assertion
+            )
+
+        assert mock_client.chat.completions.create.call_count == 6
+        assert responses == [
+            [("a1", "eos"), ("a2", "eos"), ("a3", "length")],
+            [("b1", "eos"), ("b2", "eos"), ("b3", "eos")],
+        ]
 
     def test_missing_api_key_env_raises(self, monkeypatch):
         """A clear error is raised when the configured api_key_env is unset, rather than

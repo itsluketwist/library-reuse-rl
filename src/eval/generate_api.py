@@ -90,24 +90,34 @@ def generate_api_responses(
     extra_params: dict[str, Any] | None = None,
     max_tokens_param: str = DEFAULT_MAX_TOKENS_PARAM,
     max_workers: int = DEFAULT_MAX_WORKERS,
-) -> list[tuple[str, str]]:
+) -> list[list[tuple[str, str]]]:
     """
-    Generate one response per prompt from the hosted `model`, via an OpenAI-compatible
-    chat completions API.
+    Generate one or more sampled responses per prompt from the hosted `model`, via an
+    OpenAI-compatible chat completions API.
 
-    `prompts` is a list of chat-messages lists (see load_eval_dataset), requested
-    concurrently (`max_workers` at a time) since each is an independent network call
-    rather than a batched local forward pass. The SDK client retries transient
-    errors (rate limits, 5xx) itself. `extra_params` and `max_tokens_param` are forwarded
-    to every request (see _complete_one) - use them for provider-specific fields/quirks
-    the standard decoding profile doesn't cover.
+    `prompts` is a list of chat-messages lists (see load_eval_dataset).
+    `decoding_settings["n_samples"]` (default 1) sets how many independent completions
+    are requested per prompt - matching generate_responses' vllm-side n_samples (e.g. for
+    LibReuseBench's pass@k or library-usage's per-response reuse statistics, see
+    src/eval/scoring.py's MULTI_SAMPLE_EVALUATORS). Not every OpenAI-compatible provider
+    supports the request-level `n` parameter, so each sample is its own independent
+    request rather than relying on it - every (prompt, sample) pair is requested
+    concurrently (`max_workers` at a time), since each is an independent network call
+    rather than a batched local forward pass. The SDK client retries transient errors
+    (rate limits, 5xx) itself. `extra_params` and `max_tokens_param` are forwarded to
+    every request (see _complete_one) - use them for provider-specific fields/quirks the
+    standard decoding profile doesn't cover.
 
-    Returns a list of (response, stop_reason) tuples, in the same order as `prompts`.
+    Returns a list aligned with `prompts`, each element a list of that prompt's
+    (response, stop_reason) samples (length `n_samples`).
     """
     client = _build_client(base_url=base_url, api_key_env=api_key_env)
+    n_samples = decoding_settings.get("n_samples", 1)
+    # repeat each prompt n_samples times, so every sample is its own independent request
+    requests = [prompt for prompt in prompts for _ in range(n_samples)]
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        return list(
+        flat = list(
             pool.map(
                 lambda prompt: _complete_one(
                     client,
@@ -117,6 +127,8 @@ def generate_api_responses(
                     extra_params,
                     max_tokens_param,
                 ),
-                prompts,
+                requests,
             )
         )
+
+    return [flat[i * n_samples : (i + 1) * n_samples] for i in range(len(prompts))]
