@@ -102,28 +102,18 @@ libreusebench = { path = "benchmark", editable = true }
 # the build pipeline scripts (benchmark/pipeline) are run as files and import sibling build
 # helpers; put them on the path so their unit tests can import them too
 [tool.pytest.ini_options]
-pythonpath = [
-    "benchmark/pipeline",
-    "fireworks",
-    "fireworks/rft/evaluator",
-]
+pythonpath = ["benchmark/pipeline"]
 
 # ty can't follow the libreusebench editable install (it uses a custom import finder), and the
 # pipeline scripts are run by path - point ty at both directories so `libreusebench`, `build`
 # and `review` imports resolve (mirroring pytest's pythonpath above)
 [tool.ty.environment]
-extra-paths = [
-    "benchmark",
-    "benchmark/pipeline",
-    "fireworks",
-    "fireworks/rft/evaluator",
-]
+extra-paths = ["benchmark", "benchmark/pipeline"]
 
 # these files import the GPU stack from the [hpc] extra (torch, transformers, trl, unsloth,
 # vllm), which only installs on linux - ignore just the missing imports when checking locally
 [[tool.ty.overrides]]
 include = [
-    "fireworks/rft/evaluator/tests/pytest/library_reuse/test_library_reuse_evaluation.py",
     "src/eval/evaluate.py",
     "src/eval/generate.py",
     "src/grpo/config.py",
