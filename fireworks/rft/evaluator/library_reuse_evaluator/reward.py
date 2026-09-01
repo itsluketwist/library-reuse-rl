@@ -9,17 +9,23 @@ from .library_extraction import analyse_library_usage
 
 @dataclass(frozen=True)
 class RewardConfig:
-    """Configurable score levels for the initial Fireworks experiment."""
+    """Configurable normalized score levels for the Fireworks experiment."""
 
-    not_imported: float = 0.0
-    imported_not_used: float = 0.25
+    unparseable: float = 0.0
+    parsed_without_external: float = 0.25
+    imported_not_used: float = 0.5
     imported_and_used: float = 1.0
 
     def __post_init__(self) -> None:
-        scores = (self.not_imported, self.imported_not_used, self.imported_and_used)
+        scores = (
+            self.unparseable,
+            self.parsed_without_external,
+            self.imported_not_used,
+            self.imported_and_used,
+        )
         if any(score < 0 or score > 1 for score in scores):
             raise ValueError("Every reward level must be between 0 and 1.")
-        if not self.not_imported <= self.imported_not_used <= self.imported_and_used:
+        if scores != tuple(sorted(scores)):
             raise ValueError("Reward levels must be monotonically non-decreasing.")
 
 
@@ -100,10 +106,10 @@ def score_response(
         score = reward_config.imported_not_used
         reason = f"Imported but did not use: {', '.join(sorted(external))}."
     elif parse_success:
-        score = reward_config.not_imported
+        score = reward_config.parsed_without_external
         reason = "Parsed Python but found no external-library import."
     else:
-        score = reward_config.not_imported
+        score = reward_config.unparseable
         reason = "No parseable Python final answer."
 
     return RewardResult(

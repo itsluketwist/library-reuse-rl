@@ -6,9 +6,18 @@ from pathlib import Path
 import pytest
 
 
+_EVALUATOR_ROOT = Path(__file__).resolve().parents[3]
+
+# ordinary repository tests run from the repository root and must not make api calls.
+# eval protocol runs from the evaluator root both locally and in fireworks, so those
+# deliberate evaluator runs must remain enabled even when the opt-in variable is absent.
+_RUNNING_FROM_EVALUATOR_ROOT = Path.cwd().resolve() == _EVALUATOR_ROOT
 pytestmark = pytest.mark.skipif(
-    os.environ.get("RUN_FIREWORKS_EVAL") != "1",
-    reason="set RUN_FIREWORKS_EVAL=1 for API-backed Eval Protocol rollouts",
+    os.environ.get("RUN_FIREWORKS_EVAL") != "1" and not _RUNNING_FROM_EVALUATOR_ROOT,
+    reason=(
+        "run from the evaluator directory or set RUN_FIREWORKS_EVAL=1 for "
+        "API-backed Eval Protocol rollouts"
+    ),
 )
 pytest.importorskip("eval_protocol")
 
@@ -24,7 +33,6 @@ from eval_protocol.pytest import (  # noqa: E402
 from library_reuse_evaluator import score_response  # noqa: E402
 
 
-_EVALUATOR_ROOT = Path(__file__).resolve().parents[3]
 _SAMPLE_DATASET = _EVALUATOR_ROOT / "development" / "sample.jsonl"
 _INPUT_DATASET = os.environ.get(
     "FIREWORKS_RFT_DATASET",

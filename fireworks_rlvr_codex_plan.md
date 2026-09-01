@@ -372,12 +372,17 @@ Implement the initial reward as a configurable function rather than hard-coding 
 For the first experiment:
 
 ```text
-0.00 = target library not used
-0.25 = target library imported but not subsequently used
-1.00 = target library imported and referenced
+0.00 = no parseable final-answer Python
+0.25 = parseable Python but no external library imported
+0.50 = external library imported but not subsequently used
+1.00 = external library imported and referenced
 ```
 
-Keep these constants configurable.
+This is the main repository's `lu-v1` component ladder normalized to `[0, 1]`: its
+format/syntax shaping becomes parse credit, its import shaping becomes the intermediate
+level, and actual external-library use remains the full reward. The appropriate-library
+component remains diagnostic-only because its `lu-v1` weight is zero. Keep these
+constants configurable.
 
 Also expose diagnostic component metrics such as:
 

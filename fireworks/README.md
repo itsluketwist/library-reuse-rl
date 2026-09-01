@@ -8,6 +8,12 @@ project scorer.
 The reward never executes generated code. It parses only final-answer content with
 Python's `ast`; `reasoning_content` is saved for later analysis but is not scored.
 
+Its normalized shaping matches the main repository's `lu-v1` intent: `0.00` for no
+parseable Python, `0.25` for parseable Python without external reuse, `0.50` for an
+external import that is not used, and `1.00` for an imported and referenced external
+library. Appropriate-library use remains a diagnostic metric because its main-repository
+weight is zero.
+
 ## Layout
 
 ```text
@@ -152,6 +158,10 @@ test run, then creates RFT with `eval-protocol create rft`. The installed CLI in
 local JSONL source from the evaluator decorator. The launcher sets that source to the
 full prepared training split, validates every row itself, and asks the CLI to skip its
 second API-backed validation run so hundreds of redundant local rollouts are not created.
+The pinned Eval Protocol release incorrectly uses `typing.Literal` itself as its argument
+converter, so it rejects every explicit loss enum. The launcher invokes the unmodified
+package through a small, repository-owned compatibility entrypoint that fixes only this
+conversion; `GRPO` is then passed and recorded exactly as required by the Fireworks SDK.
 
 First inspect the installed interface and the exact command without creating anything:
 
@@ -164,20 +174,122 @@ python fireworks/rft/launch.py \
   --dry-run
 ```
 
-After reviewing the printed configuration, deliberately launch it:
+After reviewing the printed configuration, first run a remote smoke job against the
+12-row development sample. This validates the uploaded evaluator, rollout generation,
+reward recording, and optimizer startup before the full dataset is submitted:
+
+```bash
+python fireworks/rft/launch.py \
+  --base-model accounts/fireworks/models/qwen3-8b \
+  --dataset fireworks/rft/evaluator/development/sample.jsonl \
+  --record fireworks/rft/runs/qwen3-8b-smoke-v1.json \
+  --extra-argument=--force \
+  --extra-argument=--rl-loss-method \
+  --extra-argument=GRPO \
+  --extra-argument=--epochs \
+  --extra-argument=1 \
+  --extra-argument=--lora-rank \
+  --extra-argument=8 \
+  --extra-argument=--batch-size \
+  --extra-argument=32768 \
+  --extra-argument=--response-candidates-count \
+  --extra-argument=8 \
+  --extra-argument=--max-output-tokens \
+  --extra-argument=2048 \
+  --yes
+```
+
+The smoke job should process 12 prompts and 96 rollouts. Do not launch the main job unless
+the smoke job reaches `COMPLETED`, processes nonzero requests, records nonzero output rows,
+and exposes plausible reward/component metrics and sample trajectories.
+
+Then launch the main experiment with the full training split. Choose and record the LoRA
+rank as an experimental hyperparameter; the example below uses rank 16 rather than silently
+inheriting Fireworks' rank-8 default:
 
 ```bash
 python fireworks/rft/launch.py \
   --base-model accounts/fireworks/models/qwen3-8b \
   --dataset fireworks/rft/data/train.jsonl \
-  --record fireworks/rft/runs/qwen3-8b-pilot.json \
+  --record fireworks/rft/runs/qwen3-8b-grpo-rank16-v1.json \
+  --extra-argument=--force \
+  --extra-argument=--job-id \
+  --extra-argument=library-reuse-qwen3-8b-grpo-r16-v1 \
+  --extra-argument=--output-model \
+  --extra-argument=accounts/ACCOUNT_ID/models/library-reuse-qwen3-8b-grpo-r16-v1 \
+  --extra-argument=--rl-loss-method \
+  --extra-argument=GRPO \
+  --extra-argument=--rl-kl-beta \
+  --extra-argument=0.001 \
+  --extra-argument=--epochs \
+  --extra-argument=2 \
+  --extra-argument=--lora-rank \
+  --extra-argument=16 \
+  --extra-argument=--learning-rate \
+  --extra-argument=0.0001 \
+  --extra-argument=--max-context-length \
+  --extra-argument=32768 \
+  --extra-argument=--batch-size \
+  --extra-argument=32768 \
+  --extra-argument=--batch-size-samples \
+  --extra-argument=0 \
+  --extra-argument=--gradient-accumulation-steps \
+  --extra-argument=1 \
+  --extra-argument=--learning-rate-warmup-steps \
+  --extra-argument=0 \
+  --extra-argument=--optimizer-weight-decay \
+  --extra-argument=0.0 \
+  --extra-argument=--response-candidates-count \
+  --extra-argument=8 \
+  --extra-argument=--max-output-tokens \
+  --extra-argument=2048 \
+  --extra-argument=--temperature \
+  --extra-argument=1.0 \
+  --extra-argument=--top-p \
+  --extra-argument=1.0 \
+  --extra-argument=--chunk-size \
+  --extra-argument=200 \
+  --extra-argument=--max-inference-replica-count \
+  --extra-argument=1 \
+  --extra-argument=--node-count \
+  --extra-argument=1 \
   --yes
 ```
 
-Use repeatable `--extra-argument` values only after checking the installed help, for
-example `--extra-argument=--epochs --extra-argument=2`. The launcher invokes no shell,
-captures stdout/stderr, and saves timestamps plus any returned dashboard/resource IDs.
-It refuses a real launch without `--yes`; tests exercise only dry or mocked launches.
+These values are written explicitly so the scientific configuration is visible rather
+than inherited silently from service defaults. Use other repeatable `--extra-argument`
+values only after checking the installed help. The launcher invokes no shell, captures
+stdout/stderr, and saves timestamps plus any returned dashboard/resource IDs. It refuses
+a real launch without `--yes`; tests exercise only dry or mocked launches.
+
+The full-run parameter decisions are:
+
+| Parameter | Value | Reason |
+|---|---:|---|
+| loss method | GRPO | make the grouped-policy objective explicit |
+| KL beta | 0.001 | retain a small reference-policy constraint |
+| epochs | 2 | the rank-8 baseline reward was still rising after one epoch |
+| LoRA rank | 16 | double baseline capacity without jumping to the maximum rank |
+| learning rate | 0.0001 | keep the successful managed-RFT baseline rate |
+| max context | 32,768 tokens | retain the successful baseline limit |
+| batch size | 32,768 tokens | retain the successful token-based update batch |
+| sample batch size | 0 | use token batching rather than a second sample limit |
+| gradient accumulation | 1 | one packed batch per optimizer update |
+| warmup steps | 0 | match the baseline and avoid another simultaneous change |
+| optimizer weight decay | 0.0 | match the resolved baseline configuration |
+| candidates per prompt | 8 | provide the same GRPO comparison group as the baseline |
+| max output | 2,048 tokens | bound rollout cost and discourage reasoning overflow |
+| temperature / top-p | 1.0 / 1.0 | retain baseline exploration settings |
+| chunk size | 200 prompts | retain the successful three-chunk workflow |
+| inference replicas / trainer nodes | 1 / 1 | avoid changing distributed execution |
+
+Top-k, provider-specific `extra_body`, concurrency limits, LoRA target modules/alpha, and
+the trainer sharding shape remain unset because this managed interface either does not
+expose them consistently or owns their safe model-specific defaults. The committed
+52-row validation split remains held out for matched post-training evaluation instead of
+being auto-carved from training. Eval Protocol's RFT CLI does not expose a seed for this
+managed workflow, so reproducibility relies on the recorded data order and complete job
+configuration rather than deterministic rollouts.
 
 ### Test rewards and RFT without a deployment
 
@@ -187,8 +299,10 @@ This is the current pilot path when base inference is intentionally deferred:
 2. Run the offline reward tests in step 2; skip the API-backed `ep local-test`.
 3. Run the RFT launcher with `--dry-run` and inspect the resolved model, dataset, row
    count, evaluator directory, and command.
-4. Launch a deliberately short RFT job with `--yes` when ready.
-5. Inspect its reward curves, component metrics, and sampled trajectories in Fireworks.
+4. Launch the 12-row remote smoke RFT job with `--yes` when ready.
+5. Require the smoke job to complete with processed rollouts and plausible reward traces.
+6. Launch the full RFT job and inspect its reward curves, component metrics, and sampled
+   trajectories in Fireworks.
 
 The RFT job may use `accounts/fireworks/models/qwen3-8b` directly as its base-model
 resource. This does not make that catalog model callable through the inference API.

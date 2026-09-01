@@ -13,7 +13,9 @@ from typing import Any, Sequence
 
 _URL_PATTERN = re.compile(r"https?://[^\s\]\[()<>\"']+")
 _RESOURCE_PATTERN = re.compile(
-    r"accounts/[A-Za-z0-9_.-]+/(?:fineTuningJobs|models|evaluatorsV2)/[A-Za-z0-9_.-]+"
+    r"accounts/[A-Za-z0-9_.-]+/"
+    r"(?:fineTuningJobs|reinforcementFineTuningJobs|models|evaluatorsV2)/"
+    r"[A-Za-z0-9_.-]+"
 )
 
 
@@ -21,14 +23,18 @@ def build_command(
     *,
     executable: str,
     base_model: str,
+    eval_protocol_entrypoint: str | None = None,
     extra_arguments: Sequence[str] = (),
 ) -> list[str]:
     """Build the installed Eval Protocol single-turn RFT command.
 
     Returns an argument list suitable for a non-shell subprocess.
     """
+    command_prefix = [executable]
+    if eval_protocol_entrypoint is not None:
+        command_prefix.append(eval_protocol_entrypoint)
     return [
-        executable,
+        *command_prefix,
         "create",
         "rft",
         "--yes",
@@ -103,6 +109,7 @@ def launch_rft(
     record_path: Path,
     confirmed: bool,
     dry_run: bool,
+    eval_protocol_entrypoint: Path | None = None,
     extra_arguments: Sequence[str] = (),
 ) -> dict[str, Any]:
     """Validate, optionally run, and record an Eval Protocol RFT launch.
@@ -118,13 +125,20 @@ def launch_rft(
     row_count = _validate_dataset(dataset)
     discovered_executable = shutil.which(executable)
     resolved_executable = (
-        str(Path(discovered_executable).resolve())
+        # keep virtual-environment interpreter symlinks intact. resolving the
+        # symlink would run the base interpreter without the venv packages.
+        str(Path(discovered_executable).absolute())
         if discovered_executable is not None
         else executable
     )
     command = build_command(
         executable=resolved_executable,
         base_model=base_model,
+        eval_protocol_entrypoint=(
+            str(eval_protocol_entrypoint.resolve())
+            if eval_protocol_entrypoint is not None
+            else None
+        ),
         extra_arguments=extra_arguments,
     )
     configuration: dict[str, Any] = {
@@ -205,7 +219,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--executable",
-        default=".venv-eval/bin/eval-protocol",
+        default=".venv-eval/bin/python",
+    )
+    parser.add_argument(
+        "--eval-protocol-entrypoint",
+        type=Path,
+        default=Path("fireworks/fw_rlvr/eval_protocol_compat.py"),
+        help=(
+            "Local Eval Protocol entrypoint with the pinned release's Literal-parser "
+            "compatibility fix."
+        ),
     )
     parser.add_argument(
         "--extra-argument",
@@ -237,5 +260,6 @@ def main() -> None:
         record_path=args.record,
         confirmed=args.yes,
         dry_run=args.dry_run,
+        eval_protocol_entrypoint=args.eval_protocol_entrypoint,
         extra_arguments=args.extra_argument,
     )

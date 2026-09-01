@@ -23,6 +23,17 @@ def test_build_command_uses_installed_cli_flags() -> None:
     assert command[-2:] == ["--epochs", "2"]
 
 
+def test_build_command_can_use_compatibility_entrypoint() -> None:
+    """The wrapper can fix the pinned CLI without modifying its environment."""
+    command = build_command(
+        executable="python",
+        eval_protocol_entrypoint="compat.py",
+        base_model="accounts/fireworks/models/qwen3-8b",
+    )
+
+    assert command[:4] == ["python", "compat.py", "create", "rft"]
+
+
 def test_dry_run_never_requires_or_invokes_cli(tmp_path: Path) -> None:
     """Dry-run validation is safe on machines without Eval Protocol installed."""
     dataset = tmp_path / "train.jsonl"
@@ -45,6 +56,37 @@ def test_dry_run_never_requires_or_invokes_cli(tmp_path: Path) -> None:
 
     assert configuration["base_model"].endswith("qwen3-8b")
     assert not (tmp_path / "record.json").exists()
+
+
+def test_launcher_preserves_virtual_environment_python_symlink(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Resolving the command must not discard the selected environment."""
+    dataset = tmp_path / "train.jsonl"
+    dataset.write_text(
+        '{"messages": [{"role": "user", "content": "task"}], '
+        '"ground_truth": {"task_id": "one"}}\n'
+    )
+    evaluator = tmp_path / "evaluator"
+    evaluator.mkdir()
+    environment_python = tmp_path / ".venv-eval" / "bin" / "python"
+    monkeypatch.setattr(
+        "fw_rlvr.launch.shutil.which",
+        lambda _: str(environment_python),
+    )
+
+    configuration = launch_rft(
+        executable=str(environment_python),
+        base_model="accounts/fireworks/models/qwen3-8b",
+        dataset=dataset,
+        evaluator_directory=evaluator,
+        record_path=tmp_path / "record.json",
+        confirmed=False,
+        dry_run=True,
+    )
+
+    assert configuration["command"][0] == str(environment_python.absolute())
 
 
 def test_real_launch_requires_deliberate_confirmation(tmp_path: Path) -> None:
@@ -89,7 +131,7 @@ def test_completed_launch_captures_identifiers(
             returncode=0,
             stdout=(
                 "https://app.fireworks.ai/dashboard/fine-tuning/job-1\n"
-                "accounts/demo/fineTuningJobs/job-1\n"
+                "accounts/demo/reinforcementFineTuningJobs/job-1\n"
             ),
             stderr="",
         ),
@@ -106,7 +148,9 @@ def test_completed_launch_captures_identifiers(
     )
 
     assert result["return_code"] == 0
-    assert result["resources"] == ["accounts/demo/fineTuningJobs/job-1"]
+    assert result["resources"] == [
+        "accounts/demo/reinforcementFineTuningJobs/job-1",
+    ]
     assert result["urls"][0].startswith("https://app.fireworks.ai/")
     assert record.is_file()
 

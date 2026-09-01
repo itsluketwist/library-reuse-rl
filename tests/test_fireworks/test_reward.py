@@ -3,6 +3,7 @@
 import pytest
 from library_reuse_evaluator import RewardConfig, score_response
 
+from src.grpo.rewards.library_usage import LibraryUsageReward
 from src.grpo.rewards.library_usage import (
     analyse_library_usage as analyse_project_usage,
 )
@@ -13,6 +14,15 @@ GROUND_TRUTH = {
     "local_modules": ["helpers"],
     "useful_libs": ["pandas", "numpy", "scipy"],
 }
+
+PROJECT_LU_V1_WEIGHTS = {
+    "correct_format": 0.25,
+    "passes_syntax_check": 0.25,
+    "external_lib_imported": 0.5,
+    "external_lib_used": 1.0,
+    "appropriate_lib_used": 0.0,
+}
+PROJECT_LU_V1_MAXIMUM = 2.0
 
 
 @pytest.mark.parametrize(
@@ -45,7 +55,7 @@ rows = [line.split(",") for line in open(path)]
         GROUND_TRUTH,
     )
 
-    assert result.score == 0.25
+    assert result.score == 0.5
     assert result.external_library_imported
     assert not result.external_library_used
 
@@ -88,7 +98,7 @@ pandas.read_csv(path)
         GROUND_TRUTH,
     )
 
-    assert result.score == 0.25
+    assert result.score == 0.5
     assert result.candidate_count == 2
     assert not result.external_library_used
 
@@ -98,7 +108,7 @@ def test_reasoning_content_is_not_an_evaluator_input() -> None:
     reasoning = "I should use pandas.read_csv after importing pandas."
     answer = "```python\nprint('no library')\n```"
 
-    assert score_response(answer, GROUND_TRUTH).score == 0.0
+    assert score_response(answer, GROUND_TRUTH).score == 0.25
     assert "pandas" in reasoning
 
 
@@ -110,7 +120,7 @@ def test_embedded_closed_reasoning_is_removed_before_analysis() -> None:
         GROUND_TRUTH,
     )
 
-    assert result.score == 0.0
+    assert result.score == 0.25
 
 
 @pytest.mark.parametrize(
@@ -122,11 +132,14 @@ def test_embedded_closed_reasoning_is_removed_before_analysis() -> None:
         "text = 'import pandas; pandas.read_csv(path)'",
     ],
 )
-def test_non_external_or_non_structural_mentions_receive_zero(code: str) -> None:
-    """Stdlib, local, relative, and string mentions are excluded."""
+def test_valid_code_without_external_reuse_receives_parse_credit(code: str) -> None:
+    """Valid code gets normalized format/syntax credit but no reuse credit."""
     result = score_response(f"```python\n{code}\n```", GROUND_TRUTH)
 
-    assert result.score == 0.0
+    assert result.score == 0.25
+    assert result.parse_success
+    assert not result.external_library_imported
+    assert not result.external_library_used
 
 
 def test_rebinding_an_alias_prevents_false_usage_credit() -> None:
@@ -136,7 +149,7 @@ def test_rebinding_an_alias_prevents_false_usage_credit() -> None:
         GROUND_TRUTH,
     )
 
-    assert result.score == 0.25
+    assert result.score == 0.5
 
 
 @pytest.mark.parametrize(
@@ -150,7 +163,7 @@ def test_nested_binding_shadowing_prevents_false_usage_credit(code: str) -> None
     """Comprehension and lambda bindings cannot masquerade as import references."""
     result = score_response(f"```python\n{code}\n```", GROUND_TRUTH)
 
-    assert result.score == 0.25
+    assert result.score == 0.5
 
 
 def test_other_external_library_is_reported_separately() -> None:
@@ -167,12 +180,36 @@ def test_other_external_library_is_reported_separately() -> None:
 
 def test_reward_levels_are_configurable_and_bounded() -> None:
     """Experiments can alter levels while invalid scales fail immediately."""
-    config = RewardConfig(imported_not_used=0.1, imported_and_used=0.8)
+    config = RewardConfig(
+        parsed_without_external=0.1,
+        imported_not_used=0.2,
+        imported_and_used=0.8,
+    )
     result = score_response("```python\nimport pandas\n```", GROUND_TRUTH, config)
 
-    assert result.score == 0.1
+    assert result.score == 0.2
     with pytest.raises(ValueError, match="between 0 and 1"):
         RewardConfig(imported_and_used=2.0)
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        "print('hand-written solution')",
+        "import pandas\nprint('unused')",
+        "import pandas as pd\npd.read_csv(path)",
+    ],
+)
+def test_reward_ladder_matches_normalized_project_lu_v1(code: str) -> None:
+    """Portable shaping matches the main reward after normalization."""
+    content = f"<think>reasoning</think>```python\n{code}\n```"
+    portable = score_response(content, GROUND_TRUTH)
+    project = LibraryUsageReward(PROJECT_LU_V1_WEIGHTS).score(
+        content,
+        GROUND_TRUTH,
+    )
+
+    assert portable.score == pytest.approx(project / PROJECT_LU_V1_MAXIMUM)
 
 
 @pytest.mark.parametrize(
