@@ -206,6 +206,7 @@ config/models.yaml.lock
 /fireworks/rft/data/
 /fireworks/rft/runs/
 /fireworks/output/
+/fireworks/rft/evaluator/.ep_tmp/
 
 # temporary ignore
 CLAUDE.md
