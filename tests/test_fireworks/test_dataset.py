@@ -33,7 +33,8 @@ def test_prepare_records_preserves_prompt_and_reward_metadata() -> None:
         {"role": "user", "content": "Write Python code."},
     ]
     assert prepared[0]["ground_truth"]["task_id"] == "task-1"
-    assert prepared[0]["ground_truth"]["useful_libs"] == ["pandas"]
+    assert prepared[0]["ground_truth"]["local_modules"] == ["helpers"]
+    assert "useful_libs" not in prepared[0]["ground_truth"]
     assert "solution" not in prepared[0]
 
 

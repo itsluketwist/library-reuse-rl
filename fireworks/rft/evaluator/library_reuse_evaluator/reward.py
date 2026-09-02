@@ -38,11 +38,8 @@ class RewardResult:
     parse_success: bool
     external_library_imported: bool
     external_library_used: bool
-    appropriate_library_used: bool
-    other_external_library: bool
     external_libraries: tuple[str, ...]
     used_external_libraries: tuple[str, ...]
-    appropriate_libraries: tuple[str, ...]
     candidate_count: int
     valid_candidate_count: int
 
@@ -55,8 +52,6 @@ class RewardResult:
             "parse_success": float(self.parse_success),
             "external_library_imported": float(self.external_library_imported),
             "external_library_used": float(self.external_library_used),
-            "appropriate_library_used": float(self.appropriate_library_used),
-            "other_external_library": float(self.other_external_library),
         }
 
 
@@ -72,9 +67,6 @@ def score_response(
     reward_config = config or RewardConfig()
     extracted = extract_answer(content)
     local_modules = [str(value) for value in ground_truth.get("local_modules") or []]
-    useful_libraries = {
-        str(value).lower() for value in ground_truth.get("useful_libs") or []
-    }
 
     analyses = [
         analyse_library_usage(candidate.code, local_modules=local_modules)
@@ -95,9 +87,6 @@ def score_response(
         if valid
         else set()
     )
-    appropriate = used & useful_libraries
-    other = used - useful_libraries
-
     parse_success = bool(valid)
     if used:
         score = reward_config.imported_and_used
@@ -118,11 +107,8 @@ def score_response(
         parse_success=parse_success,
         external_library_imported=bool(external),
         external_library_used=bool(used),
-        appropriate_library_used=bool(appropriate),
-        other_external_library=bool(other),
         external_libraries=tuple(sorted(external)),
         used_external_libraries=tuple(sorted(used)),
-        appropriate_libraries=tuple(sorted(appropriate)),
         candidate_count=len(extracted.candidates),
         valid_candidate_count=len(valid),
     )

@@ -124,12 +124,15 @@ def _validate_input_row(
     Returns its task identifier and chat messages.
     """
     messages = row.get("messages")
+    task_id = row.get("task_id")
     ground_truth = row.get("ground_truth")
     if not isinstance(messages, list) or not messages:
         raise ValueError(f"Input row {source_index} has no non-empty messages list.")
-    if not isinstance(ground_truth, dict) or not ground_truth.get("task_id"):
-        raise ValueError(f"Input row {source_index} has no ground_truth.task_id.")
-    return str(ground_truth["task_id"]), messages
+    if task_id is None and isinstance(ground_truth, dict):
+        task_id = ground_truth.get("task_id")
+    if not task_id:
+        raise ValueError(f"Input row {source_index} has no task_id.")
+    return str(task_id), messages
 
 
 def _existing_keys(output_path: Path) -> set[tuple[str, int]]:
@@ -172,6 +175,7 @@ def _generation_record(
     task_id: str,
     source_index: int,
     run_kind: str,
+    dataset_name: str,
     config: GenerationConfig,
 ) -> dict[str, Any]:
     """Normalise one Fireworks choice without discarding its raw SDK data.
@@ -188,12 +192,12 @@ def _generation_record(
         "source_index": source_index,
         "sample_index": sample_index,
         "run_kind": run_kind,
+        "dataset": dataset_name,
         "requested_model": config.model,
         "response_model": getattr(response, "model", None),
         "response_id": getattr(response, "id", None),
         "created": getattr(response, "created", None),
         "messages": row["messages"],
-        "ground_truth": row.get("ground_truth"),
         "content": message_data.get("content"),
         "reasoning_content": message_data.get("reasoning_content"),
         "finish_reason": getattr(choice, "finish_reason", None),
@@ -209,6 +213,7 @@ def generate_dataset(
     output_path: str | Path,
     config: GenerationConfig,
     run_kind: str,
+    dataset_name: str,
     client: ChatClient,
     resume: bool = False,
 ) -> int:
@@ -255,6 +260,7 @@ def generate_dataset(
                 task_id=task_id,
                 source_index=source_index,
                 run_kind=run_kind,
+                dataset_name=dataset_name,
                 config=config,
             )
             key = (task_id, record["sample_index"])

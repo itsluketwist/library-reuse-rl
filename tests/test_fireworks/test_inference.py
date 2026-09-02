@@ -1,11 +1,13 @@
 """Tests for matched and resumable Fireworks inference records."""
 
 import json
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from fw_rlvr.cli import inference_output_path, model_output_name, run_cli
 from fw_rlvr.inference import GenerationConfig, generate_dataset
 
 
@@ -82,8 +84,8 @@ def _rows() -> list[dict[str, Any]]:
     """
     return [
         {
+            "task_id": "task-1",
             "messages": [{"role": "user", "content": "solve"}],
-            "ground_truth": {"task_id": "task-1", "useful_libs": ["numpy"]},
         }
     ]
 
@@ -116,6 +118,7 @@ def test_generation_preserves_complete_and_separate_response_fields(
         output,
         _config(),
         run_kind="base",
+        dataset_name="library_usage",
         client=client,
     )
 
@@ -123,6 +126,8 @@ def test_generation_preserves_complete_and_separate_response_fields(
     assert written == 2
     assert records[0]["content"] == "answer-0"
     assert records[0]["reasoning_content"] == "reasoning-0"
+    assert records[0]["dataset"] == "library_usage"
+    assert "ground_truth" not in records[0]
     assert records[0]["generation_config"] == records[1]["generation_config"]
     assert records[0]["raw_response"]["id"] == "response-1"
     assert records[0]["usage"]["prompt_tokens"] == 4
@@ -139,6 +144,7 @@ def test_resume_skips_complete_tasks(tmp_path: Path) -> None:
         output,
         _config(samples=1),
         run_kind="base",
+        dataset_name="library_usage",
         client=first_client,
     )
     resumed_client, completions = _client(samples=1)
@@ -148,6 +154,7 @@ def test_resume_skips_complete_tasks(tmp_path: Path) -> None:
         output,
         _config(samples=1),
         run_kind="base",
+        dataset_name="library_usage",
         client=resumed_client,
         resume=True,
     )
@@ -169,6 +176,7 @@ def test_existing_output_requires_explicit_resume(tmp_path: Path) -> None:
             output,
             _config(samples=1),
             run_kind="rft",
+            dataset_name="library_usage",
             client=client,
         )
 
@@ -185,6 +193,7 @@ def test_partial_sample_set_is_rejected_on_resume(tmp_path: Path) -> None:
             output,
             _config(samples=2),
             run_kind="rft",
+            dataset_name="library_usage",
             client=client,
             resume=True,
         )
@@ -203,6 +212,7 @@ def test_base_and_rft_runs_have_matched_requests_and_schema(tmp_path: Path) -> N
         base_output,
         config,
         run_kind="base",
+        dataset_name="library_usage",
         client=base_client,
     )
     generate_dataset(
@@ -210,6 +220,7 @@ def test_base_and_rft_runs_have_matched_requests_and_schema(tmp_path: Path) -> N
         rft_output,
         config,
         run_kind="rft",
+        dataset_name="library_usage",
         client=rft_client,
     )
     base_record = json.loads(base_output.read_text())
@@ -219,3 +230,107 @@ def test_base_and_rft_runs_have_matched_requests_and_schema(tmp_path: Path) -> N
     assert set(base_record) == set(rft_record)
     assert base_record["generation_config"] == rft_record["generation_config"]
     assert (base_record["run_kind"], rft_record["run_kind"]) == ("base", "rft")
+
+
+def test_output_path_uses_model_directory_and_dataset_filename() -> None:
+    """Raw generations live under output/fireworks/{model}."""
+    model_name = model_output_name(
+        "accounts/demo/deployments/library-reuse-qwen3-8b-r16",
+    )
+
+    output = inference_output_path(
+        output_root=Path("output/fireworks"),
+        model_name=model_name,
+        dataset_name="libreusebench",
+        decoding_profile="qwen3",
+        prompt_suffix="",
+    )
+
+    assert output == Path(
+        "output/fireworks/library-reuse-qwen3-8b-r16/libreusebench-qwen3.jsonl",
+    )
+
+
+def test_cli_prepares_both_named_datasets_without_scoring(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """LibraryUsage and LibReuseBench share main prompt loading and raw output."""
+    library_usage = tmp_path / "library_usage.jsonl"
+    library_usage.write_text(
+        json.dumps(
+            {
+                "task_id": "LU/1",
+                "prompt": "Write a program.",
+                "task_type": "library_usage",
+                "local_modules": [],
+            },
+        )
+        + "\n",
+    )
+    libreusebench = tmp_path / "libreusebench.jsonl"
+    libreusebench.write_text(
+        json.dumps(
+            {
+                "task_id": "LRB/1",
+                "prompt": "Read stdin and write stdout.",
+                "test_inputs": ["1\n"],
+                "expected_outputs": ["1\n"],
+                "ground_truth": {"gold_stdlib": "print(1)"},
+            },
+        )
+        + "\n",
+    )
+    dataset_config = tmp_path / "datasets.yaml"
+    dataset_config.write_text(
+        "library_usage:\n"
+        f"  path: {library_usage}\n"
+        "  evaluator: library_usage\n"
+        "libreusebench:\n"
+        f"  path: {libreusebench}\n"
+        "  evaluator: libreusebench\n",
+    )
+    decoding_config = tmp_path / "decoding.yaml"
+    decoding_config.write_text(
+        "eval_decoding_profiles:\n"
+        "  qwen3:\n"
+        "    temperature: 0.6\n"
+        "    top_p: 0.95\n"
+        "    top_k: 20\n"
+        "    max_new_tokens: 256\n"
+        "    n_samples: 2\n",
+    )
+    generated: list[dict[str, Any]] = []
+    monkeypatch.setattr("fw_rlvr.cli.create_client", lambda **_: object())
+    monkeypatch.setattr(
+        "fw_rlvr.cli.generate_dataset",
+        lambda **kwargs: generated.append(kwargs) or 0,
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "infer_rft.py",
+            "--model",
+            "accounts/demo/deployments/rft-r16",
+            "--eval-datasets-config",
+            str(dataset_config),
+            "--decoding-config",
+            str(decoding_config),
+            "--output-root",
+            str(tmp_path / "output" / "fireworks"),
+        ],
+    )
+
+    run_cli("rft")
+
+    assert [call["dataset_name"] for call in generated] == [
+        "library_usage",
+        "libreusebench",
+    ]
+    assert all(call["config"].samples == 2 for call in generated)
+    assert generated[0]["rows"][0]["task_id"] == "LU/1"
+    assert generated[1]["rows"][0]["task_id"] == "LRB/1"
+    assert generated[0]["output_path"] == (
+        tmp_path / "output" / "fireworks" / "rft-r16" / "library_usage-qwen3.jsonl"
+    )

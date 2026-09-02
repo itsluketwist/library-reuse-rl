@@ -12,7 +12,6 @@ from src.response.parser import parse_response
 
 GROUND_TRUTH = {
     "local_modules": ["helpers"],
-    "useful_libs": ["pandas", "numpy", "scipy"],
 }
 
 PROJECT_LU_V1_WEIGHTS = {
@@ -20,7 +19,6 @@ PROJECT_LU_V1_WEIGHTS = {
     "passes_syntax_check": 0.25,
     "external_lib_imported": 0.5,
     "external_lib_used": 1.0,
-    "appropriate_lib_used": 0.0,
 }
 PROJECT_LU_V1_MAXIMUM = 2.0
 
@@ -41,7 +39,11 @@ def test_supported_import_forms_receive_full_reward(code: str, library: str) -> 
 
     assert result.score == 1.0
     assert result.used_external_libraries == (library,)
-    assert result.appropriate_library_used
+    assert set(result.binary_metrics()) == {
+        "parse_success",
+        "external_library_imported",
+        "external_library_used",
+    }
 
 
 def test_unused_import_and_obvious_reward_hack_receive_partial_reward() -> None:
@@ -166,16 +168,15 @@ def test_nested_binding_shadowing_prevents_false_usage_credit(code: str) -> None
     assert result.score == 0.5
 
 
-def test_other_external_library_is_reported_separately() -> None:
-    """Use of an unlisted external library remains rewardable but diagnostic."""
+def test_any_external_library_use_receives_full_reward() -> None:
+    """The reward does not classify external libraries by task suitability."""
     result = score_response(
         "```python\nimport polars as pl\npl.read_csv(path)\n```",
         GROUND_TRUTH,
     )
 
     assert result.score == 1.0
-    assert result.other_external_library
-    assert not result.appropriate_library_used
+    assert result.used_external_libraries == ("polars",)
 
 
 def test_reward_levels_are_configurable_and_bounded() -> None:

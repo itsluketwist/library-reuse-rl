@@ -380,17 +380,15 @@ For the first experiment:
 
 This is the main repository's `lu-v1` component ladder normalized to `[0, 1]`: its
 format/syntax shaping becomes parse credit, its import shaping becomes the intermediate
-level, and actual external-library use remains the full reward. The appropriate-library
-component remains diagnostic-only because its `lu-v1` weight is zero. Keep these
-constants configurable.
+level, and actual external-library use remains the full reward. Do not classify external
+libraries by task suitability. Keep these constants configurable.
 
 Also expose diagnostic component metrics such as:
 
 ```text
 parse_success
-target_imported
-target_used
-other_external_library
+external_library_imported
+external_library_used
 reward
 ```
 
@@ -563,7 +561,7 @@ not the catalog model ID, for the following steps.
 
 8. Generate and save Qwen3-8B BASE outputs.
 
-9. Calculate existing project library-use metrics on those outputs.
+9. Evaluate those raw outputs through the existing project code, outside `fireworks/`.
 
 10. Deploy the resulting RFT model; inference must use its deployment resource.
 
@@ -627,14 +625,14 @@ Codex should consider the Fireworks integration complete when:
 - the reward never executes generated code.
 - the reward only inspects the final answer, not reasoning.
 - evaluator helper modules can be imported successfully in Fireworks' isolated `ep local-test`.
-- target imports, aliases and `from ... import ...` forms are handled correctly.
+- external imports, aliases and `from ... import ...` forms are handled correctly.
 - unused imports do not receive full reward.
 - evaluator unit tests cover obvious reward-hacking cases.
 - the RFT dataset is generated from the existing project rather than duplicated manually.
 - an RFT job can be launched through a reproducible script/CLI command.
 - no API key is committed.
 - no paid deployment or RFT job is created automatically by tests.
-- base and RFT outputs have the same schema and can be passed directly into the project's existing downstream evaluation.
+- base and RFT outputs have the same raw-generation schema for the project's downstream evaluation.
 
 ## Key architectural principle
 

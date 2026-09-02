@@ -1,10 +1,12 @@
-"""Tests for routing Fireworks JSONL through existing project scorers."""
+"""Tests for scoring externally generated responses (e.g. from fireworks/) against a dataset."""
 
 import json
 from pathlib import Path
 from typing import Any
 
-from fw_rlvr.scoring import score_generation_file
+import pytest
+
+from src.eval.score_generations import score_generations
 
 
 def _write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
@@ -12,7 +14,7 @@ def _write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
     path.write_text("".join(json.dumps(record) + "\n" for record in records))
 
 
-def test_score_generation_file_uses_content_and_preserves_reasoning(
+def test_score_generations_uses_content_and_keeps_generation_provenance(
     tmp_path: Path,
 ) -> None:
     """Downstream metrics ignore reasoning while retaining it for analysis."""
@@ -50,7 +52,7 @@ def test_score_generation_file_uses_content_and_preserves_reasoning(
         ],
     )
 
-    result = score_generation_file(
+    result = score_generations(
         dataset_file=dataset,
         generations_file=generations,
         output_file=output,
@@ -59,12 +61,13 @@ def test_score_generation_file_uses_content_and_preserves_reasoning(
 
     assert result["analysis"]["n_external_lib_used"] == 0
     assert not result["results"][0]["external_lib_used"]
-    assert "numpy" in result["results"][0]["fireworks"]["reasoning_content"]
+    assert result["results"][0]["sample_index"] == 0
+    assert "numpy" in result["results"][0]["generation"]["reasoning_content"]
     assert output.is_file()
 
 
-def test_score_generation_file_rejects_incomplete_samples(tmp_path: Path) -> None:
-    """Every compared sample must cover the identical source task set."""
+def test_score_generations_rejects_incomplete_samples(tmp_path: Path) -> None:
+    """Every scored sample must cover the identical source task set."""
     dataset = tmp_path / "dataset.jsonl"
     generations = tmp_path / "generations.jsonl"
     rows = [
@@ -91,20 +94,16 @@ def test_score_generation_file_rejects_incomplete_samples(tmp_path: Path) -> Non
         ],
     )
 
-    try:
-        score_generation_file(
+    with pytest.raises(ValueError, match="missing generations for"):
+        score_generations(
             dataset_file=dataset,
             generations_file=generations,
             output_file=tmp_path / "results.json",
             evaluator="library_usage",
         )
-    except ValueError as error:
-        assert "does not match dataset" in str(error)
-    else:
-        raise AssertionError("Incomplete generation samples must be rejected.")
 
 
-def test_score_generation_file_preserves_multi_sample_task_grouping(
+def test_score_generations_preserves_multi_sample_task_grouping(
     tmp_path: Path,
 ) -> None:
     """Library-use scoring receives every sampled response for each source task."""
@@ -140,7 +139,7 @@ def test_score_generation_file_preserves_multi_sample_task_grouping(
         ],
     )
 
-    result = score_generation_file(
+    result = score_generations(
         dataset_file=dataset,
         generations_file=generations,
         output_file=tmp_path / "results.json",

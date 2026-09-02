@@ -1,4 +1,4 @@
-"""Neutral package for Fireworks-specific dataset, inference, and scoring glue."""
+"""Neutral package for Fireworks-specific dataset and inference glue."""
 
 from .dataset import prepare_records, representative_sample
 from .inference import GenerationConfig, generate_dataset

@@ -2,8 +2,8 @@
 
 This directory adapts the existing library-reuse experiment to Fireworks without
 duplicating its datasets or final evaluation logic. It provides a portable structural
-reward, matched base/RFT inference, a guarded RFT launcher, and a bridge back into the
-project scorer.
+reward, matched generation-only base/RFT inference, and a guarded RFT launcher. Final
+evaluation remains entirely in the main repository code.
 
 The reward never executes generated code. It parses only final-answer content with
 Python's `ast`; `reasoning_content` is saved for later analysis but is not scored.
@@ -11,16 +11,18 @@ Python's `ast`; `reasoning_content` is saved for later analysis but is not score
 Its normalized shaping matches the main repository's `lu-v1` intent: `0.00` for no
 parseable Python, `0.25` for parseable Python without external reuse, `0.50` for an
 external import that is not used, and `1.00` for an imported and referenced external
-library. Appropriate-library use remains a diagnostic metric because its main-repository
-weight is zero.
+library. It does not classify libraries as appropriate, inappropriate, or other.
 
 ## Layout
 
 ```text
 existing data -> rft/prepare_dataset.py -> Eval Protocol / Fireworks RFT
-existing prompts -> infer_base.py or infer_rft.py -> generation JSONL
-generation JSONL -> score_generations.py -> existing project evaluation
+config/eval_datasets.yaml -> main prompt loader -> infer_base.py or infer_rft.py
+infer_base.py or infer_rft.py -> output/fireworks/{model}/ raw generation JSONL
 ```
+
+Nothing under `fireworks/` evaluates saved generations. Use the main repository's
+evaluation code for scoring so local and Fireworks generations share one implementation.
 
 `fw_rlvr/` is deliberately neutral: the top-level directory is not a Python package
 named `fireworks`, so it cannot shadow a Fireworks SDK package. The evaluator directory
@@ -28,7 +30,7 @@ contains all reward-time code and can be uploaded independently.
 
 ## Install and configure
 
-Keep project inference/scoring in the normal repository environment and install Eval
+Keep project inference and evaluation in the normal repository environment and install Eval
 Protocol in the separate, ignored `.venv-eval` environment:
 
 ```bash
@@ -125,31 +127,37 @@ by Fireworks; inference must use that resource, not
 `accounts/fireworks/models/qwen3-8b`. The inference scripts never create or delete
 deployments.
 
-## 4. Generate and score base outputs
+## 4. Generate base outputs
 
-Use a held-out prepared split. Both inference commands resolve the same named decoding
-profile from `config/training.yaml`; any override must be applied identically to both
-runs.
+Inference reads named datasets from `config/eval_datasets.yaml` and delegates prompt
+construction to `src.data.load_eval_dataset`, exactly as the main evaluation path does.
+By default it generates both `library_usage` and `libreusebench`. It does not prepare RFT
+rows and does not run any evaluator.
 
 ```bash
 venv
 python fireworks/infer_base.py \
   --model accounts/ACCOUNT_ID/deployments/library-reuse-qwen3-8b \
-  --input fireworks/rft/data/val.jsonl \
-  --output fireworks/output/qwen3-8b-base.jsonl \
+  --model-name qwen3-8b-base \
+  --datasets library_usage,libreusebench \
   --decoding-profile qwen3 \
+  --prompt-style base \
   --seed 42
-
-python fireworks/score_generations.py \
-  --dataset data/train/library_usage/val.jsonl \
-  --generations fireworks/output/qwen3-8b-base.jsonl \
-  --output fireworks/output/qwen3-8b-base-results.json \
-  --evaluator library_usage
 ```
 
-The streamed output is resumable with `--resume`. It records prompt messages, final
+This writes:
+
+```text
+output/fireworks/qwen3-8b-base/library_usage-qwen3.jsonl
+output/fireworks/qwen3-8b-base/libreusebench-qwen3.jsonl
+```
+
+Omit `--model-name` to use the deployment ID's final segment as the directory. The
+streamed output is resumable with `--resume`. It records task ID, prompt messages, final
 content, separate reasoning content, finish reason, usage, resolved generation config,
-and raw SDK response data. Existing files are never overwritten implicitly.
+and raw SDK response data. It deliberately stores no reward ground truth and existing
+files are never overwritten implicitly. The named profile's `n_samples` is used unless
+`--samples` overrides it; apply identical profiles and prompt settings to compared runs.
 
 ## 5. Launch the pilot RFT job
 
@@ -309,7 +317,7 @@ resource. This does not make that catalog model callable through the inference A
 Deployment remains required later for matched base inference and for querying the trained
 LoRA model.
 
-## 6. Inspect, deploy, and evaluate the RFT model
+## 6. Inspect, deploy, and generate with the RFT model
 
 Inspect reward curves and sampled trajectories in the returned dashboard before
 deploying the resulting LoRA model. Deploy through the UI or a reviewed `firectl`
@@ -320,22 +328,19 @@ through the same inference implementation:
 venv
 python fireworks/infer_rft.py \
   --model accounts/ACCOUNT_ID/deployments/FINE_TUNED_DEPLOYMENT_ID \
-  --input fireworks/rft/data/val.jsonl \
-  --output fireworks/output/qwen3-8b-rft.jsonl \
+  --model-name library-reuse-qwen3-8b-grpo-r16-v1 \
+  --datasets library_usage,libreusebench \
   --decoding-profile qwen3 \
+  --prompt-style base \
   --seed 42
-
-python fireworks/score_generations.py \
-  --dataset data/train/library_usage/val.jsonl \
-  --generations fireworks/output/qwen3-8b-rft.jsonl \
-  --output fireworks/output/qwen3-8b-rft-results.json \
-  --evaluator library_usage
 ```
 
-Compare the saved `generation_config` objects before comparing outcomes. Structural
-library reuse is the training reward; executable correctness tests belong only in the
-existing project's final evaluation stage. Stop or delete any on-demand deployment when
-the experiment is finished to avoid idle cost.
+The inference scripts require an existing deployment and never create, scale, stop, or
+delete one. With `--min-replica-count 0`, Fireworks can scale an idle deployment to zero,
+but a request that triggers a cold start may initially return `503`; retry the resumable
+command after the deployment is ready. Compare the saved `generation_config` objects
+before comparing outcomes, run final evaluation through the main project, and explicitly
+delete an unneeded deployment with `firectl deployment delete DEPLOYMENT_ID`.
 
 ## Pilot checklist
 
@@ -346,11 +351,11 @@ the experiment is finished to avoid idle cost.
 5. Launch a short RFT job and inspect rewards and sampled trajectories.
 6. When matched inference is required, create a Qwen3-8B on-demand base deployment.
 7. Run the API-backed Eval Protocol local test against that deployment and inspect traces.
-8. Save Qwen3-8B base outputs and existing library-use metrics.
+8. Save raw Qwen3-8B base outputs for both evaluation datasets.
 9. Deploy the resulting RFT model.
-10. Save RFT outputs with exactly the base decoding configuration.
-11. Feed both output files into the existing scorer.
-12. Run executable correctness only during final evaluation.
+10. Save raw RFT outputs with exactly the base decoding configuration.
+11. Evaluate both sets of outputs only through the main repository code.
+12. Scale down or delete the deployment when inference is complete.
 
 Steps 6–12 may be deferred while validating only the reward and RFT workflow. Do not run
 Qwen3-8B inference or its API-backed local rollout before step 6.

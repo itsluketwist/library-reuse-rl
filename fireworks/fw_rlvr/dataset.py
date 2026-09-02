@@ -10,7 +10,6 @@ _REQUIRED_FIELDS = {
     "prompt",
     "task_id",
     "task_type",
-    "useful_libs",
 }
 
 
@@ -36,12 +35,11 @@ def prepare_record(
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": str(record["prompt"])})
 
-    # keep every field the structural evaluator or later diagnostics require.
+    # keep only the fields the structural evaluator requires.
     ground_truth = {
         "task_id": record["task_id"],
         "category_id": record["category_id"],
         "local_modules": list(record["local_modules"]),
-        "useful_libs": list(record["useful_libs"]),
         "phrasing_mode": record.get("phrasing_mode"),
         "dataset_version": record.get("dataset_version"),
     }
