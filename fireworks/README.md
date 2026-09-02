@@ -299,6 +299,24 @@ being auto-carved from training. Eval Protocol's RFT CLI does not expose a seed 
 managed workflow, so reproducibility relies on the recorded data order and complete job
 configuration rather than deterministic rollouts.
 
+### Rank-32, ten-epoch stress run
+
+The follow-up stress run changes only capacity, duration, and resource names relative to
+the explicit main configuration above:
+
+| Parameter | Previous run | Stress run |
+|---|---:|---:|
+| LoRA rank | 16 | 32 (managed RFT maximum) |
+| epochs | 2 | 10 |
+| planned rollouts | 9,472 | 47,360 |
+| job ID | `library-reuse-qwen3-8b-grpo-r16-v1` | `library-reuse-qwen3-8b-grpo-r32-e10-v1` |
+| output model | `library-reuse-qwen3-8b-grpo-r16-v1` | `library-reuse-qwen3-8b-grpo-r32-e10-v1` |
+
+This is a deliberately aggressive exploratory run, not a controlled single-variable
+comparison: both adapter capacity and training duration change. All other arguments in
+the full-run command remain identical. Fireworks' managed RFT backend rejects ranks above
+32 even though the current public CLI help only documents the rank as an integer.
+
 ### Test rewards and RFT without a deployment
 
 This is the current pilot path when base inference is intentionally deferred:
