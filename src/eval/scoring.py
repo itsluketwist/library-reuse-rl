@@ -392,8 +392,7 @@ _SCORERS = {**_SINGLE_SAMPLE_SCORERS, **_MULTI_SAMPLE_SCORERS}
 
 # evaluators that score every sampled response per row (see eval_decoding_profiles'
 # n_samples); the rest only ever score the first sample - score_dataset takes care of
-# that split itself, so callers (evaluate_model, fireworks/fw_rlvr/scoring.py) never need
-# to know which evaluators are multi-sample
+# that split itself, so callers never need to know which evaluators are multi-sample
 MULTI_SAMPLE_EVALUATORS = set(_MULTI_SAMPLE_SCORERS)
 
 

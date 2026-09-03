@@ -101,6 +101,21 @@ prompt, so the model knows what it can import and reuse - see
 [`src/prompts.py`](src/prompts.py). `run_eval` reads this straight from the same
 recipe file too, so training and evaluation always agree on it.
 
+Responses generated outside this repo (e.g. by [`fireworks/`](fireworks/), which only
+generates - see its README) are scored with the `score_generations` console script
+(see [`src/score_generations.py`](src/score_generations.py)), instead of `run_eval`'s
+in-process vllm generation:
+
+```shell
+score_generations -d library_usage -g output/fireworks/qwen3-8b/library_usage-qwen3.jsonl
+```
+
+`-d`/`--dataset` names a dataset from `config/eval_datasets.yaml`, same as `run_eval`, so
+the dataset path, evaluator, and execution environment are never duplicated. `-g`/`--generations`
+is a JSONL file with one record per (`task_id`, `sample_index`) carrying at least `content`
+and `finish_reason` (the schema `fireworks/fw_rlvr/inference.py` writes). Output defaults
+alongside the generations file, replacing its suffix with `.json`.
+
 ## *rewards*
 
 GRPO training scores each response with a reward function built from named **reward
@@ -159,8 +174,11 @@ existing component names.
   - `grpo/` - the GRPO training loop itself (reward function, trainer setup).
   - `run_eval.py` - the evaluation entry point: CLI parsing, dataset/output-path
     naming.
+  - `score_generations.py` - the entry point for scoring responses generated outside
+    this repo (e.g. by `fireworks/`): CLI parsing, dataset/output-path naming.
   - `eval/` - the evaluation loop itself (model/tokenizer loading, generation,
-    scoring each response, saving results).
+    scoring each response, saving results), plus `score_generations.py`'s alignment
+    of externally generated responses onto a dataset for the same scorers.
   - `models.py` - model/tokenizer loading, shared by training and evaluation.
   - `prompts.py` - builds the system prompt from the available-libraries list.
   - `response/` - parses an LLM response into candidate code, sandboxes and runs it
