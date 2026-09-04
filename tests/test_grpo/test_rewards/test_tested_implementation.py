@@ -83,7 +83,7 @@ class TestTestedImplementationReward:
         """score runs process_response with the row's tests, then compute_reward."""
         seen = []
 
-        def fake_process_response(response, record):
+        def fake_process_response(response, record, stop_reason="unknown"):
             seen.append((response, record))
             return ProcessedResponse(**vars(_dummy_parsed()), passed=True, output="")
 
@@ -111,7 +111,7 @@ class TestTestedImplementationReward:
         """score adds the shared correct_format/passes_syntax_check, then compute_reward."""
         monkeypatch.setattr(
             "src.grpo.rewards.tested_implementation.process_response",
-            lambda response, record: ProcessedResponse(
+            lambda response, record, stop_reason="unknown": ProcessedResponse(
                 **vars(_dummy_parsed(code="", answer="just use requests", valid=None)),
                 passed=True,
                 output="",

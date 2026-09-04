@@ -68,10 +68,10 @@ class LibraryUsageReward(CodeReward):
 
         Returns a scalar reward.
         """
-        parsed = self.parse(content)
+        parsed = self.parse(content, row)
 
         reward = 0.0
-        reward = self.score_correct_format(reward, parsed.reasoning, parsed.answer, row)
+        reward = self.score_correct_format(reward, parsed)
         reward = self.score_syntax(reward, parsed)
 
         # unlike executable tasks, every code example contributes reuse evidence.

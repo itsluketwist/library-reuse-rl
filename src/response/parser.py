@@ -1,7 +1,7 @@
 """Parse LLM responses into reasoning, answer text, and analysed code blocks."""
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from llm_cgr import CodeBlock, Markdown
 from radon.metrics import mi_visit
@@ -42,6 +42,9 @@ class ParsedResponse:
     reasoning: str
     answer: str | None  # None if no answer was extracted (e.g. reasoning overflow)
     code_blocks: list[ParsedCodeBlock]
+    # kw_only so subclasses (e.g. ProcessedResponse) can add their own non-default fields
+    # after this one without violating dataclass field-ordering rules
+    stop_reason: str = field(default="unknown", kw_only=True)
 
     @property
     def test_code_block(self) -> ParsedCodeBlock | None:
@@ -211,13 +214,17 @@ def code_metrics(
 
 def parse_response(
     response: str,
+    *,
+    stop_reason: str = "unknown",
 ) -> ParsedResponse:
     """
     Parse an LLM response into its reasoning, answer, and analysed code blocks.
 
     Every fenced answer block is retained and analysed. The longest block is marked as
     the candidate program for test-backed tasks; non-executing analyses can inspect all
-    blocks without parsing the response again.
+    blocks without parsing the response again. `stop_reason` isn't derived from the text -
+    it comes from the generation backend (or, for grpo training, the completion tokens),
+    so callers pass it in.
 
     Returns the complete parsed response.
     """
@@ -248,4 +255,5 @@ def parse_response(
         # store None rather than empty strings when nothing was extracted
         answer=answer or None,
         code_blocks=code_blocks,
+        stop_reason=stop_reason,
     )

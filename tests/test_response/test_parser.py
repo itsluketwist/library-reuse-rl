@@ -173,3 +173,13 @@ def total(values):
         assert parsed.maintainability_index is None
         assert parsed.code_blocks == []
         assert parsed.test_code_block is None
+
+    def test_stop_reason_defaults_to_unknown(self):
+        """A caller that doesn't know how generation ended can just omit stop_reason."""
+        assert parse_response("just an answer").stop_reason == "unknown"
+
+    def test_stop_reason_is_passed_through_verbatim(self):
+        """stop_reason is supplied by the caller, never derived from the response text."""
+        parsed = parse_response("just an answer", stop_reason="length")
+
+        assert parsed.stop_reason == "length"

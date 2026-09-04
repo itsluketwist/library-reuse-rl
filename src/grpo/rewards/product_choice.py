@@ -3,7 +3,7 @@
 from typing import Any
 
 from src.grpo.rewards.base import LibraryReward
-from src.response.parser import strip_reasoning
+from src.response.parser import parse_response
 from src.response.pick import extract_primary_pick
 
 
@@ -27,17 +27,17 @@ class ProductChoiceReward(LibraryReward):
 
         Returns a scalar reward.
         """
-        reasoning, answer = strip_reasoning(content)
+        parsed = parse_response(response=content, stop_reason=self._stop_reason(row))
 
         pick = extract_primary_pick(
-            response=answer,
+            response=parsed.answer or "",
             allowlist=row.get("allowlist") or [],
             aliases=row.get("aliases") or {},
             diy_terms=row.get("diy_terms") or [],
         )
 
         reward = 0.0
-        reward = self.score_correct_format(reward, reasoning, answer, row)
+        reward = self.score_correct_format(reward, parsed)
         # full credit: the primary pick is an external library/service
         reward = self._add(reward, "names_external_lib", pick.is_external)
         # partial credit: an external tool appears, but only as an alternative

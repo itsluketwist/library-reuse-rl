@@ -27,13 +27,15 @@ def process_response(
     response: str,
     record: dict[str, Any],
     python_executable: str | Path | None = None,
+    *,
+    stop_reason: str = "unknown",
 ) -> ProcessedResponse:
     """
     Parse a response and evaluate its code against a record.
 
     Returns a ProcessedResponse with the parsed response's fields and the evaluation outcome.
     """
-    parsed = parse_response(response=response)
+    parsed = parse_response(response=response, stop_reason=stop_reason)
 
     # no code extracted means there is nothing to evaluate - the record fails
     # without an output, rather than running the empty string against the tests

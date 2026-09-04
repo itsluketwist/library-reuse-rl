@@ -81,3 +81,16 @@ print(result)
         assert result.code is not None
         assert "result = line.strip()" in result.code
         assert result.passed is True
+
+    def test_stop_reason_is_passed_through(self):
+        """stop_reason flows into the returned ProcessedResponse like any other field."""
+        record = {"inputs": ["hello\n"], "expected_outputs": ["hello\n"]}
+
+        result = process_response(
+            response="<think>ran out of tokens",
+            record=record,
+            python_executable=PYTHON,
+            stop_reason="length",
+        )
+
+        assert result.stop_reason == "length"

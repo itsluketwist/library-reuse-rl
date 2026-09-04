@@ -3,6 +3,7 @@
 from typing import Any
 
 from src.response.parser import ParsedResponse, parse_response
+from src.response.stop_reason import stop_reason_from_tokens
 from src.utils.config import load_yaml_config
 
 
@@ -141,35 +142,33 @@ class LibraryReward:
             return reward + weight
         return reward
 
-    def _is_truncated(
+    def _stop_reason(
         self,
         row: dict[str, Any],
-    ) -> bool:
+    ) -> str:
         """
-        Whether the completion was cut off by the length limit instead of reaching eos.
+        Derive this row's stop reason from its completion tokens.
 
-        Returns True if the completion's last token isn't eos_token_id.
+        trl gives reward functions no finish reason, only completion_ids and (separately)
+        eos_token_id - see stop_reason_from_tokens.
+
+        Returns the stop reason, in the same vocabulary eval uses.
         """
-        completion_ids = row.get("completion_ids")
-        if self.eos_token_id is None or not completion_ids:
-            return False
-        return completion_ids[-1] != self.eos_token_id
+        return stop_reason_from_tokens(row.get("completion_ids"), self.eos_token_id)
 
     def score_correct_format(
         self,
         reward: float,
-        reasoning: str,
-        answer: str | None,
-        row: dict[str, Any],
+        parsed: ParsedResponse,
     ) -> float:
         """
         Add the correct_format component: shared by every reward, no code required.
 
         Returns the updated reward.
         """
-        has_shape = bool(reasoning.strip() and answer)
+        has_shape = bool(parsed.reasoning.strip() and parsed.answer)
         return self._add(
-            reward, "correct_format", has_shape and not self._is_truncated(row)
+            reward, "correct_format", has_shape and parsed.stop_reason != "length"
         )
 
 
@@ -193,16 +192,17 @@ class CodeReward(LibraryReward):
         """
         return self._add(reward, "passes_syntax_check", bool(parsed.valid))
 
-    @staticmethod
     def parse(
+        self,
         content: str,
+        row: dict[str, Any],
     ) -> ParsedResponse:
         """
         Parse a completion into its reasoning, answer, and analysed code fragment.
 
         Returns the ParsedResponse.
         """
-        return parse_response(content)
+        return parse_response(response=content, stop_reason=self._stop_reason(row))
 
     @staticmethod
     def external_libraries(

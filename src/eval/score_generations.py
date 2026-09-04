@@ -5,7 +5,7 @@ from typing import Any
 
 from src.data import load_eval_dataset
 from src.eval.scoring import score_dataset
-from src.eval.stop_reason import map_stop_reason
+from src.response.stop_reason import map_stop_reason
 from src.utils.io import load_jsonl, save_json
 from src.utils.log import log
 

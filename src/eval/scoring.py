@@ -16,7 +16,7 @@ from typing import Any, Iterable
 from libreusebench.evaluate import evaluate_responses as evaluate_lrb_responses
 
 from src.grpo.rewards.library_usage import analyse_library_usage
-from src.response.parser import parse_response, strip_reasoning
+from src.response.parser import parse_response
 from src.response.pick import extract_primary_pick
 from src.response.pipeline import process_response
 from src.utils.io import save_jsonl
@@ -105,6 +105,7 @@ def _score_tested(
                 "expected_outputs": row["expected_outputs"],
             },
             python_executable=python_executable,
+            stop_reason=stop_reason,
         )
         n_passed += processed.passed
         processed_data = dataclasses.asdict(processed)
@@ -126,7 +127,6 @@ def _score_tested(
             {
                 "idx": row["idx"],
                 "task_id": row.get("task_id"),
-                "stop_reason": stop_reason,
                 **processed_data,
             }
         )
@@ -174,9 +174,9 @@ def _score_product_choice(
     del python_executable, environment_root, environment_cache_dir
     results = []
     for row, (response, stop_reason) in zip(dataset, responses):
-        _, answer = strip_reasoning(response)
+        parsed = parse_response(response=response, stop_reason=stop_reason)
         pick = extract_primary_pick(
-            response=answer,
+            response=parsed.answer or "",
             allowlist=row.get("allowlist") or [],
             aliases=row.get("aliases") or {},
             diy_terms=row.get("diy_terms") or [],
@@ -185,7 +185,7 @@ def _score_product_choice(
             {
                 "idx": row["idx"],
                 "task_id": row.get("task_id"),
-                "stop_reason": stop_reason,
+                "stop_reason": parsed.stop_reason,
                 "category_id": row.get("category_id"),
                 "primary": pick.primary,
                 "external_pick": pick.is_external,
@@ -255,7 +255,7 @@ def _score_library_usage(
     for row, samples in zip(dataset, responses):
         row_results = []
         for sample_idx, (response, stop_reason) in enumerate(samples):
-            parsed = parse_response(response)
+            parsed = parse_response(response=response, stop_reason=stop_reason)
             usage = analyse_library_usage(parsed, row.get("local_modules"))
             external = usage.external_libs
             used = usage.used_external_libs

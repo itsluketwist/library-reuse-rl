@@ -82,11 +82,10 @@ class TestedImplementationReward(CodeReward):
                 "inputs": row["inputs"],
                 "expected_outputs": row["expected_outputs"],
             },
+            stop_reason=self._stop_reason(row),
         )
         reward = 0.0
-        reward = self.score_correct_format(
-            reward, processed.reasoning, processed.answer, row
-        )
+        reward = self.score_correct_format(reward, processed)
         reward = self.score_syntax(reward, processed)
         reward += compute_reward(
             parsed=processed,

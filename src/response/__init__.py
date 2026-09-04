@@ -10,6 +10,7 @@ from src.response.parser import (
     strip_reasoning,
 )
 from src.response.pipeline import ProcessedResponse, process_response
+from src.response.stop_reason import map_stop_reason, stop_reason_from_tokens
 
 
 __all__ = [
@@ -19,9 +20,11 @@ __all__ = [
     "code_metrics",
     "evaluate_record",
     "execute_code",
+    "map_stop_reason",
     "parse_response",
     "process_response",
     "resolve_eval_python",
     "select_code",
+    "stop_reason_from_tokens",
     "strip_reasoning",
 ]

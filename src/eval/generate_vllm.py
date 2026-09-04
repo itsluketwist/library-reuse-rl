@@ -10,7 +10,7 @@ from typing import Any
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 
-from src.eval.stop_reason import map_stop_reason
+from src.response.stop_reason import map_stop_reason
 
 
 def generate_vllm_responses(

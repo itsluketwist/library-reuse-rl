@@ -15,7 +15,7 @@ from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
 from tqdm import tqdm
 
-from src.eval.stop_reason import map_stop_reason
+from src.response.stop_reason import map_stop_reason
 from src.utils.log import log
 
 

@@ -19,6 +19,7 @@ def _parsed(
     std_libs: list[str] | None = None,
     ext_libs: list[str] | None = None,
     lib_usage: dict[str, list[dict]] | None = None,
+    stop_reason: str = "eos",
 ) -> ParsedResponse:
     """Build a ParsedResponse for the base-class tests."""
     code_blocks = (
@@ -43,6 +44,7 @@ def _parsed(
         reasoning=reasoning,
         answer=answer,
         code_blocks=code_blocks,
+        stop_reason=stop_reason,
     )
 
 
@@ -92,36 +94,36 @@ class TestLibraryRewardWiring:
         assert reward._add(0.0, "absent", True) == 0.0
         assert reward._add(0.0, "zero", True) == 0.0
 
-    def test_is_truncated_needs_both_eos_token_id_and_completion_ids(self):
+    def test_stop_reason_needs_both_eos_token_id_and_completion_ids(self):
         """Truncation can only be judged when both pieces of information are present."""
         reward = LibraryReward({}, eos_token_id=2)
 
-        assert reward._is_truncated({"completion_ids": [1, 3]})  # last token isn't eos
-        assert not reward._is_truncated({"completion_ids": [1, 2]})  # ends on eos
-        assert not reward._is_truncated(
-            {}
+        assert reward._stop_reason({"completion_ids": [1, 3]}) == "length"
+        assert reward._stop_reason({"completion_ids": [1, 2]}) == "eos"
+        assert (
+            reward._stop_reason({}) == "unknown"
         )  # no completion_ids (e.g. a direct unit test)
-        assert not LibraryReward({})._is_truncated(
-            {"completion_ids": [1, 3]}
+        assert (
+            LibraryReward({})._stop_reason({"completion_ids": [1, 3]}) == "unknown"
         )  # no eos_token_id known
 
     def test_score_correct_format_needs_reasoning_and_answer_only(self):
         """correct_format needs reasoning and an answer - no code required."""
         reward = LibraryReward({"correct_format": 0.1})
 
-        assert reward.score_correct_format(0.0, "thinking", "answer", {}) == 0.1
-        assert reward.score_correct_format(0.0, "", "answer", {}) == 0.0
-        assert reward.score_correct_format(0.0, "thinking", None, {}) == 0.0
+        assert reward.score_correct_format(0.0, _parsed(reasoning="thinking")) == 0.1
+        assert reward.score_correct_format(0.0, _parsed(reasoning="")) == 0.0
+        assert reward.score_correct_format(0.0, _parsed(answer=None)) == 0.0
 
     def test_score_correct_format_rejects_truncated_completions(self):
         """A truncated completion never earns correct_format, even with full shape."""
         reward = LibraryReward({"correct_format": 0.1}, eos_token_id=2)
 
-        row = {"completion_ids": [1, 2, 3]}  # last token isn't eos_token_id (2)
-        assert reward.score_correct_format(0.0, "thinking", "answer", row) == 0.0
+        parsed = _parsed(stop_reason="length")
+        assert reward.score_correct_format(0.0, parsed) == 0.0
 
-        row = {"completion_ids": [1, 3, 2]}  # ends on eos_token_id
-        assert reward.score_correct_format(0.0, "thinking", "answer", row) == 0.1
+        parsed = _parsed(stop_reason="eos")
+        assert reward.score_correct_format(0.0, parsed) == 0.1
 
 
 class TestCodeReward:
