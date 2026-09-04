@@ -52,13 +52,19 @@ def load_full_yaml(config_file: str) -> dict[str, Any]:
     return _load_yaml(config_file=config_file)
 
 
-# re-added at the top of the registry each rewrite, since yaml.dump drops comments
+# re-added at the top of the registry each rewrite, since yaml.dump drops comments - so
+# anything worth keeping about the file's format has to live here, not in the yaml itself
 _MODEL_REGISTRY_HEADER = """\
 # model registry - base models we start from, plus any models trained from them.
 # "path" is blank for base models, and filled in (by register_model) once a model
 # has actually been trained, pointing at that run's lora adapter. trained entries also
 # carry a "properties" block recording the knobs the run was launched with, since the
-# run-id key is non-descriptive - see src/utils/config.py and src/run_grpo.py"""
+# run-id key is non-descriptive - see src/utils/config.py and src/run_grpo.py
+#
+# entries default to "provider: vllm" (local weights). "provider: api" entries are served
+# over an OpenAI-compatible api instead, and carry "api_key_env" (the .env variable holding
+# the key) plus optional "base_url", "extra_params" and "max_tokens_param" - see the README
+# and src/eval/generate_api.py"""
 
 
 class _RegistryDumper(yaml.SafeDumper):

@@ -7,12 +7,11 @@ libraries into (arbitrary, dynamic) before running it, so each answer is evaluat
 the third-party packages it reached for.
 """
 
-import fcntl
 import platform
+import shutil
 import subprocess
 import sys
 import tempfile
-import time
 import venv
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -30,12 +29,6 @@ except ImportError:  # pragma: no cover - windows
 # genuinely dual-solvable task is not dropped just for import latency under a tight cap
 _DEFAULT_TIMEOUT_SECONDS = 30.0
 _DEFAULT_MEMORY_MB = 1024
-
-# retries for a launch that fails with the venv interpreter transiently missing/unreadable -
-# seen on cephfs under the heavy concurrent subprocess launching this harness does, even
-# though the file is actually there (a second attempt almost always succeeds)
-_LAUNCH_RETRIES = 3
-_LAUNCH_RETRY_DELAY_SECONDS = 0.5
 
 # the interpreter used for build-time oracle runs (the project venv, which already has the
 # reference solutions' libraries); the harness overrides this with its own venv's python
@@ -65,34 +58,19 @@ def execute(
 
     Returns a (success, captured stdout or an error message) tuple.
     """
-    launch_error: OSError | None = None
-    for attempt in range(_LAUNCH_RETRIES):
-        if attempt:
-            time.sleep(_LAUNCH_RETRY_DELAY_SECONDS)
-        try:
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                result = subprocess.run(
-                    [str(python_executable), "-"],
-                    input=code,
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout_seconds,
-                    preexec_fn=lambda: _set_memory_limit(memory_mb),
-                    cwd=tmp_dir,
-                )
-            break
-        except subprocess.TimeoutExpired:
-            return False, f"timeout after {timeout_seconds}s"
-        except OSError as exc:
-            # the interpreter is transiently missing/unreadable (seen on network filesystems
-            # under heavy concurrent subprocess launching) - retry a few times before giving
-            # up, so a passing flaky launch doesn't get recorded as a wrong answer.
-            launch_error = exc
-    else:
-        return (
-            False,
-            f"could not launch interpreter {python_executable}: {launch_error}",
-        )
+    try:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            result = subprocess.run(
+                [str(python_executable), "-"],
+                input=code,
+                capture_output=True,
+                text=True,
+                timeout=timeout_seconds,
+                preexec_fn=lambda: _set_memory_limit(memory_mb),
+                cwd=tmp_dir,
+            )
+    except subprocess.TimeoutExpired:
+        return False, f"timeout after {timeout_seconds}s"
 
     if result.returncode == 0:
         return True, result.stdout
@@ -276,41 +254,59 @@ def temporary_packages(
 
 
 class Environment:
-    """A cached virtual environment the harness installs response libraries into, then runs with.
+    """A virtual environment the harness installs response libraries into, then runs with.
 
-    Packages already installed in this environment are tracked so repeated answers needing the
-    same library don't reinstall. Installing arbitrary packages from model output is inherent to
-    running a library-agnostic benchmark - use a disposable cache directory.
+    By default each Environment gets its own uniquely named venv and deletes it on close, so
+    evaluations running at the same time can never share - and corrupt - one directory. Name a
+    `cache_dir` to reuse a venv across runs instead: packages already installed there are
+    tracked and not reinstalled, at the cost of that directory being shared with anything else
+    pointed at it. A named directory is always kept; only one this class created is deleted.
+
+    `scratch_root` places the disposable venv somewhere specific (it defaults to the system
+    temp directory), for when the default location is too small or on the wrong filesystem.
+
+    Installing arbitrary packages from model output is inherent to running a library-agnostic
+    benchmark, which is why a disposable environment is the default.
+
+    Use it as a context manager, or call close(), so a disposable venv is cleaned up.
     """
 
     def __init__(
         self,
-        cache_dir: str | Path,
+        cache_dir: str | Path | None = None,
+        scratch_root: str | Path | None = None,
     ) -> None:
+        # only a venv this class created is ours to delete; a named one belongs to the caller
+        self._owned = cache_dir is None
+        if cache_dir is None:
+            if scratch_root is not None:
+                Path(scratch_root).mkdir(parents=True, exist_ok=True)
+            cache_dir = tempfile.mkdtemp(prefix="libreusebench-env-", dir=scratch_root)
+
         # resolved to absolute: execute() runs the interpreter with a different subprocess cwd
         # per call, and a relative path would then resolve against that cwd instead of this one
-        # resolved to absolute: `execute()` runs candidate programs with cwd set to a fresh
-        # temp dir for sandboxing, so a relative cache_dir would never resolve to the venv
-        self.cache_dir = Path(cache_dir).resolve().resolve()
+        self.cache_dir = Path(cache_dir).resolve()
         self._installed: set[str] = set()
         if not self.python.exists():
-            # concurrent slurm jobs can target the same (unversioned) cache_dir - an
-            # exclusive lock keeps two `venv.EnvBuilder(...).create()` calls from racing
-            # into the same directory, which corrupts the venv (e.g. "Text file busy"
-            # mid-build, leaving activate scripts but no interpreter behind)
-            self.cache_dir.parent.mkdir(parents=True, exist_ok=True)
-            lock_path = self.cache_dir.parent / f"{self.cache_dir.name}.lock"
-            with open(lock_path, "a") as lock_file:
-                fcntl.flock(lock_file, fcntl.LOCK_EX)
-                try:
-                    if (
-                        not self.python.exists()
-                    ):  # re-check: a waited-out racer may have built it
-                        venv.EnvBuilder(with_pip=True, clear=False).create(
-                            self.cache_dir
-                        )
-                finally:
-                    fcntl.flock(lock_file, fcntl.LOCK_UN)
+            venv.EnvBuilder(with_pip=True, clear=False).create(self.cache_dir)
+
+        # fail here rather than letting every subsequent execute() record a wrong answer,
+        # which would look like a model scoring zero instead of a broken environment
+        if not self.python.exists():
+            raise RuntimeError(
+                f"no python interpreter at {self.python} after building the environment"
+            )
+
+    def close(self) -> None:
+        """Delete the environment, unless the caller named it (see __init__)."""
+        if self._owned:
+            shutil.rmtree(self.cache_dir, ignore_errors=True)
+
+    def __enter__(self) -> "Environment":
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.close()
 
     @property
     def python(self) -> Path:

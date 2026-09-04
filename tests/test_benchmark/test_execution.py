@@ -1,8 +1,17 @@
 """Tests for the stdin/stdout execution used by the build pipeline (libreusebench.environment)."""
 
+import platform
 import sys
+import venv
+from pathlib import Path
 
-from libreusebench.environment import evaluate_record, run_program, temporary_packages
+import pytest
+from libreusebench.environment import (
+    Environment,
+    evaluate_record,
+    run_program,
+    temporary_packages,
+)
 
 
 class TestRunProgram:
@@ -24,18 +33,57 @@ class TestRunProgram:
         assert not ok
         assert "boom" in out or "ValueError" in out
 
-    def test_missing_interpreter_fails_cleanly(self, tmp_path) -> None:
-        """A python_executable that can't be launched (e.g. a venv whose interpreter
-        transiently vanished on a network filesystem) fails this one call rather than
-        raising and crashing the caller's whole evaluation run."""
-        missing_python = tmp_path / "no-such-venv" / "bin" / "python"
 
-        ok, message = run_program(
-            "print('hi')", stdin="", python_executable=missing_python
+@pytest.fixture
+def stub_venv(monkeypatch):
+    """Replace venv building with a marker file, so these tests don't pay for a real venv."""
+
+    def _create(self, path) -> None:
+        interpreter = Path(path) / (
+            "Scripts" if platform.system() == "Windows" else "bin"
         )
+        interpreter.mkdir(parents=True, exist_ok=True)
+        (interpreter / "python").write_text("")
 
-        assert not ok
-        assert "no-such-venv" in message
+    monkeypatch.setattr(venv.EnvBuilder, "create", _create)
+
+
+class TestEnvironmentLifecycle:
+    """Environment is disposable by default, and reused only when the caller names it."""
+
+    def test_disposable_by_default(self, tmp_path, stub_venv) -> None:
+        """With no cache_dir the venv is built somewhere unique and deleted on close, so
+        evaluations running at the same time can never share (and corrupt) one directory."""
+        with Environment(scratch_root=tmp_path) as env:
+            directory = env.cache_dir
+            assert directory.exists()
+            assert directory.parent == tmp_path.resolve()
+
+        assert not directory.exists()
+
+    def test_concurrent_environments_never_collide(self, tmp_path, stub_venv) -> None:
+        with Environment(scratch_root=tmp_path) as first:
+            with Environment(scratch_root=tmp_path) as second:
+                assert first.cache_dir != second.cache_dir
+
+    def test_named_cache_dir_is_reused_and_kept(self, tmp_path, stub_venv) -> None:
+        """Naming a directory is what opts into caching - it survives close, so the next
+        run reuses the packages already installed there."""
+        cache_dir = tmp_path / "shared-venv"
+
+        with Environment(cache_dir=cache_dir) as env:
+            assert env.cache_dir == cache_dir.resolve()
+
+        assert cache_dir.exists()
+
+    def test_broken_environment_raises(self, tmp_path, monkeypatch) -> None:
+        """A venv that builds without producing an interpreter raises immediately, rather
+        than letting every later execute() record a wrong answer for a broken environment."""
+        # stand in for a venv build that silently produces no interpreter
+        monkeypatch.setattr(venv.EnvBuilder, "create", lambda self, path: None)
+
+        with pytest.raises(RuntimeError, match="no python interpreter"):
+            Environment(cache_dir=tmp_path / "broken-venv")
 
 
 class TestEvaluateRecord:

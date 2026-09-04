@@ -15,14 +15,20 @@ def main() -> None:
     parser.add_argument(
         "responses_file", help="JSONL of {task_id, response(s)} records"
     )
+    parser.add_argument("--output-dir", default="output", help="where to write results")
     parser.add_argument(
-        "--output-directory", default="output", help="where to write results"
+        "--env-dir",
+        default=None,
+        help="venv to reuse across runs, kept afterwards; by default each run builds a "
+        "disposable one and deletes it, so concurrent runs can't corrupt each other's",
     )
     parser.add_argument(
-        "--env-dir", default=".libreuseeval-venv", help="cached venv for installs"
+        "--env-root",
+        default=None,
+        help="where to build the disposable venv (default: the system temp directory)",
     )
     parser.add_argument(
-        "--env",
+        "--env-file",
         default=None,
         help="path to an environment .txt (one pip package per line); "
         "if omitted, packages are collected from the responses and installed automatically",
@@ -49,10 +55,11 @@ def main() -> None:
     confirm = None if args.unsafe_installs else confirm_packages
     evaluate_responses(
         responses_file=args.responses_file,
-        output_directory=args.output_directory,
+        output_dir=args.output_dir,
         env_dir=args.env_dir,
+        env_root=args.env_root,
         timeout_seconds=args.timeout,
-        env_file=args.env,
+        env_file=args.env_file,
         k=args.k,
         confirm=confirm,
     )

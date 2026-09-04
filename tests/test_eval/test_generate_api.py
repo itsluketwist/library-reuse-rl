@@ -6,12 +6,25 @@ from unittest.mock import patch
 
 import pytest
 
-from src.eval.generate_api import generate_api_responses
+from src.eval.generate_api import ApiSettings, generate_api_responses
 
 
-def _fake_completion(content: str, finish_reason: str) -> SimpleNamespace:
+DEEPSEEK = ApiSettings(
+    api_key_env="FAKE_API_KEY",
+    base_url="https://api.deepseek.com",
+)
+OPENAI = ApiSettings(api_key_env="FAKE_API_KEY")
+
+
+def _fake_completion(
+    content: str,
+    finish_reason: str,
+    reasoning: str | None = None,
+) -> SimpleNamespace:
     """Build a minimal stand-in for an OpenAI ChatCompletion response."""
     message = SimpleNamespace(content=content)
+    if reasoning is not None:
+        message.reasoning_content = reasoning
     choice = SimpleNamespace(message=message, finish_reason=finish_reason)
     return SimpleNamespace(choices=[choice])
 
@@ -39,8 +52,7 @@ class TestGenerateApiResponses:
 
             responses = generate_api_responses(
                 model="deepseek-v4-flash",
-                base_url="https://api.deepseek.com",
-                api_key_env="FAKE_API_KEY",
+                api=DEEPSEEK,
                 prompts=[
                     [{"role": "user", "content": "hello"}],
                     [{"role": "user", "content": "count to a lot"}],
@@ -79,8 +91,7 @@ class TestGenerateApiResponses:
 
             responses = generate_api_responses(
                 model="deepseek-v4-flash",
-                base_url="https://api.deepseek.com",
-                api_key_env="FAKE_API_KEY",
+                api=DEEPSEEK,
                 prompts=[
                     [{"role": "user", "content": "prompt a"}],
                     [{"role": "user", "content": "prompt b"}],
@@ -108,8 +119,7 @@ class TestGenerateApiResponses:
         with pytest.raises(RuntimeError, match="MISSING_KEY"):
             generate_api_responses(
                 model="gpt-5.6-luna",
-                base_url=None,
-                api_key_env="MISSING_KEY",
+                api=ApiSettings(api_key_env="MISSING_KEY"),
                 prompts=[[{"role": "user", "content": "hi"}]],
                 decoding_settings={
                     "temperature": 0.0,
@@ -131,8 +141,7 @@ class TestGenerateApiResponses:
 
             generate_api_responses(
                 model="gpt-5.6-luna",
-                base_url=None,
-                api_key_env="FAKE_API_KEY",
+                api=OPENAI,
                 prompts=[[{"role": "user", "content": "hi"}]],
                 decoding_settings={
                     "temperature": 0.7,
@@ -161,15 +170,13 @@ class TestGenerateApiResponses:
 
             generate_api_responses(
                 model="deepseek-v4-flash",
-                base_url="https://api.deepseek.com",
-                api_key_env="FAKE_API_KEY",
+                api=DEEPSEEK._replace(extra_params={"thinking": {"type": "disabled"}}),
                 prompts=[[{"role": "user", "content": "hi"}]],
                 decoding_settings={
                     "temperature": 0.0,
                     "top_p": 1.0,
                     "max_new_tokens": 64,
                 },
-                extra_params={"thinking": {"type": "disabled"}},
             )
 
             _, kwargs = mock_client.chat.completions.create.call_args
@@ -189,17 +196,74 @@ class TestGenerateApiResponses:
 
             generate_api_responses(
                 model="gpt-5.6-luna",
-                base_url=None,
-                api_key_env="FAKE_API_KEY",
+                api=OPENAI._replace(max_tokens_param="max_completion_tokens"),
                 prompts=[[{"role": "user", "content": "hi"}]],
                 decoding_settings={
                     "temperature": 0.0,
                     "top_p": 1.0,
                     "max_new_tokens": 64,
                 },
-                max_tokens_param="max_completion_tokens",
             )
 
             _, kwargs = mock_client.chat.completions.create.call_args
             assert kwargs["max_completion_tokens"] == 64
             assert "max_tokens" not in kwargs
+
+    def test_reasoning_content_folded_into_think_tags(self, monkeypatch):
+        """Reasoning models return their thinking in a separate field; it is folded back
+        into the response text as a <think> block so strip_reasoning and the n_reasoning
+        metric see the same shape they do from vllm."""
+        monkeypatch.setenv("FAKE_API_KEY", "test-key")
+
+        with patch("src.eval.generate_api.OpenAI") as mock_openai_cls:
+            mock_client = mock_openai_cls.return_value
+            mock_client.chat.completions.create.return_value = _fake_completion(
+                "the answer", "stop", reasoning="let me think"
+            )
+
+            responses = generate_api_responses(
+                model="deepseek-v4-flash",
+                api=DEEPSEEK,
+                prompts=[[{"role": "user", "content": "hi"}]],
+                decoding_settings={
+                    "temperature": 0.0,
+                    "top_p": 1.0,
+                    "max_new_tokens": 64,
+                },
+            )
+
+        assert responses == [[("<think>let me think</think>the answer", "eos")]]
+
+    def test_failed_request_does_not_lose_the_other_samples(self, monkeypatch):
+        """A request that fails even after the SDK's own retries is recorded against that
+        one sample, rather than raising and discarding every other completed generation."""
+        monkeypatch.setenv("FAKE_API_KEY", "test-key")
+
+        completions = [
+            _fake_completion("fine", "stop"),
+            RuntimeError("502 bad gateway"),
+        ]
+
+        with patch("src.eval.generate_api.OpenAI") as mock_openai_cls:
+            mock_client = mock_openai_cls.return_value
+            mock_client.chat.completions.create.side_effect = completions
+
+            responses = generate_api_responses(
+                model="deepseek-v4-flash",
+                api=DEEPSEEK,
+                prompts=[
+                    [{"role": "user", "content": "a"}],
+                    [{"role": "user", "content": "b"}],
+                ],
+                decoding_settings={
+                    "temperature": 0.0,
+                    "top_p": 1.0,
+                    "max_new_tokens": 64,
+                },
+                max_workers=1,
+            )
+
+        assert responses[0] == [("fine", "eos")]
+        failed_text, failed_stop_reason = responses[1][0]
+        assert failed_stop_reason == "error"
+        assert "502 bad gateway" in failed_text

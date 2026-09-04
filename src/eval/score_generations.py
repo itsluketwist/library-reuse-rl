@@ -5,6 +5,7 @@ from typing import Any
 
 from src.data import load_eval_dataset
 from src.eval.scoring import score_dataset
+from src.eval.stop_reason import map_stop_reason
 from src.utils.io import load_jsonl, save_json
 from src.utils.log import log
 
@@ -21,16 +22,6 @@ _GENERATION_RESULT_FIELDS = (
     "generation_config",
     "reasoning_content",
 )
-
-
-def _stop_reason(finish_reason: str | None) -> str:
-    """Map an external generation's finish reason to this project's stop_reason vocabulary.
-
-    Returns the mapped stop reason.
-    """
-    if finish_reason is None:
-        return "unknown"
-    return {"stop": "eos", "length": "length"}.get(finish_reason, finish_reason)
 
 
 def _group_generations_by_sample(
@@ -79,7 +70,7 @@ def score_generations(
     output_file: str | Path,
     evaluator: str,
     python_executable: str | None = None,
-    environment_dir: str | None = None,
+    environment_root: str | None = None,
 ) -> dict[str, Any]:
     """
     Score a file of externally generated responses (see fireworks/fw_rlvr/inference.py)
@@ -110,7 +101,7 @@ def score_generations(
         [
             (
                 str(by_sample[sample_index][task_id].get("content") or ""),
-                _stop_reason(by_sample[sample_index][task_id].get("finish_reason")),
+                map_stop_reason(by_sample[sample_index][task_id].get("finish_reason")),
             )
             for sample_index in sample_indices
         ]
@@ -122,7 +113,7 @@ def score_generations(
         responses=responses,
         evaluator=evaluator,
         python_executable=python_executable,
-        environment_dir=environment_dir,
+        environment_root=environment_root,
     )
 
     for result in results:
@@ -145,7 +136,7 @@ def score_generations(
             "generations_file": str(generations_file),
             "evaluator": evaluator,
             "python_executable": python_executable,
-            "environment_dir": environment_dir,
+            "environment_root": environment_root,
         },
         "analysis": analysis,
         "results": results,

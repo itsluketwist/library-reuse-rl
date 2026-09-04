@@ -193,13 +193,11 @@ benchmark/artefacts
 benchmark/results/example
 .libreuseeval-venv
 .libreuseeval-venvs
-.bcbeval-venv
-.bcbeval-venvs
 
 logs/*
 wandb/*
 output/grpo/*debug*/
-output/eval/
+output/eval/*debug*/
 unsloth_compiled_cache/
 grpo_trainer_lora_model*/
 config/models.yaml.lock
@@ -212,6 +210,3 @@ config/models.yaml.lock
 
 # temporary ignore
 CLAUDE.md
-
-# experiment results
-output/

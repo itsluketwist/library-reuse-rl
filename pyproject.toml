@@ -117,7 +117,7 @@ extra-paths = ["benchmark", "benchmark/pipeline", "fireworks", "fireworks/rft/ev
 [[tool.ty.overrides]]
 include = [
     "src/eval/evaluate.py",
-    "src/eval/generate.py",
+    "src/eval/generate_vllm.py",
     "src/grpo/config.py",
     "src/grpo/train_model.py",
     "src/models.py",

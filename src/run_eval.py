@@ -3,8 +3,10 @@
 from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Literal, get_args
 
 from src.eval import evaluate_model
+from src.eval.generate_api import DEFAULT_MAX_TOKENS_PARAM, ApiSettings
 from src.prompts import PromptStyle, library_prompt_suffix
 from src.utils.config import load_full_yaml, load_yaml_config
 from src.utils.log import log, log_header
@@ -18,6 +20,47 @@ RUN_TIMESTAMP_FORMAT = "%y%m%dT%H%M%S"
 
 # tiny model (see config/models.yaml) used to smoke-test --debug runs
 DEBUG_MODEL_KEY = "qwen3-debug"
+
+# how a model entry is served. "provider" is absent on every local/trained entry, so it
+# defaults to "vllm"; "api" entries are called over an OpenAI-compatible endpoint instead
+Provider = Literal["vllm", "api"]
+DEFAULT_PROVIDER: Provider = "vllm"
+
+
+def build_api_settings(
+    model_settings: dict[str, Any],
+) -> ApiSettings | None:
+    """
+    Read a model entry's API configuration (see config/models.yaml).
+
+    Returns the settings for an "api" entry, or None for a local one served by vllm.
+    """
+    provider = model_settings.get("provider", DEFAULT_PROVIDER)
+    # caught here rather than silently falling back to vllm, which would try to load an
+    # api model id ("deepseek-v4-flash") as local weights and fail confusingly
+    if provider not in get_args(Provider):
+        raise ValueError(
+            f"unknown provider '{provider}' - expected one of {get_args(Provider)}."
+        )
+
+    if provider != "api":
+        return None
+
+    api_key_env = model_settings.get("api_key_env")
+    if api_key_env is None:
+        raise ValueError(
+            "API-served models must set 'api_key_env' in config/models.yaml, naming "
+            "the environment variable that holds the API key."
+        )
+
+    return ApiSettings(
+        api_key_env=api_key_env,
+        base_url=model_settings.get("base_url"),
+        extra_params=model_settings.get("extra_params"),
+        max_tokens_param=model_settings.get(
+            "max_tokens_param", DEFAULT_MAX_TOKENS_PARAM
+        ),
+    )
 
 
 # create the main argument parser
@@ -141,9 +184,9 @@ def eval_results_path(
     Output lives under output/eval/{run_timestamp}/{model}/, with the file name encoding
     the dataset and decoding profile. Grouping by `run_timestamp` first means rerunning a
     model/decoding-profile/prompt-style combination never overwrites a previous run's
-    results - each invocation gets its own folder (see RUN_TIMESTAMP_FORMAT). When
-    `libraries_requirements_file` is set, a suffix ("-libv1"/"-usev1", per `prompt_style`)
-    separates runs under different library prompts (see library_prompt_suffix).
+    results - each invocation gets its own folder (see RUN_TIMESTAMP_FORMAT). A suffix
+    ("-libv1"/"-usev1", else the style name) separates runs under different system-prompt
+    settings (see library_prompt_suffix).
 
     `adapter_override` is the --adapter path when given: its directory name is appended
     so trying an arbitrary adapter under a base-model key doesn't overwrite that model's
@@ -152,6 +195,10 @@ def eval_results_path(
     Returns the output file path.
     """
     lib_suffix = library_prompt_suffix(libraries_requirements_file, style=prompt_style)
+    # "base", and "lib"/"use" without a requirements file, all give an empty suffix - fall
+    # back to the style name so those runs can't share one path and overwrite each other
+    if not lib_suffix:
+        lib_suffix = f"-{prompt_style}"
     adapter_suffix = (
         f"-adapter-{Path(adapter_override).name}" if adapter_override else ""
     )
@@ -219,15 +266,9 @@ def run_eval(
     # --adapter override wins, else the entry's registered adapter, else base alone
     base = model_settings["base"]
     adapter_path = adapter or model_settings["path"] or None
-    # "provider" is absent on every pre-existing local entry, so it defaults to "vllm";
-    # "api" entries carry base_url/api_key_env instead (see config/models.yaml)
-    provider = model_settings.get("provider", "vllm")
-    base_url = model_settings.get("base_url")
-    api_key_env = model_settings.get("api_key_env")
-    extra_params = model_settings.get("extra_params")
-    max_tokens_param = model_settings.get("max_tokens_param", "max_tokens")
+    api = build_api_settings(model_settings)
     log(f"Base: {base}")
-    log(f"Provider: {provider}")
+    log(f"Provider: {'api' if api is not None else 'vllm'}")
     log(f"Adapter: {adapter_path or 'none'}")
     log(f"Prompt style: {prompt_style}")
     log(f"Debug: {debug}")
@@ -235,7 +276,8 @@ def run_eval(
     recipe = load_full_yaml(decoding_config)
     libraries_requirements_file = recipe.get("libraries_requirements_file")
     log(f"Libraries requirements file: {libraries_requirements_file or 'none'}")
-    log("Model dtype: auto (vLLM default)")
+    if api is None:
+        log("Model dtype: auto (vLLM default)")
 
     # size vllm's adapter slot from the recipe's training rank (assumes same recipe)
     max_lora_rank = recipe.get("lora_r")
@@ -288,11 +330,7 @@ def run_eval(
         libraries_requirements_file=libraries_requirements_file,
         prompt_style=prompt_style,
         debug=debug,
-        provider=provider,
-        base_url=base_url,
-        api_key_env=api_key_env,
-        extra_params=extra_params,
-        max_tokens_param=max_tokens_param,
+        api=api,
     )
 
 
@@ -308,7 +346,6 @@ def main() -> None:
     log(f"Decoding: {args.decoding_config} [{args.decoding_profile}]")
     log(f"Prompt style: {args.prompt_style}")
     log(f"Debug: {args.debug}")
-    log(f"Run timestamp: {args.run_timestamp or '(auto)'}")
     log()
 
     run_eval(

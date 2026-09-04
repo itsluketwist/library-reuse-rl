@@ -271,13 +271,15 @@ class TestScoreLibReuseBench:
 
         def fake_evaluate_responses(
             responses_file,
-            output_directory,
+            output_dir,
             env_dir,
+            env_root,
             confirm,
         ):
             seen["records"] = load_jsonl(responses_file)
-            seen["output_directory"] = output_directory
+            seen["output_dir"] = output_dir
             seen["env_dir"] = env_dir
+            seen["env_root"] = env_root
             seen["confirm"] = confirm
             return {
                 "n_tasks": 1,
@@ -290,7 +292,7 @@ class TestScoreLibReuseBench:
                     "per_response": {"using_lib_rate": 1.0},
                 },
                 "environment": {
-                    "directory": env_dir,
+                    "directory": env_root,
                     "source": "response_imports",
                     "installed_packages": ["pandas"],
                     "installed_package_versions": {"pandas": "2.3.1"},
@@ -324,7 +326,7 @@ class TestScoreLibReuseBench:
             dataset,
             _responses("```python\nimport pandas as pd\nprint(1)\n```"),
             evaluator="libreusebench",
-            environment_dir=str(tmp_path / "env"),
+            environment_root=str(tmp_path / "env"),
         )
 
         assert seen["records"] == [
@@ -333,7 +335,9 @@ class TestScoreLibReuseBench:
                 "response": "```python\nimport pandas as pd\nprint(1)\n```",
             }
         ]
-        assert seen["env_dir"] == str(tmp_path / "env")
+        assert seen["env_root"] == str(tmp_path / "env")
+        # no cache dir, so the evaluator builds a disposable venv it deletes afterwards
+        assert seen["env_dir"] is None
         assert seen["confirm"] is None  # unattended eval runs install automatically
         assert analysis["task"] == "libreusebench"
         assert analysis["pass@1"] == 1.0
@@ -349,7 +353,9 @@ class TestScoreLibReuseBench:
         """Every sample for a row becomes its own response record for the same task_id."""
         seen = {}
 
-        def fake_evaluate_responses(responses_file, output_directory, env_dir, confirm):
+        def fake_evaluate_responses(
+            responses_file, output_dir, env_dir, env_root, confirm
+        ):
             seen["records"] = load_jsonl(responses_file)
             return {
                 "n_tasks": 1,

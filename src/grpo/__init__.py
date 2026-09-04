@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from .rewards import (
+from src.grpo.rewards import (
     REWARD_COMPONENTS,
     build_reward,
     compute_reward,
@@ -25,7 +25,7 @@ __all__ = [
 # importable in the core development environment used by the test suite.
 def __getattr__(name: str) -> Any:
     if name == "GRPOConfig":
-        from .config import GRPOConfig
+        from src.grpo.config import GRPOConfig
 
         return GRPOConfig
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

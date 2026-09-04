@@ -2,7 +2,7 @@
 
 import os
 
-from .config import GRPOConfig
+from src.grpo.config import GRPOConfig
 
 
 def init_wandb_training(training_args: GRPOConfig) -> None:

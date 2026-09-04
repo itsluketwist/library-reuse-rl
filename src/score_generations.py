@@ -57,7 +57,7 @@ def main() -> None:
 
     output = args.output or args.generations.with_suffix(".json")
     environment_root = dataset_config.get("environment_root")
-    environment_dir = (
+    environment_root = (
         str(Path(environment_root) / output.parent.name / output.stem)
         if environment_root is not None
         else None
@@ -76,7 +76,7 @@ def main() -> None:
         output_file=output,
         evaluator=dataset_config["evaluator"],
         python_executable=dataset_config.get("python_executable"),
-        environment_dir=environment_dir,
+        environment_root=environment_root,
     )
 
     log_header("COMPLETE")
