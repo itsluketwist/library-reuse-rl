@@ -86,13 +86,14 @@ def _score_tested(
     dataset: Iterable[dict],
     responses: list[tuple[str, str]],
     python_executable: str | None = None,
-    environment_dir: str | None = None,
+    environment_root: str | None = None,
+    environment_cache_dir: str | None = None,
 ) -> tuple[dict, list[dict]]:
     """Score tested-implementation rows by executing their code (the original eval path).
 
     Returns the (analysis, results) pair.
     """
-    del environment_dir
+    del environment_root, environment_cache_dir
     # each result is a heterogeneous record (strs, bools, lists, ...), so type as Any
     results: list[dict[str, Any]] = []
     n_passed = 0
@@ -163,13 +164,14 @@ def _score_product_choice(
     dataset: Iterable[dict],
     responses: list[tuple[str, str]],
     python_executable: str | None = None,
-    environment_dir: str | None = None,
+    environment_root: str | None = None,
+    environment_cache_dir: str | None = None,
 ) -> tuple[dict, list[dict]]:
     """Score product-choice rows by the prose pick (external tool vs DIY vs none).
 
     Returns the (analysis, results) pair.
     """
-    del python_executable, environment_dir
+    del python_executable, environment_root, environment_cache_dir
     results = []
     for row, (response, stop_reason) in zip(dataset, responses):
         _, answer = strip_reasoning(response)
@@ -233,7 +235,8 @@ def _score_library_usage(
     dataset: Iterable[dict],
     responses: list[list[tuple[str, str]]],
     python_executable: str | None = None,
-    environment_dir: str | None = None,
+    environment_root: str | None = None,
+    environment_cache_dir: str | None = None,
 ) -> tuple[dict, list[dict]]:
     """Score library-usage rows by the imports (external reuse vs stdlib/local).
 
@@ -245,7 +248,7 @@ def _score_library_usage(
 
     Returns the (analysis, results) pair.
     """
-    del python_executable, environment_dir
+    del python_executable, environment_root, environment_cache_dir
     # each result is a heterogeneous record (strs, bools, lists, ...), so type as Any
     results: list[dict[str, Any]] = []
     task_results: list[list[dict]] = []
@@ -323,7 +326,8 @@ def _score_libreusebench(
     dataset: Iterable[dict],
     responses: list[list[tuple[str, str]]],
     python_executable: str | None = None,
-    environment_dir: str | None = None,
+    environment_root: str | None = None,
+    environment_cache_dir: str | None = None,
 ) -> tuple[dict, list[dict]]:
     """Run the complete official LibReuseBench evaluation workflow.
 
@@ -356,8 +360,11 @@ def _score_libreusebench(
         save_jsonl(response_records, responses_file)
         official = evaluate_lrb_responses(
             responses_file=str(responses_file),
-            output_directory=temp_dir,
-            env_dir=environment_dir or ".libreuseeval-venv",
+            output_dir=temp_dir,
+            # without a cache dir the evaluator builds a disposable venv per run and
+            # deletes it, so concurrently running eval jobs can never corrupt a shared one
+            env_dir=environment_cache_dir,
+            env_root=environment_root,
             confirm=None,
         )
 
@@ -401,13 +408,18 @@ def score_dataset(
     responses: list[list[tuple[str, str]]],
     evaluator: str,
     python_executable: str | None = None,
-    environment_dir: str | None = None,
+    environment_root: str | None = None,
+    environment_cache_dir: str | None = None,
 ) -> tuple[dict, list[dict]]:
     """Score a whole eval dataset with its configured evaluator.
 
-    `responses` holds every sampled response per row (see generate_responses'
+    `responses` holds every sampled response per row (see generate_vllm_responses'
     n_samples support). MULTI_SAMPLE_EVALUATORS score every sample; the rest only ever
     look at the first, which this takes care of internally.
+
+    Datasets that execute code build a venv to run it in: `environment_root` is where a
+    disposable one goes, and `environment_cache_dir` names one to reuse across runs
+    instead (see libreusebench.environment.Environment).
 
     Returns the (analysis, results) pair for the dataset's task.
     """
@@ -417,11 +429,15 @@ def score_dataset(
 
     if evaluator in _MULTI_SAMPLE_SCORERS:
         return _MULTI_SAMPLE_SCORERS[evaluator](
-            rows, responses, python_executable, environment_dir
+            rows, responses, python_executable, environment_root, environment_cache_dir
         )
     if evaluator in _SINGLE_SAMPLE_SCORERS:
         single_responses = [samples[0] for samples in responses]
         return _SINGLE_SAMPLE_SCORERS[evaluator](
-            rows, single_responses, python_executable, environment_dir
+            rows,
+            single_responses,
+            python_executable,
+            environment_root,
+            environment_cache_dir,
         )
     raise ValueError(f"Unknown evaluator '{evaluator}'. Available: {sorted(_SCORERS)}")

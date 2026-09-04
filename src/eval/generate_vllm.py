@@ -1,23 +1,19 @@
-"""Generate responses from a model for evaluation, using vLLM for batched offline inference."""
+"""Generate responses from local model weights, using vllm for batched offline inference.
+
+Used for models evaluated from their own weights (the default "vllm" provider in
+config/models.yaml), including trained ones with a lora adapter applied on top. The
+hosted-API counterpart is src/eval/generate_api.py.
+"""
 
 from typing import Any
 
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 
-
-def _stop_reason(finish_reason: str) -> str:
-    """
-    Map vllm's finish_reason to this project's stop_reason vocabulary: "stop" (natural
-    end-of-turn) becomes "eos", "length" (hit max_tokens) passes through. Anything else
-    passes through verbatim so it stays visible rather than inflating the overflow count.
-
-    Returns the mapped stop reason.
-    """
-    return {"stop": "eos", "length": "length"}.get(finish_reason, finish_reason)
+from src.eval.stop_reason import map_stop_reason
 
 
-def generate_responses(
+def generate_vllm_responses(
     llm: LLM,
     prompts: list[list[dict]],
     decoding_settings: dict[str, Any],
@@ -31,7 +27,8 @@ def generate_responses(
     config/training.yaml); temperature 0 is vllm's greedy-decoding convention.
     `decoding_settings["n_samples"]` (default 1) sets how many completions vllm samples
     per prompt - e.g. for LibReuseBench's pass@k or library-usage's per-response reuse
-    statistics (see src/eval/scoring.py's MULTI_SAMPLE_EVALUATORS).
+    statistics (see src/eval/scoring.py's MULTI_SAMPLE_EVALUATORS); its `enable_thinking`
+    drives the chat template's reasoning mode.
     `lora_request`, when given, applies a trained adapter on top of the base model.
 
     vllm handles chat templating, batching, and scheduling internally, and returns
@@ -53,9 +50,15 @@ def generate_responses(
         sampling_params=sampling_params,
         use_tqdm=True,
         lora_request=lora_request,
+        chat_template_kwargs={
+            "enable_thinking": decoding_settings.get("enable_thinking", True)
+        },
     )
 
     return [
-        [(sample.text, _stop_reason(sample.finish_reason)) for sample in output.outputs]
+        [
+            (sample.text, map_stop_reason(sample.finish_reason))
+            for sample in output.outputs
+        ]
         for output in outputs
     ]

@@ -37,6 +37,7 @@ handling, code analysis, the `benchmark` pipeline, tooling) works anywhere.
 On the HPC (full training + evaluation stack):
 
 ```shell
+module load cuda/12.2.1-gcc-13.2.0
 uv sync --locked --extra hpc
 source .venv/bin/activate
 ```
@@ -56,9 +57,14 @@ bash setup/setup_eval_venv.sh v1
 ```
 
 LibReuseBench does not use this venv. Its official evaluator discovers the packages
-imported by the generated responses, creates an isolated cached environment under
+imported by the generated responses, builds an isolated environment under
 `.libreuseeval-venvs/`, installs those packages, and then runs the benchmark tests. Results record
 the requested packages, their originating imports, and all resolved distribution versions.
+
+That environment is disposable: each run gets its own and deletes it afterwards, so
+evaluations running at the same time (a whole slurm submission, say) can never share and
+corrupt one venv. Pass `libreuseeval --env-dir <path>` to reuse a named venv across runs
+instead, trading that isolation for not reinstalling the same packages every time.
 
 ## *usage*
 
@@ -78,6 +84,32 @@ datasets to evaluate against, etc).
 On a slurm cluster, use the submission scripts in [`scripts/`](scripts/) instead - edit the
 configuration block at the top of each, then run e.g. `bash scripts/submit_grpo.sh`. Submit
 evaluation separately after the trained run ids have been registered in `config/models.yaml`.
+
+There are two eval launchers, each with its own configuration block at the top (models,
+datasets, decoding profiles, prompt styles, debug), so the two can be pointed at different
+model sets: [`scripts/submit_eval.sh`](scripts/submit_eval.sh) submits one slurm job per
+combination, and [`scripts/run_eval_local.sh`](scripts/run_eval_local.sh) runs them
+sequentially on the current node.
+
+Each invocation gets its own timestamp, and results are saved under
+`output/eval/{run_timestamp}/{model}/`, so re-running a combination never overwrites an
+earlier run. The launchers pass their timestamp through with `--run-timestamp`, so results
+and the matching `logs/{run_timestamp}/` folder share a name. Summarise a finished run
+into per-task comparison tables (and a `summary.csv`) with:
+
+```shell
+python scripts/summarize_eval.py output/eval/260816T174336
+```
+
+### *api-served models*
+
+Models can be evaluated over an OpenAI-compatible API instead of local weights, by giving
+their `config/models.yaml` entry `provider: api` and an `api_key_env` naming the `.env`
+variable that holds the key (copy [`.env.example`](.env.example) to `.env` and fill it in).
+`base_url` selects the provider, and `max_tokens_param` covers models that reject the
+legacy `max_tokens` field. These runs never import vllm, and `submit_eval.sh` routes them
+to a CPU partition since they only need network access. Adapters do not apply to a hosted
+model. See [`src/eval/generate_api.py`](src/eval/generate_api.py).
 
 Pass `--debug` to either command to smoke-test the code end-to-end: it truncates the
 dataset(s) to a handful of samples, and defaults to the tiny `qwen3-debug` model (see
@@ -161,9 +193,12 @@ existing component names.
 - [`notebooks/`](notebooks/) - One-off, numbered notebooks for exploratory work that doesn't
   belong in `src/`.
 - [`output/`](output/) - Trained model outputs, named and registered automatically by
-  `run_grpo` (see `trained_model_path` in [`src/run_grpo.py`](src/run_grpo.py)). Gitignored.
-- [`scripts/`](scripts/) - Bash scripts for running jobs on a slurm cluster
-  (`setup_job.sh`, `submit_grpo.sh`, `submit_eval.sh`).
+  `run_grpo` (see `trained_model_path` in [`src/run_grpo.py`](src/run_grpo.py)), and
+  evaluation results under `output/eval/{run_timestamp}/`. Debug runs are gitignored;
+  finished results are committed as the experimental record.
+- [`scripts/`](scripts/) - Job launchers (`setup_job.sh`, `submit_grpo.sh`,
+  `submit_eval.sh` for slurm, `run_eval_local.sh` for the current node), and
+  `summarize_eval.py` for reading results back.
 - [`setup/`](setup/) - Defines the isolated venv used to sandbox LLM-generated code during
   evaluation, kept separate from the project's own venv so we control exactly which
   libraries generated code can import (`setup_eval_venv.sh`, `requirements/`).

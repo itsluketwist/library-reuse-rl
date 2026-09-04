@@ -8,6 +8,7 @@ the third-party packages it reached for.
 """
 
 import platform
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -253,23 +254,59 @@ def temporary_packages(
 
 
 class Environment:
-    """A cached virtual environment the harness installs response libraries into, then runs with.
+    """A virtual environment the harness installs response libraries into, then runs with.
 
-    Packages already installed in this environment are tracked so repeated answers needing the
-    same library don't reinstall. Installing arbitrary packages from model output is inherent to
-    running a library-agnostic benchmark - use a disposable cache directory.
+    By default each Environment gets its own uniquely named venv and deletes it on close, so
+    evaluations running at the same time can never share - and corrupt - one directory. Name a
+    `cache_dir` to reuse a venv across runs instead: packages already installed there are
+    tracked and not reinstalled, at the cost of that directory being shared with anything else
+    pointed at it. A named directory is always kept; only one this class created is deleted.
+
+    `scratch_root` places the disposable venv somewhere specific (it defaults to the system
+    temp directory), for when the default location is too small or on the wrong filesystem.
+
+    Installing arbitrary packages from model output is inherent to running a library-agnostic
+    benchmark, which is why a disposable environment is the default.
+
+    Use it as a context manager, or call close(), so a disposable venv is cleaned up.
     """
 
     def __init__(
         self,
-        cache_dir: str | Path,
+        cache_dir: str | Path | None = None,
+        scratch_root: str | Path | None = None,
     ) -> None:
+        # only a venv this class created is ours to delete; a named one belongs to the caller
+        self._owned = cache_dir is None
+        if cache_dir is None:
+            if scratch_root is not None:
+                Path(scratch_root).mkdir(parents=True, exist_ok=True)
+            cache_dir = tempfile.mkdtemp(prefix="libreusebench-env-", dir=scratch_root)
+
         # resolved to absolute: execute() runs the interpreter with a different subprocess cwd
         # per call, and a relative path would then resolve against that cwd instead of this one
         self.cache_dir = Path(cache_dir).resolve()
         self._installed: set[str] = set()
         if not self.python.exists():
             venv.EnvBuilder(with_pip=True, clear=False).create(self.cache_dir)
+
+        # fail here rather than letting every subsequent execute() record a wrong answer,
+        # which would look like a model scoring zero instead of a broken environment
+        if not self.python.exists():
+            raise RuntimeError(
+                f"no python interpreter at {self.python} after building the environment"
+            )
+
+    def close(self) -> None:
+        """Delete the environment, unless the caller named it (see __init__)."""
+        if self._owned:
+            shutil.rmtree(self.cache_dir, ignore_errors=True)
+
+    def __enter__(self) -> "Environment":
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.close()
 
     @property
     def python(self) -> Path:

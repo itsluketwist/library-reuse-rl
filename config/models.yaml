@@ -3,6 +3,11 @@
 # has actually been trained, pointing at that run's lora adapter. trained entries also
 # carry a "properties" block recording the knobs the run was launched with, since the
 # run-id key is non-descriptive - see src/utils/config.py and src/run_grpo.py
+#
+# entries default to "provider: vllm" (local weights). "provider: api" entries are served
+# over an OpenAI-compatible api instead, and carry "api_key_env" (the .env variable holding
+# the key) plus optional "base_url", "extra_params" and "max_tokens_param" - see the README
+# and src/eval/generate_api.py
 
 qwen3-debug:
   base: "Qwen/Qwen3-0.6B"
@@ -14,4 +19,39 @@ qwen3-4b:
 
 qwen3-8b:
   base: "Qwen/Qwen3-8B"
+  path:
+
+deepseek-v4-flash:
+  provider: api
+  base: "deepseek-v4-flash"
+  base_url: "https://api.deepseek.com"
+  api_key_env: "DEEPSEEK_API_KEY"
+  path:
+
+gpt-5.6-luna:
+  provider: api
+  base: "gpt-5.6-luna"
+  api_key_env: "OPENAI_API_KEY"
+  max_tokens_param: "max_completion_tokens"
+  path:
+
+gpt-5.6-terra:
+  provider: api
+  base: "gpt-5.6-terra"
+  api_key_env: "OPENAI_API_KEY"
+  max_tokens_param: "max_completion_tokens"
+  path:
+
+glm-5.2:
+  provider: api
+  base: "glm-5.2"
+  base_url: "https://open.bigmodel.cn/api/paas/v4/"
+  api_key_env: "ZHIPU_API_KEY"
+  path:
+
+kimi-k3:
+  provider: api
+  base: "kimi-k3"
+  base_url: "https://api.moonshot.cn/v1"
+  api_key_env: "MOONSHOT_API_KEY"
   path:

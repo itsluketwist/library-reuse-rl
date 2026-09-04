@@ -35,15 +35,14 @@ from transformers.training_args import TrainingArguments
 from trl import GRPOTrainer, ModelConfig, TrlParser
 
 from src.data import load_train_dataset
+from src.grpo.config import GRPOConfig
+from src.grpo.rewards import build_reward, infer_reward_kind
+from src.grpo.wandb_logging import init_wandb_training
 from src.models import get_model_and_tokenizer
 from src.prompts import PromptStyle, build_system_prompt
 from src.utils.config import load_full_yaml
 from src.utils.io import load_json, save_json
 from src.utils.log import log_gpu_memory
-
-from .config import GRPOConfig
-from .rewards import build_reward, infer_reward_kind
-from .wandb_logging import init_wandb_training
 
 
 logger = logging.getLogger(__name__)

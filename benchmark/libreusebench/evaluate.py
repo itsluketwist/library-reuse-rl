@@ -108,7 +108,7 @@ def confirm_packages(
     return reply in ("y", "yes")
 
 
-# the editable environment file the user fixes up and passes back with --env
+# the editable environment file the user fixes up and passes back with --env-file
 _ENV_FILENAME = "libreusebench_env.txt"
 
 
@@ -148,7 +148,7 @@ def write_env_file(
         "# LibReuseBench eval environment",
         "# one pip package per line; blank lines and '#' comments are ignored.",
         "# edit as needed (remove unwanted libraries, fix names, pin versions), then re-run:",
-        "#   libreuseeval <responses.jsonl> --env <this file>",
+        "#   libreuseeval <responses.jsonl> --env-file <this file>",
         "",
     ]
     for package in sorted(packages):
@@ -359,14 +359,19 @@ def score_responses(
 
 def evaluate_responses(
     responses_file: str,
-    output_directory: str = "output",
-    env_dir: str = ".libreuseeval-venv",
+    output_dir: str = "output",
+    env_dir: str | None = None,
+    env_root: str | None = None,
     timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
     env_file: str | None = None,
     k: int | None = None,
     confirm: Callable[[dict[str, set[str]]], bool] | None = confirm_packages,
 ) -> dict:
     """Evaluate responses to LibReuseBench and save the results.
+
+    The venv is disposable by default - built fresh and deleted afterwards, so evaluations
+    running at the same time can't corrupt each other's. Name an `env_dir` to reuse one across
+    runs instead, or `env_root` to keep the disposable one somewhere specific (see Environment).
 
     The environment is decided one of two ways. With `env_file`, that file is the definitive list
     of packages to install. Otherwise the responses are parsed and the collected packages are
@@ -401,53 +406,58 @@ def evaluate_responses(
     else:
         # install automatically unless the caller explicitly supplies an approval gate
         if confirm is not None and not confirm(plan):
-            path = write_env_file(output_directory, set(plan), origins=plan)
+            path = write_env_file(output_dir, set(plan), origins=plan)
             print(
                 f"\nwrote {path} - edit it (remove/rename packages) and re-run with:"
-                f"\n  libreuseeval {responses_file} --env {path}"
+                f"\n  libreuseeval {responses_file} --env-file {path}"
             )
             return {}
         packages = set(plan)
 
-    # only now create the venv and install the chosen packages in one batch
-    env = Environment(env_dir)
-    install_failed = env.ensure_packages(packages)
-    if install_failed:
-        # emit a fixable environment file and stop, so the user can correct it and re-run with --env
-        path = write_env_file(
-            output_directory, packages, origins=plan, failed=install_failed
-        )
-        print(
-            f"\ncould not install {sorted(install_failed)}."
-            f"\nwrote {path} - fix the offending package(s) and re-run with:"
-            f"\n  libreuseeval {responses_file} --env {path}"
-        )
-        return {}
+    # only now create the venv and install the chosen packages in one batch. the context
+    # manager deletes it on the way out unless the caller named an env_dir to reuse.
+    with Environment(cache_dir=env_dir, scratch_root=env_root) as env:
+        # worth saying out loud: a disposable environment is randomly named and deleted on
+        # the way out, so this is the only chance to see where a failing run was running
+        print(f"environment: {env.cache_dir}{'' if env_dir else ' (disposable)'}")
+        install_failed = env.ensure_packages(packages)
+        if install_failed:
+            # emit a fixable environment file and stop, so the user can correct it and re-run
+            path = write_env_file(
+                output_dir, packages, origins=plan, failed=install_failed
+            )
+            print(
+                f"\ncould not install {sorted(install_failed)}."
+                f"\nwrote {path} - fix the offending package(s) and re-run with:"
+                f"\n  libreuseeval {responses_file} --env-file {path}"
+            )
+            return {}
 
-    # correctness (pass@1 / pass@k) and per-problem library-reuse statistics
-    results = score_responses(
-        responses=responses,
-        benchmark=benchmark,
-        env=env,
-        timeout_seconds=timeout_seconds,
-        install_failed=install_failed,
-        k=k,
-    )
-    # pop and re-add the per-response detail so "environment" is saved above it, keeping the
-    # summary stats together before the detailed breakdown
-    per_response_results = results.pop("results")
-    results["environment"] = {
-        "directory": str(Path(env_dir)),
-        "source": str(env_file) if env_file is not None else "response_imports",
-        "installed_packages": sorted(packages),
-        "installed_package_versions": env.installed_distributions(),
-        "package_imports": {
-            package: sorted(plan.get(package, set())) for package in sorted(packages)
-        },
-    }
-    results["results"] = per_response_results
+        # correctness (pass@1 / pass@k) and per-problem library-reuse statistics
+        results = score_responses(
+            responses=responses,
+            benchmark=benchmark,
+            env=env,
+            timeout_seconds=timeout_seconds,
+            install_failed=install_failed,
+            k=k,
+        )
+        # pop and re-add the per-response detail so "environment" is saved above it, keeping
+        # the summary stats together before the detailed breakdown
+        per_response_results = results.pop("results")
+        results["environment"] = {
+            "directory": str(env.cache_dir),
+            "source": str(env_file) if env_file is not None else "response_imports",
+            "installed_packages": sorted(packages),
+            "installed_package_versions": env.installed_distributions(),
+            "package_imports": {
+                package: sorted(plan.get(package, set()))
+                for package in sorted(packages)
+            },
+        }
+        results["results"] = per_response_results
 
-    output_path = Path(output_directory)
+    output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     file_path = output_path / f"libreusebench_eval_{datetime.now().isoformat()}.json"
     # save the file's own name last, so the saved json is self-describing

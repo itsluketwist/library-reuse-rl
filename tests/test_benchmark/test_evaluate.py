@@ -25,8 +25,20 @@ _FAKE_BENCHMARK = {
 class _FakeEnv:
     """A stand-in Environment that records installs and reports every response as passing."""
 
-    def __init__(self, cache_dir: str) -> None:
+    def __init__(
+        self,
+        cache_dir: str | None = None,
+        scratch_root: str | None = None,
+    ) -> None:
+        self.cache_dir = cache_dir or "<disposable>"
         self.installed: set[str] = set()
+        self.closed = False
+
+    def __enter__(self) -> "_FakeEnv":
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.closed = True
 
     def ensure_packages(self, packages: set[str]) -> set[str]:
         self.installed |= set(packages)
@@ -98,7 +110,7 @@ class TestInstallationPlan:
         out_dir = tmp_path / "out"
         result = evaluate.evaluate_responses(
             responses_file=str(path),
-            output_directory=str(out_dir),
+            output_dir=str(out_dir),
             env_dir=str(env_dir),
             confirm=lambda _plan: False,
         )
@@ -124,7 +136,7 @@ class TestInstallationPlan:
         env_dir = tmp_path / "venv"
         result = evaluate.evaluate_responses(
             responses_file=str(path),
-            output_directory=str(tmp_path / "out"),
+            output_dir=str(tmp_path / "out"),
             env_dir=str(env_dir),
         )
         assert result == {}
@@ -137,7 +149,7 @@ class TestInstallationPlan:
         with pytest.raises(ValueError):
             evaluate.evaluate_responses(
                 responses_file=str(path),
-                output_directory=str(tmp_path / "out"),
+                output_dir=str(tmp_path / "out"),
                 env_dir=str(tmp_path / "venv"),
                 confirm=lambda _plan: True,
             )
@@ -151,8 +163,12 @@ class TestInstallationPlan:
         environments = []
 
         class _RecordingEnv(_FakeEnv):
-            def __init__(self, cache_dir: str) -> None:
-                super().__init__(cache_dir)
+            def __init__(
+                self,
+                cache_dir: str | None = None,
+                scratch_root: str | None = None,
+            ) -> None:
+                super().__init__(cache_dir, scratch_root)
                 environments.append(self)
 
         monkeypatch.setattr(evaluate, "load_dataset", lambda: _FAKE_BENCHMARK)
@@ -170,7 +186,7 @@ class TestInstallationPlan:
 
         result = evaluate.evaluate_responses(
             responses_file=str(path),
-            output_directory=str(tmp_path / "out"),
+            output_dir=str(tmp_path / "out"),
             env_dir=str(tmp_path / "venv"),
             confirm=lambda _plan: True,
         )
@@ -227,7 +243,7 @@ class TestEnvFile:
 
         result = evaluate.evaluate_responses(
             responses_file=str(resp),
-            output_directory=str(tmp_path / "out"),
+            output_dir=str(tmp_path / "out"),
             env_dir=str(tmp_path / "venv"),
             env_file=str(env),
             confirm=_fail_if_called,
@@ -259,7 +275,7 @@ class TestScoreResponse:
 
         result = evaluate.evaluate_responses(
             responses_file=str(path),
-            output_directory=str(tmp_path / "out"),
+            output_dir=str(tmp_path / "out"),
             env_dir=str(tmp_path / "venv"),
             confirm=lambda _plan: True,
         )

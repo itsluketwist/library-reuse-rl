@@ -1,16 +1,66 @@
 """The command-line entry point and orchestration for evaluating untrained, pretrained, or trained models."""
 
 from argparse import ArgumentParser
+from datetime import datetime
 from pathlib import Path
+from typing import Any, Literal, get_args
 
 from src.eval import evaluate_model
+from src.eval.generate_api import DEFAULT_MAX_TOKENS_PARAM, ApiSettings
 from src.prompts import PromptStyle, library_prompt_suffix
 from src.utils.config import load_full_yaml, load_yaml_config
 from src.utils.log import log, log_header
 
 
+# strftime format for run_timestamp, matching the `date +%y%m%dT%H%M%S` the shell launcher
+# scripts (scripts/submit_eval.sh, scripts/run_eval_local.sh) use for their log directory,
+# so a run's output and log folders share the same name when they pass theirs through.
+RUN_TIMESTAMP_FORMAT = "%y%m%dT%H%M%S"
+
+
 # tiny model (see config/models.yaml) used to smoke-test --debug runs
 DEBUG_MODEL_KEY = "qwen3-debug"
+
+# how a model entry is served. "provider" is absent on every local/trained entry, so it
+# defaults to "vllm"; "api" entries are called over an OpenAI-compatible endpoint instead
+Provider = Literal["vllm", "api"]
+DEFAULT_PROVIDER: Provider = "vllm"
+
+
+def build_api_settings(
+    model_settings: dict[str, Any],
+) -> ApiSettings | None:
+    """
+    Read a model entry's API configuration (see config/models.yaml).
+
+    Returns the settings for an "api" entry, or None for a local one served by vllm.
+    """
+    provider = model_settings.get("provider", DEFAULT_PROVIDER)
+    # caught here rather than silently falling back to vllm, which would try to load an
+    # api model id ("deepseek-v4-flash") as local weights and fail confusingly
+    if provider not in get_args(Provider):
+        raise ValueError(
+            f"unknown provider '{provider}' - expected one of {get_args(Provider)}."
+        )
+
+    if provider != "api":
+        return None
+
+    api_key_env = model_settings.get("api_key_env")
+    if api_key_env is None:
+        raise ValueError(
+            "API-served models must set 'api_key_env' in config/models.yaml, naming "
+            "the environment variable that holds the API key."
+        )
+
+    return ApiSettings(
+        api_key_env=api_key_env,
+        base_url=model_settings.get("base_url"),
+        extra_params=model_settings.get("extra_params"),
+        max_tokens_param=model_settings.get(
+            "max_tokens_param", DEFAULT_MAX_TOKENS_PARAM
+        ),
+    )
 
 
 # create the main argument parser
@@ -106,8 +156,21 @@ parser.add_argument(
     ),
 )
 
+parser.add_argument(
+    "--run-timestamp",
+    type=str,
+    default=None,
+    help=(
+        "Timestamp (RUN_TIMESTAMP_FORMAT, e.g. 260816T174336) grouping this run's output "
+        "files (see eval_results_path). The launcher scripts generate one per invocation "
+        "and pass it to every run_eval call in that batch, so results and the matching "
+        "logs/<timestamp>/ folder share a name. Defaults to the current time if omitted."
+    ),
+)
+
 
 def eval_results_path(
+    run_timestamp: str,
     model: str,
     dataset: str,
     decoding_profile: str,
@@ -118,10 +181,12 @@ def eval_results_path(
     """
     Compute the output path an evaluation run saves its results to.
 
-    Output lives under output/eval/{model}/, with the file name encoding the dataset and
-    decoding profile (the model name is already the directory). When
-    `libraries_requirements_file` is set, a suffix ("-libv1"/"-usev1", per `prompt_style`)
-    separates runs under different library prompts (see library_prompt_suffix).
+    Output lives under output/eval/{run_timestamp}/{model}/, with the file name encoding
+    the dataset and decoding profile. Grouping by `run_timestamp` first means rerunning a
+    model/decoding-profile/prompt-style combination never overwrites a previous run's
+    results - each invocation gets its own folder (see RUN_TIMESTAMP_FORMAT). A suffix
+    ("-libv1"/"-usev1", else the style name) separates runs under different system-prompt
+    settings (see library_prompt_suffix).
 
     `adapter_override` is the --adapter path when given: its directory name is appended
     so trying an arbitrary adapter under a base-model key doesn't overwrite that model's
@@ -130,12 +195,17 @@ def eval_results_path(
     Returns the output file path.
     """
     lib_suffix = library_prompt_suffix(libraries_requirements_file, style=prompt_style)
+    # "base", and "lib"/"use" without a requirements file, all give an empty suffix - fall
+    # back to the style name so those runs can't share one path and overwrite each other
+    if not lib_suffix:
+        lib_suffix = f"-{prompt_style}"
     adapter_suffix = (
         f"-adapter-{Path(adapter_override).name}" if adapter_override else ""
     )
     return (
         Path("output")
         / "eval"
+        / run_timestamp
         / model
         / f"{dataset}-{decoding_profile}{lib_suffix}{adapter_suffix}.json"
     )
@@ -151,17 +221,19 @@ def run_eval(
     prompt_style: PromptStyle = "lib",
     adapter: str | None = None,
     debug: bool = False,
+    run_timestamp: str | None = None,
 ) -> None:
     """
     Run evaluation of an untrained, pretrained, or trained model against one or more
     datasets.
 
-    `model` is a key from `model_config` (see config/models.yaml), holding both base
+    `model` is a key from `model_config` (see config/models.yaml), holding local base
     models (blank "path") and trained models (registered once training produces one), so
-    the post-training eval job can point at a fresh model by name. Training saves lora
-    adapters, so eval always loads the entry's "base" and applies its adapter on top.
-    `adapter` overrides which adapter is applied (e.g. to try one on a base-model key);
-    with neither set, the base model is evaluated alone.
+    the post-training eval job can point at a fresh model by name, as well as API-served
+    models ("provider: api" - DeepSeek, OpenAI, ...). For local models, eval loads the
+    entry's "base" and applies its adapter on top; `adapter` overrides which adapter is
+    applied (e.g. to try one on a base-model key); with neither set, the base model is
+    evaluated alone. API models have no adapter and skip vllm entirely (see evaluate_model).
 
     `datasets` is a list of names looked up in `eval_datasets_config` (see
     config/eval_datasets.yaml); if not given, every dataset in that file is run.
@@ -173,6 +245,10 @@ def run_eval(
     If `debug` is set, each dataset is truncated to a few samples (a quick end-to-end
     check) and `model` defaults to DEBUG_MODEL_KEY; otherwise `model` is required.
 
+    `run_timestamp` groups this run's output files under output/eval/{run_timestamp}/
+    (see eval_results_path); defaults to the current time (RUN_TIMESTAMP_FORMAT) when not
+    given, so a standalone invocation still gets its own folder.
+
     Resolves the model, decoding settings, and dataset/output paths, then runs
     evaluation (see evaluate_model) against each dataset, saving results under the paths
     from `eval_results_path`.
@@ -182,11 +258,17 @@ def run_eval(
             raise ValueError("--model is required unless --debug is set.")
         model = DEBUG_MODEL_KEY
 
+    if run_timestamp is None:
+        run_timestamp = datetime.now().strftime(RUN_TIMESTAMP_FORMAT)
+    log(f"Run timestamp: {run_timestamp}")
+
     model_settings = load_yaml_config(config_file=model_config, key=model)
     # --adapter override wins, else the entry's registered adapter, else base alone
     base = model_settings["base"]
     adapter_path = adapter or model_settings["path"] or None
+    api = build_api_settings(model_settings)
     log(f"Base: {base}")
+    log(f"Provider: {'api' if api is not None else 'vllm'}")
     log(f"Adapter: {adapter_path or 'none'}")
     log(f"Prompt style: {prompt_style}")
     log(f"Debug: {debug}")
@@ -194,7 +276,8 @@ def run_eval(
     recipe = load_full_yaml(decoding_config)
     libraries_requirements_file = recipe.get("libraries_requirements_file")
     log(f"Libraries requirements file: {libraries_requirements_file or 'none'}")
-    log("Model dtype: auto (vLLM default)")
+    if api is None:
+        log("Model dtype: auto (vLLM default)")
 
     # size vllm's adapter slot from the recipe's training rank (assumes same recipe)
     max_lora_rank = recipe.get("lora_r")
@@ -226,6 +309,7 @@ def run_eval(
             )
     output_paths = {
         name: eval_results_path(
+            run_timestamp=run_timestamp,
             model=model,
             dataset=name,
             decoding_profile=decoding_profile,
@@ -246,6 +330,7 @@ def run_eval(
         libraries_requirements_file=libraries_requirements_file,
         prompt_style=prompt_style,
         debug=debug,
+        api=api,
     )
 
 
@@ -273,6 +358,7 @@ def main() -> None:
         prompt_style=args.prompt_style,
         adapter=args.adapter,
         debug=args.debug,
+        run_timestamp=args.run_timestamp,
     )
 
     # --- summary ---
