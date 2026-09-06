@@ -1,6 +1,8 @@
-"""Load the bundled LibReuseBench benchmark splits."""
+"""Load the bundled LibReuseBench benchmark splits, and records from external files."""
 
+import json
 from pathlib import Path
+from typing import Any
 
 from llm_cgr import load_jsonl
 
@@ -8,6 +10,27 @@ from llm_cgr import load_jsonl
 # the split files are bundled alongside the package code (see pyproject package-data)
 _DATA_DIR = Path(__file__).parent / "data"
 _SPLITS = ("test", "dev")
+
+
+def load_records(
+    path: str | Path,
+) -> list[dict[str, Any]]:
+    """Load a list of records from a .json (a JSON array) or .jsonl (one object per line) file.
+
+    This is the shared, format-flexible primitive external results/response files are read
+    with elsewhere in the repo - callers that need a particular record schema (e.g. keyed by
+    task id, single vs multiple responses) normalise these raw records themselves.
+
+    Returns the list of records, in file order.
+    """
+    path = Path(path)
+    if path.suffix == ".jsonl":
+        return load_jsonl(str(path))
+    if path.suffix == ".json":
+        return json.loads(path.read_text())
+    raise ValueError(
+        f"Unsupported file extension '{path.suffix}' (expected .json or .jsonl)"
+    )
 
 
 def load_dataset(

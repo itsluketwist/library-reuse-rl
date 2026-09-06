@@ -85,7 +85,7 @@ hpc = [
 [project.scripts]
 run_grpo = "src.run_grpo:main"
 run_eval = "src.run_eval:main"
-score_generations = "src.score_generations:main"
+run_scoring = "src.run_scoring:main"
 
 # torch/vllm need cuda wheels that only exist on the pytorch index, not pypi.org. marking
 # the index "explicit" scopes it to just the packages named in [tool.uv.sources] below, so

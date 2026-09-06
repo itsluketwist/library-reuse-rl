@@ -99,8 +99,8 @@ dataset = libreusebench.load_dataset()
 
 ## 🤖  *inference*
 
-Generate your LLM responses using the dataset prompts. Save the responses as a `.jsonl` file with
-one JSON record per line, keyed by `task_id`. Two formats are supported:
+Generate your LLM responses using the dataset prompts. Save the responses as a `.json` or `.jsonl`
+file, keyed by `task_id`. Two record formats are supported:
 
 **Format 1** - multiple responses per line:
 ```json
@@ -125,7 +125,9 @@ libreuseeval your_responses.jsonl
 ```python
 import libreusebench
 
-results = libreusebench.evaluate_responses("your_responses.jsonl")
+results = libreusebench.evaluate_responses_file("your_responses.jsonl")
+# already have responses in memory (a {task_id: [response, ...]} dict) instead of a file?
+# results = libreusebench.evaluate_responses(your_responses)
 ```
 
 The harness parses each response, collects the third-party packages the responses import (mapping

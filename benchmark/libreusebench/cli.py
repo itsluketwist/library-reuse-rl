@@ -3,7 +3,7 @@
 import argparse
 
 from libreusebench.environment import _DEFAULT_TIMEOUT_SECONDS
-from libreusebench.evaluate import confirm_packages, evaluate_responses
+from libreusebench.evaluate import confirm_packages, evaluate_responses_file
 
 
 def main() -> None:
@@ -13,7 +13,7 @@ def main() -> None:
         description="Evaluate model responses against the LibReuseBench benchmark.",
     )
     parser.add_argument(
-        "responses_file", help="JSONL of {task_id, response(s)} records"
+        "responses_file", help="JSON or JSONL file of {task_id, response(s)} records"
     )
     parser.add_argument("--output-dir", default="output", help="where to write results")
     parser.add_argument(
@@ -53,7 +53,7 @@ def main() -> None:
     args = parser.parse_args()
 
     confirm = None if args.unsafe_installs else confirm_packages
-    evaluate_responses(
+    evaluate_responses_file(
         responses_file=args.responses_file,
         output_dir=args.output_dir,
         env_dir=args.env_dir,

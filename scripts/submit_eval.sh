@@ -37,7 +37,7 @@ datasets="library_usage,libreusebench"
 
 # decoding profiles to evaluate with (eval_decoding_profiles in config/training.yaml)
 decoding_profiles=(
-    "greedy"
+    # "greedy"
     "default"
     # "qwen3"
 )

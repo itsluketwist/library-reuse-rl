@@ -14,6 +14,11 @@ def _write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
     path.write_text("".join(json.dumps(record) + "\n" for record in records))
 
 
+def _write_json(path: Path, records: list[dict[str, Any]]) -> None:
+    """Write a JSON array of records for a scorer fixture."""
+    path.write_text(json.dumps(records))
+
+
 def test_score_generations_uses_content_and_keeps_generation_provenance(
     tmp_path: Path,
 ) -> None:
@@ -64,6 +69,47 @@ def test_score_generations_uses_content_and_keeps_generation_provenance(
     assert result["results"][0]["sample_index"] == 0
     assert "numpy" in result["results"][0]["generation"]["reasoning_content"]
     assert output.is_file()
+
+
+def test_score_generations_accepts_json_generations_file(tmp_path: Path) -> None:
+    """A .json (array) generations file scores the same as an equivalent .jsonl one."""
+    dataset = tmp_path / "dataset.jsonl"
+    generations = tmp_path / "generations.json"
+    _write_jsonl(
+        dataset,
+        [
+            {
+                "task_id": "task-1",
+                "prompt": "Write code.",
+                "task_type": "library_usage",
+                "category_id": "arrays",
+                "local_modules": [],
+                "useful_libs": ["numpy"],
+                "phrasing_mode": "bare",
+            }
+        ],
+    )
+    _write_json(
+        generations,
+        [
+            {
+                "task_id": "task-1",
+                "sample_index": 0,
+                "content": "```python\nimport numpy as np\nprint(np.sum(values))\n```",
+                "finish_reason": "stop",
+            }
+        ],
+    )
+
+    result = score_generations(
+        dataset_file=dataset,
+        generations_file=generations,
+        output_file=tmp_path / "results.json",
+        evaluator="library_usage",
+    )
+
+    assert result["analysis"]["n_external_lib_used"] == 1
+    assert result["results"][0]["external_lib_used"]
 
 
 def test_score_generations_rejects_incomplete_samples(tmp_path: Path) -> None:

@@ -27,7 +27,7 @@ def generate_vllm_responses(
     config/training.yaml); temperature 0 is vllm's greedy-decoding convention.
     `decoding_settings["n_samples"]` (default 1) sets how many completions vllm samples
     per prompt - e.g. for LibReuseBench's pass@k or library-usage's per-response reuse
-    statistics (see src/eval/scoring.py's MULTI_SAMPLE_EVALUATORS); its `enable_thinking`
+    statistics (see src/eval/scoring's MULTI_SAMPLE_EVALUATORS); its `enable_thinking`
     drives the chat template's reasoning mode.
     `lora_request`, when given, applies a trained adapter on top of the base model.
 

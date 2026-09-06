@@ -24,9 +24,13 @@ The package exposes the following functions:
 - **`load_dataset(split=None)`** — load the bundled benchmark, returns a dictionary of splits
   (`test`, `dev`), each a list of task records. Pass a split name to load just one.
 
-- **`evaluate_responses(responses_file, env_file=None)`** — evaluate LLM responses against the
-  benchmark: run each response's program against the task's stdin/stdout tests, reporting both
-  correctness and library reuse. Saves results to a JSON file and returns a statistics dictionary.
+- **`evaluate_responses(responses, env_file=None)`** — evaluate LLM responses already in memory
+  (a `{task_id: [response, ...]}` dict) against the benchmark: run each response's program against
+  the task's stdin/stdout tests, reporting both correctness and library reuse. Saves results to a
+  JSON file and returns a statistics dictionary.
+
+- **`evaluate_responses_file(responses_file, env_file=None)`** — the same evaluation, loading
+  responses from a `.json` or `.jsonl` file instead of taking them in memory.
 
 ```python
 import libreusebench
@@ -34,7 +38,7 @@ import libreusebench
 dataset = libreusebench.load_dataset()
 # {"test": [...], "dev": [...]}
 
-results = libreusebench.evaluate_responses("your_responses.jsonl")
+results = libreusebench.evaluate_responses_file("your_responses.jsonl")
 print(results["pass@1"])
 print(results["library_use"]["imported"]["per_task"]["using_lib_rate"])  # named a library
 print(results["library_use"]["used"]["per_task"]["using_lib_rate"])  # actually called/accessed it
@@ -46,8 +50,8 @@ A CLI command is also available:
 libreuseeval your_responses.jsonl
 ```
 
-Responses are keyed by `task_id`, as a `.jsonl` with one JSON record per line. Two formats are
-supported:
+Responses are keyed by `task_id`, as a `.json` or `.jsonl` file (one JSON record per line for
+`.jsonl`, a JSON array of records for `.json`). Two record formats are supported:
 
 ```json
 {"task_id": "LRB/T000", "responses": ["response 1", "response 2"]}

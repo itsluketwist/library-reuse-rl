@@ -30,8 +30,8 @@ from libreusebench.libraries import (
     required_pip_packages,
     used_libraries,
 )
-from libreusebench.load import load_dataset
-from llm_cgr import load_jsonl, save_json
+from libreusebench.load import load_dataset, load_records
+from llm_cgr import save_json
 
 
 def _benchmark_by_id() -> dict[str, dict]:
@@ -46,18 +46,18 @@ def _benchmark_by_id() -> dict[str, dict]:
     }
 
 
-def _load_responses(
+def load_responses(
     file_path: str,
 ) -> dict[str, list[str]]:
-    """Load model responses, keyed by task id.
+    """Load model responses, keyed by task id, from a .json or .jsonl file (see load_records).
 
-    Each JSONL line is either {"task_id": ..., "responses": [...]} or {"task_id": ...,
+    Each record is either {"task_id": ..., "responses": [...]} or {"task_id": ...,
     "response": "..."}; single responses are collated by id.
 
     Returns the {task_id: [response, ...]} map.
     """
     responses: dict[str, list[str]] = defaultdict(list)
-    for record in load_jsonl(file_path):
+    for record in load_records(file_path):
         task_id = record["task_id"]
         if "responses" in record:
             responses[task_id].extend(record["responses"])
@@ -358,7 +358,7 @@ def score_responses(
 
 
 def evaluate_responses(
-    responses_file: str,
+    responses: dict[str, list[str]],
     output_dir: str = "output",
     env_dir: str | None = None,
     env_root: str | None = None,
@@ -367,7 +367,11 @@ def evaluate_responses(
     k: int | None = None,
     confirm: Callable[[dict[str, set[str]]], bool] | None = confirm_packages,
 ) -> dict:
-    """Evaluate responses to LibReuseBench and save the results.
+    """Evaluate in-memory responses to LibReuseBench and save the results.
+
+    This is the complete workflow (unlike score_responses' scoring-only half): it plans,
+    confirms, and installs the venv itself before scoring. For responses kept in a .json
+    or .jsonl file rather than already in memory, see evaluate_responses_file.
 
     The venv is disposable by default - built fresh and deleted afterwards, so evaluations
     running at the same time can't corrupt each other's. Name an `env_dir` to reuse one across
@@ -389,9 +393,11 @@ def evaluate_responses(
 
     Returns the results dict (empty if the run stopped for the environment to be corrected).
     """
-    print(f"Evaluating LibReuseBench responses from {responses_file}")
+    n_responses = sum(len(task_responses) for task_responses in responses.values())
+    print(
+        f"Evaluating {n_responses} LibReuseBench response(s) across {len(responses)} task(s)"
+    )
     benchmark = _benchmark_by_id()
-    responses = _load_responses(responses_file)
 
     unknown = set(responses) - set(benchmark)
     if unknown:
@@ -408,8 +414,8 @@ def evaluate_responses(
         if confirm is not None and not confirm(plan):
             path = write_env_file(output_dir, set(plan), origins=plan)
             print(
-                f"\nwrote {path} - edit it (remove/rename packages) and re-run with:"
-                f"\n  libreuseeval {responses_file} --env-file {path}"
+                f"\nwrote {path} - edit it (remove/rename packages) and re-run with "
+                f"env_file={path} (or --env-file {path} via the libreuseeval CLI)"
             )
             return {}
         packages = set(plan)
@@ -428,8 +434,8 @@ def evaluate_responses(
             )
             print(
                 f"\ncould not install {sorted(install_failed)}."
-                f"\nwrote {path} - fix the offending package(s) and re-run with:"
-                f"\n  libreuseeval {responses_file} --env-file {path}"
+                f"\nwrote {path} - fix the offending package(s) and re-run with "
+                f"env_file={path} (or --env-file {path} via the libreuseeval CLI)"
             )
             return {}
 
@@ -472,3 +478,34 @@ def evaluate_responses(
     summary += f" | lib-imported {lib_imported:.3f} | lib-used {lib_used:.3f}"
     print(f"{summary} | saved {file_path}")
     return results
+
+
+def evaluate_responses_file(
+    responses_file: str,
+    output_dir: str = "output",
+    env_dir: str | None = None,
+    env_root: str | None = None,
+    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
+    env_file: str | None = None,
+    k: int | None = None,
+    confirm: Callable[[dict[str, set[str]]], bool] | None = confirm_packages,
+) -> dict:
+    """Evaluate responses loaded from a .json or .jsonl file (see load_responses).
+
+    A thin file-loading wrapper around evaluate_responses, for callers that keep
+    responses on disk (e.g. the libreuseeval CLI) rather than already holding them in
+    memory - experiment code generating responses in-process should call
+    evaluate_responses directly instead, to skip the round trip through a file.
+
+    Returns the results dict (see evaluate_responses).
+    """
+    return evaluate_responses(
+        responses=load_responses(responses_file),
+        output_dir=output_dir,
+        env_dir=env_dir,
+        env_root=env_root,
+        timeout_seconds=timeout_seconds,
+        env_file=env_file,
+        k=k,
+        confirm=confirm,
+    )

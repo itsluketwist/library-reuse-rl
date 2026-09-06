@@ -4,6 +4,8 @@ Exercises the pure logic only - no venv is created and nothing is pip-installed 
 gate is declined, or a fake benchmark is injected).
 """
 
+import json
+
 import pytest
 from libreusebench import evaluate
 
@@ -83,7 +85,22 @@ class TestLoadResponses:
             ],
             path,
         )
-        assert evaluate._load_responses(str(path)) == {
+        assert evaluate.load_responses(str(path)) == {
+            "LRB/T000": ["x", "y"],
+            "LRB/T001": ["z"],
+        }
+
+    def test_json_file(self, tmp_path) -> None:
+        path = tmp_path / "resp.json"
+        path.write_text(
+            json.dumps(
+                [
+                    {"task_id": "LRB/T000", "responses": ["x", "y"]},
+                    {"task_id": "LRB/T001", "response": "z"},
+                ]
+            )
+        )
+        assert evaluate.load_responses(str(path)) == {
             "LRB/T000": ["x", "y"],
             "LRB/T001": ["z"],
         }
@@ -92,7 +109,39 @@ class TestLoadResponses:
         path = tmp_path / "resp.jsonl"
         save_jsonl([{"task_id": "LRB/T000"}], path)
         with pytest.raises(ValueError):
-            evaluate._load_responses(str(path))
+            evaluate.load_responses(str(path))
+
+
+class TestEvaluateResponsesInMemory:
+    """evaluate_responses takes responses directly; evaluate_responses_file is a thin
+    file-loading wrapper around it, for callers that keep responses on disk."""
+
+    def test_file_wrapper_matches_in_memory_call(self, tmp_path, monkeypatch) -> None:
+        """Loading a file and calling evaluate_responses directly gives the same result
+        as evaluate_responses_file loading and calling it internally."""
+        monkeypatch.setattr(evaluate, "load_dataset", lambda: _FAKE_BENCHMARK)
+        monkeypatch.setattr(evaluate, "Environment", _FakeEnv)
+        path = tmp_path / "resp.jsonl"
+        save_jsonl(
+            [{"task_id": "LRB/T000", "response": "```python\nprint(1)\n```"}], path
+        )
+
+        direct = evaluate.evaluate_responses(
+            responses={"LRB/T000": ["```python\nprint(1)\n```"]},
+            output_dir=str(tmp_path / "out-direct"),
+            env_dir=str(tmp_path / "venv-direct"),
+            confirm=lambda _plan: True,
+        )
+        via_file = evaluate.evaluate_responses_file(
+            responses_file=str(path),
+            output_dir=str(tmp_path / "out-file"),
+            env_dir=str(tmp_path / "venv-file"),
+            confirm=lambda _plan: True,
+        )
+
+        for result in (direct, via_file):
+            del result["results_file"], result["environment"]["directory"]
+        assert direct == via_file
 
 
 class TestInstallationPlan:
@@ -108,7 +157,7 @@ class TestInstallationPlan:
 
         env_dir = tmp_path / "venv"
         out_dir = tmp_path / "out"
-        result = evaluate.evaluate_responses(
+        result = evaluate.evaluate_responses_file(
             responses_file=str(path),
             output_dir=str(out_dir),
             env_dir=str(env_dir),
@@ -134,7 +183,7 @@ class TestInstallationPlan:
         )
 
         env_dir = tmp_path / "venv"
-        result = evaluate.evaluate_responses(
+        result = evaluate.evaluate_responses_file(
             responses_file=str(path),
             output_dir=str(tmp_path / "out"),
             env_dir=str(env_dir),
@@ -147,7 +196,7 @@ class TestInstallationPlan:
         path = tmp_path / "resp.jsonl"
         save_jsonl([{"task_id": "LRB/T999", "response": "x"}], path)
         with pytest.raises(ValueError):
-            evaluate.evaluate_responses(
+            evaluate.evaluate_responses_file(
                 responses_file=str(path),
                 output_dir=str(tmp_path / "out"),
                 env_dir=str(tmp_path / "venv"),
@@ -184,7 +233,7 @@ class TestInstallationPlan:
             path,
         )
 
-        result = evaluate.evaluate_responses(
+        result = evaluate.evaluate_responses_file(
             responses_file=str(path),
             output_dir=str(tmp_path / "out"),
             env_dir=str(tmp_path / "venv"),
@@ -241,7 +290,7 @@ class TestEnvFile:
         def _fail_if_called(_plan: dict) -> bool:
             raise AssertionError("confirm must not be called when --env is supplied")
 
-        result = evaluate.evaluate_responses(
+        result = evaluate.evaluate_responses_file(
             responses_file=str(resp),
             output_dir=str(tmp_path / "out"),
             env_dir=str(tmp_path / "venv"),
@@ -273,7 +322,7 @@ class TestScoreResponse:
         path = tmp_path / "resp.jsonl"
         save_jsonl([{"task_id": "LRB/T000", "response": response}], path)
 
-        result = evaluate.evaluate_responses(
+        result = evaluate.evaluate_responses_file(
             responses_file=str(path),
             output_dir=str(tmp_path / "out"),
             env_dir=str(tmp_path / "venv"),

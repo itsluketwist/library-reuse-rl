@@ -3,10 +3,12 @@
 from pathlib import Path
 from typing import Any
 
+from libreusebench.load import load_records
+
 from src.data import load_eval_dataset
 from src.eval.scoring import score_dataset
 from src.response.stop_reason import map_stop_reason
-from src.utils.io import load_jsonl, save_json
+from src.utils.io import save_json
 from src.utils.log import log
 
 
@@ -79,10 +81,11 @@ def score_generations(
 
     `dataset_file` is loaded with load_eval_dataset (no system prompt - only its
     reward-reference columns matter for scoring), so it is normalised exactly as the
-    rest of eval expects. `generations_file` is a JSONL file with at least task_id,
-    sample_index, content, and finish_reason per record, one record per (task, sample).
-    score_dataset (see src/eval/scoring.py) decides whether `evaluator` scores every
-    sample or just the first, same as in-process evaluation.
+    rest of eval expects. `generations_file` is a JSON or JSONL file (see
+    libreusebench.load.load_records) with at least task_id, sample_index, content, and
+    finish_reason per record, one record per (task, sample). score_dataset (see
+    src/eval/scoring.py) decides whether `evaluator` scores every sample or just the
+    first, same as in-process evaluation.
 
     Returns and saves an evaluation envelope: {metadata, analysis, results}, matching
     evaluate_model's output shape (plus a "generation" block per result carrying
@@ -93,7 +96,7 @@ def score_generations(
     if len(set(task_ids)) != len(task_ids):
         raise ValueError(f"Dataset contains duplicate task IDs: {dataset_file}")
 
-    generations = load_jsonl(generations_file)
+    generations = load_records(generations_file)
     by_sample = _group_generations_by_sample(generations, set(task_ids))
     sample_indices = sorted(by_sample)
 

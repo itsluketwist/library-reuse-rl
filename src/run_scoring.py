@@ -23,9 +23,9 @@ parser.add_argument(
     "--generations",
     required=True,
     type=Path,
-    help="JSONL file of externally generated responses, one record per (task_id, "
-    "sample_index) with at least task_id, sample_index, content, and finish_reason "
-    "(see fireworks/fw_rlvr/inference.py's generation records).",
+    help="JSON or JSONL file of externally generated responses, one record per "
+    "(task_id, sample_index) with at least task_id, sample_index, content, and "
+    "finish_reason (see fireworks/fw_rlvr/inference.py's generation records).",
 )
 
 parser.add_argument(
