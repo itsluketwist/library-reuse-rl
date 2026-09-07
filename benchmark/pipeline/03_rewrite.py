@@ -7,14 +7,16 @@ input, print the result to standard output, name no library and no function. The
 is the only thing carried forward - the ground-truth test cases are produced later (stage 04) by
 running an actual stdin/stdout solution, so there is no need for the model to write an adapter.
 
-One model call per candidate, so the run is resumable and supports --limit / --model.
+One model call per candidate, so the run is resumable and supports --limit / --model. --track
+selects the stage-02 candidate pool to reword ("reuse" ext-lib seeds by default, or "control" the
+stdlib-only seeds where library reuse isn't expected) - the reword prompt itself doesn't change.
 
-Usage: python benchmark/pipeline/03_rewrite.py [--limit N] [--model M]
+Usage: python benchmark/pipeline/03_rewrite.py [--track reuse|control] [--limit N] [--model M]
 """
 
 import argparse
 
-from build import artefact_path, full_solution, succeeded_ids
+from build import artefact_path, full_solution, succeeded_ids, track_artefact_path
 from generation import DEFAULT_GEN_MODEL, complete_json
 
 from src.utils.io import append_jsonl, load_jsonl
@@ -112,6 +114,12 @@ def main() -> None:
     """Reword candidates into agnostic natural-language stdin/stdout task statements."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--track",
+        choices=["reuse", "control"],
+        default="reuse",
+        help="which stage-02 candidate pool to rewrite",
+    )
+    parser.add_argument(
         "--limit", type=int, default=None, help="only rewrite the first N"
     )
     parser.add_argument(
@@ -119,18 +127,20 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # the judge only saw ext-lib seeds, so every keep/maybe already has a real library-reuse path
+    # every keep/maybe already has a real library-reuse path (reuse track) or is confirmed
+    # deterministic/text-serialisable (control track) - either way it's ready to reword
     candidates = [
         row
-        for row in load_jsonl(artefact_path("02_candidates.jsonl"))
+        for row in load_jsonl(track_artefact_path("02_candidates.jsonl", args.track))
         if row["verdict"] in ("keep", "maybe")
     ]
     # the candidate records are slim (just the seed id + verdict), so re-join the full seed
-    # problem from the stage-01 ext-lib artefact by seed_id
-    seeds = {
-        row["seed_id"]: row for row in load_jsonl(artefact_path("01_bcb_extlibs.jsonl"))
-    }
-    out_path = artefact_path("03_rewritten.jsonl")
+    # problem from the matching stage-01 artefact by seed_id
+    seed_file = (
+        "01_bcb_extlibs.jsonl" if args.track == "reuse" else "01_bcb_stdlibs.jsonl"
+    )
+    seeds = {row["seed_id"]: row for row in load_jsonl(artefact_path(seed_file))}
+    out_path = track_artefact_path("03_rewritten.jsonl", args.track)
     done = succeeded_ids(out_path)
     print(
         f"{len(candidates)} candidates carried forward"
@@ -168,7 +178,9 @@ def main() -> None:
                 "seed_libs": candidate["ext_libs"],
                 "prompt": prompt,
                 "kept": True,
-                "source": "bigcodebenchreuse",
+                "source": "bigcodebenchreuse"
+                if args.track == "reuse"
+                else "bigcodebenchcontrol",
             },
             out_path,
         )

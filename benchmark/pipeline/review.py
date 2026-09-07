@@ -1,20 +1,25 @@
 """Author-review helpers: load validated problems and record keep/reject verdicts, resumably.
 
-The executable gates (stages 02-05) prove a problem runs and is genuinely dual-solvable, but not
-that it reads coherently. Stage 06 is a light human coherence check - not a deep audit - over the
-survivors: the companion notebook (06_review.ipynb) shows each problem one at a time so the author
-can confirm the task makes sense and catch anything that slipped through the automated gates,
-recording keep / update / reject. The build stage (07) then enforces that every problem was seen.
+The executable gates (stages 02-05 for the reuse track; 02-04 for the control track, which has no
+dual-solvability stage) prove a problem runs, but not that it reads coherently. Stage 06 is a light
+human coherence check - not a deep audit - over the survivors: a companion notebook
+(06_review.ipynb, or 06_review_control.ipynb for the control track) shows each problem one at a
+time so the author can confirm the task makes sense and catch anything that slipped through the
+automated gates, recording keep / update / reject. The build stage (07) then enforces that every
+problem was seen.
 
-Verdicts live in a JSONL under the (gitignored) artefacts directory; the keep/update/reject summary
-is captured in the audit REPORT. The file is append-only and the latest entry per seed wins, so
-review can span sessions and be revised.
+Every function here takes a `track` ("reuse" or "control"), defaulting to "reuse", which selects
+both the validated-problem source and the verdicts file - the two tracks are reviewed and shipped
+independently. Verdicts live in a JSONL under the (gitignored) artefacts directory; the
+keep/update/reject summary is captured in the audit REPORT. The file is append-only and the latest
+entry per seed wins, so review can span sessions and be revised.
 """
 
 import html
+from pathlib import Path
 from typing import Literal
 
-from build import artefact_path, latest_records
+from build import artefact_path, latest_records, track_artefact_path
 
 from src.utils.io import append_jsonl, load_jsonl
 
@@ -22,28 +27,44 @@ from src.utils.io import append_jsonl, load_jsonl
 # keep = ship as-is, reject = drop, update = ship with the author's edited prompt
 Verdict = Literal["keep", "reject", "update"]
 
-# the stage-06 artefact (under the gitignored artefacts directory)
-REVIEW_PATH = artefact_path("06_reviews.jsonl")
+
+def review_path(
+    track: str = "reuse",
+) -> Path:
+    """Path to a track's stage-06 verdicts artefact (under the gitignored artefacts directory).
+
+    Returns the full path.
+    """
+    return track_artefact_path("06_reviews.jsonl", track)
 
 
-def validated_problems() -> list[dict]:
-    """The problems that passed every executable gate (stage 05 kept), latest record per seed.
+def validated_problems(
+    track: str = "reuse",
+) -> list[dict]:
+    """The problems that passed every executable gate, latest record per seed.
+
+    For the reuse track that's stage 05 (dual-solvability); the control track has no such stage,
+    so its stage-04 output (a minted stdlib gold + tests) is already the final validated pool.
 
     Returns the list of validated problem rows.
     """
-    rows = latest_records(artefact_path("05_validated.jsonl")).values()
+    source = "05_validated.jsonl" if track == "reuse" else "04_tests_control.jsonl"
+    rows = latest_records(artefact_path(source)).values()
     return [row for row in rows if row.get("kept")]
 
 
-def verdicts() -> dict[str, dict]:
-    """The latest recorded review verdict per seed (later entries override earlier ones).
+def verdicts(
+    track: str = "reuse",
+) -> dict[str, dict]:
+    """The latest recorded review verdict per seed for a track (later entries override earlier).
 
     Returns the {seed_id: verdict record} map (empty if nothing has been reviewed yet).
     """
-    if not REVIEW_PATH.exists():
+    path = review_path(track)
+    if not path.exists():
         return {}
     latest: dict[str, dict] = {}
-    for row in load_jsonl(REVIEW_PATH):
+    for row in load_jsonl(path):
         latest[row["seed_id"]] = row
     return latest
 
@@ -53,6 +74,7 @@ def record_verdict(
     verdict: Verdict,
     note: str = "",
     prompt: str | None = None,
+    track: str = "reuse",
 ) -> None:
     """Append a verdict for one problem (append-only, latest wins).
 
@@ -61,34 +83,39 @@ def record_verdict(
     record: dict = {"seed_id": seed_id, "verdict": verdict, "note": note}
     if prompt is not None:
         record["prompt"] = prompt
-    append_jsonl(record, REVIEW_PATH)
+    append_jsonl(record, review_path(track))
 
 
 def pending(
     problems: list[dict] | None = None,
+    track: str = "reuse",
 ) -> list[dict]:
     """Validated problems that do not yet have a review verdict, in order.
 
     Returns the unreviewed problem rows.
     """
-    problems = validated_problems() if problems is None else problems
-    reviewed = verdicts()
+    problems = validated_problems(track) if problems is None else problems
+    reviewed = verdicts(track)
     return [problem for problem in problems if problem["seed_id"] not in reviewed]
 
 
-def accepted_ids() -> set[str]:
+def accepted_ids(
+    track: str = "reuse",
+) -> set[str]:
     """Seed ids that will ship - kept as-is or updated with an edited prompt.
 
     Returns the set of accepted seed ids.
     """
     return {
         seed
-        for seed, row in verdicts().items()
+        for seed, row in verdicts(track).items()
         if row.get("verdict") in ("keep", "update")
     }
 
 
-def approved_problems() -> list[dict]:
+def approved_problems(
+    track: str = "reuse",
+) -> list[dict]:
     """Validated problems the author accepted, with any edited prompt applied.
 
     Keeps problems whose verdict is keep or update; for an update, the stored prompt override
@@ -96,9 +123,9 @@ def approved_problems() -> list[dict]:
 
     Returns the shippable problem rows.
     """
-    reviewed = verdicts()
+    reviewed = verdicts(track)
     approved: list[dict] = []
-    for problem in validated_problems():
+    for problem in validated_problems(track):
         record = reviewed.get(problem["seed_id"])
         if not record or record.get("verdict") not in ("keep", "update"):
             continue
@@ -144,19 +171,21 @@ def _cases_html(
 
 def review_gui(
     problems: list[dict] | None = None,
+    track: str = "reuse",
 ) -> object:
-    """Launch the keep/reject review interface for the validated problems.
+    """Launch the keep/reject review interface for the validated problems of one track.
 
-    Shows one problem at a time - the prompt, its test cases, and both gold solutions in
+    Shows one problem at a time - the prompt, its test cases, and its gold solution(s) in
     collapsible panels - with keep / reject buttons and a notes field. Saves after every click and
-    resumes from the first unreviewed problem, so review can span sittings.
+    resumes from the first unreviewed problem, so review can span sittings. Control-track problems
+    have no `gold_extlib`, so that panel is only shown when the problem has one.
 
     Returns the widget to display in the notebook.
     """
     import ipywidgets as widgets  # lazy: the module must load without a notebook environment
 
-    problems = validated_problems() if problems is None else problems
-    reviewed = verdicts()
+    problems = validated_problems(track) if problems is None else problems
+    reviewed = verdicts(track)
 
     # start on the first problem without a verdict
     position = next(
@@ -215,12 +244,16 @@ def review_gui(
         stdlib_acc.set_title(
             0, f"gold: stdlib [{problem.get('gold_stdlib_model', '?')}]"
         )
-        extlib_box.value = _code_html(problem["gold_extlib"])
-        extlib_acc.set_title(
-            0,
-            f"gold: extlib {problem.get('gold_extlib_packages', [])} "
-            f"[{problem.get('gold_extlib_model', '?')}]",
-        )
+        # control-track problems have no library gold - hide that panel entirely for them
+        has_extlib = "gold_extlib" in problem
+        extlib_acc.layout.display = "" if has_extlib else "none"
+        if has_extlib:
+            extlib_box.value = _code_html(problem["gold_extlib"])
+            extlib_acc.set_title(
+                0,
+                f"gold: extlib {problem.get('gold_extlib_packages', [])} "
+                f"[{problem.get('gold_extlib_model', '?')}]",
+            )
         notes.value = existing.get("note", "") if existing else ""
         status.value = (
             f"current verdict: <b>{existing['verdict']}</b>" if existing else ""
@@ -236,7 +269,9 @@ def review_gui(
         """
         nonlocal position
         problem = problems[position]
-        record_verdict(problem["seed_id"], verdict, notes.value, prompt=prompt)
+        record_verdict(
+            problem["seed_id"], verdict, notes.value, prompt=prompt, track=track
+        )
         record: dict = {
             "seed_id": problem["seed_id"],
             "verdict": verdict,

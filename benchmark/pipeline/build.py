@@ -44,6 +44,24 @@ def artefact_path(
     return ARTEFACTS_DIR / name
 
 
+def track_artefact_path(
+    name: str,
+    track: str,
+) -> Path:
+    """Path to a stage artefact, suffixed for a non-default track (e.g. "control").
+
+    The "reuse" track keeps the plain stage filename; any other track gets its name inserted
+    before the extension (e.g. "02_candidates.jsonl" -> "02_candidates_control.jsonl"), so the
+    two tracks' artefacts never collide.
+
+    Returns the full path.
+    """
+    if track == "reuse":
+        return artefact_path(name)
+    stem, suffix = name.rsplit(".", 1)
+    return artefact_path(f"{stem}_{track}.{suffix}")
+
+
 def completed_ids(
     path: Path,
     key: str = "seed_id",

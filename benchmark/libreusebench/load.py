@@ -9,7 +9,7 @@ from llm_cgr import load_jsonl
 
 # the split files are bundled alongside the package code (see pyproject package-data)
 _DATA_DIR = Path(__file__).parent / "data"
-_SPLITS = ("test", "dev")
+_SPLITS = ("test", "dev", "control")
 
 
 def load_records(
@@ -38,7 +38,10 @@ def load_dataset(
 ) -> dict[str, list[dict]]:
     """Load the benchmark splits from the bundled JSONL files.
 
-    Pass a split name ("test" or "dev") to load just one, or None for all available.
+    Pass a split name ("test", "dev", or "control") to load just one, or None for all available.
+    "control" is a no-reuse-expected counterpart to "test"/"dev": BigCodeBench seeds whose
+    reference solution used no external library, so a good solution is not expected to reach for
+    one either.
 
     Returns a dict mapping split name to its list of task records.
     """

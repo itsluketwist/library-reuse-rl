@@ -28,6 +28,14 @@ class TestJudgePrompt:
         prompt = filter_stage.build_judge_prompt("desc", "sol", ["pandas"])
         assert "dual-solvable" in prompt and "deterministic" in prompt
 
+    def test_control_track_drops_dual_solvable_criterion(self) -> None:
+        prompt = filter_stage.build_judge_prompt(
+            "desc", "sol", [], require_dual_solvable=False
+        )
+        assert "dual-solvable" not in prompt
+        # the other two criteria still apply
+        assert "deterministic" in prompt and "text-serialisable" in prompt
+
 
 class TestNormaliseVerdict:
     """The verdict normaliser lowercases valid verdicts and fails safe to drop."""

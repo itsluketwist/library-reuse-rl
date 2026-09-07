@@ -15,6 +15,12 @@ LibReuseBench is the missing **external** signal: real executable test cases **a
 temptation to reach for a library — while never telling the model which one to use. The harness
 reports both correctness (test pass rate) and library reuse on the same problems.
 
+A third **control** track (split `control`, task ids `LRB/C000...`) is the complementary case:
+problems seeded from BigCodeBench solutions that used *no* external library, so reaching for one
+isn't expected to help. It exists so the benchmark can show library reuse is rewarded *where it
+helps*, not wherever it's used — without it, a model that reaches for a library unconditionally
+would look indistinguishable from one that reaches for one appropriately.
+
 ## Two design decisions
 
 1. **Pure stdin/stdout, no scaffolding.** Each problem is a plain spec: read stdin, print stdout.
@@ -35,7 +41,7 @@ benchmark/
     load.py             # load the bundled splits
     evaluate.py         # the harness: scan -> install -> run -> aggregate
     cli.py              # `libreuseeval`
-    data/               # bundled, committed splits (test.jsonl, dev.jsonl) + CANARY.txt
+    data/               # bundled, committed splits (test/dev/control.jsonl) + CANARY.txt
   pipeline/             # dataset construction (build-time; calls into libreusebench + repo src)
     01_fetch_bcb.py … 08_audit.py (06_review is a notebook)
     build.py            # stage paths, BCB analysis, hard-exclude buckets
@@ -73,10 +79,27 @@ python benchmark/pipeline/07_build.py        # -> libreusebench/data/{test,dev}.
 python benchmark/pipeline/08_audit.py        # -> docs/REPORT.md
 ```
 
+Stages 02/03/04/07 also take `--track control`, running the same steps over the stdlib-only seed
+pool instead (`01_bcb_stdlibs.jsonl`) to build the control track:
+
+```
+python benchmark/pipeline/02_filter.py --track control      # -> artefacts/02_candidates_control.jsonl
+python benchmark/pipeline/03_rewrite.py --track control     # -> artefacts/03_rewritten_control.jsonl
+python benchmark/pipeline/04_make_tests.py --track control  # -> artefacts/04_tests_control.jsonl
+# 06 review: 06_review_control.ipynb -> artefacts/06_reviews_control.jsonl
+python benchmark/pipeline/07_build.py --track control        # -> libreusebench/data/control.jsonl
+```
+
+The control track has no stage-05 equivalent - stage 04's minted stdlib gold + tests is already its
+fully validated pool, since these problems don't need a library solution to prove anything. Stage
+08 (audit) always reports both tracks in one `REPORT.md`, no `--track` flag needed.
+
 - **01 fetch** — load BigCodeBench (`bigcode/bigcodebench`, pinned `v0.1.4`).
 - **02 filter** — a minimal hard-exclude drops only the impossible (live-network, plot/GUI-only);
   everything else goes to a permissive LLM judge scoring use-case fit (deterministic,
-  text-serialisable, dual-solvable) as keep / maybe / drop, using structured outputs.
+  text-serialisable, and for the reuse track dual-solvable) as keep / maybe / drop, using
+  structured outputs. For the control track the dual-solvable criterion is dropped - those
+  problems have no library solution to be dual-solvable with.
 - **03 rewrite** — the model rewrites the problem into a single self-contained, natural-language
   stdin/stdout task that names no library and no function. The original BigCodeBench task is shown
   only so the model understands the required behaviour; only the reworded prompt is carried forward
@@ -91,24 +114,29 @@ python benchmark/pipeline/08_audit.py        # -> docs/REPORT.md
   genuinely dual-solvable. The declared PyPI packages are installed into an isolated venv, run
   under a 30s cap (headroom for slow imports like sklearn/scipy), then fully uninstalled; each drop
   is recorded with a granular reason (output mismatch / runtime error / timeout / install failed)
-  and the failing solution, so failures are diagnosable without re-running.
+  and the failing solution, so failures are diagnosable without re-running. **Reuse track only** -
+  the control track has nothing to dual-validate, so stage 04's output ships as-is.
 - **06 review** — a light human coherence check, not a deep audit. An interactive notebook
-  (`06_review.ipynb`) shows each validated problem one at a time (prompt, sample tests, both golds);
-  the author skims that the task makes sense and reads cleanly, and catches anything the automated
-  gates cannot — a confusing prompt, an odd expected output, something that slipped through — then
-  records keep / update (ship an edited prompt) / reject. Verdicts persist to
-  `artefacts/06_reviews.jsonl` (resumable; its keep/update/reject summary is captured in the audit
-  REPORT), and the build refuses to run until every problem has one.
-- **07 build** — write the author-approved survivors straight into the package's `data/`, holding
-  out a small dev split.
+  (`06_review.ipynb`, or `06_review_control.ipynb` for the control track) shows each validated
+  problem one at a time (prompt, sample tests, and its gold solution(s)); the author skims that the
+  task makes sense and reads cleanly, and catches anything the automated gates cannot — a confusing
+  prompt, an odd expected output, something that slipped through — then records keep / update (ship
+  an edited prompt) / reject. Verdicts persist to `artefacts/06_reviews.jsonl`
+  (`06_reviews_control.jsonl` for the control track - the two tracks are reviewed and shipped
+  independently; resumable, and each track's keep/update/reject summary is captured in the audit
+  REPORT), and the build refuses to run until every problem in that track has one.
+- **07 build** — write the author-approved survivors straight into the package's `data/`. The reuse
+  track holds out a small dev split (`test.jsonl` / `dev.jsonl`); the control track ships as a
+  single split (`control.jsonl`), since there's no dual-solvability signal to hold a dev set out
+  for.
 - **08 audit** — write `docs/REPORT.md`: the drop funnel (incl. the review outcome) and coverage by
-  category / seed library.
+  category / seed library, for both tracks.
 
 ## Row schema
 
-Each row carries a dataset-unique `task_id` (`LRB/T000...` in the test split, `LRB/D000...` in the
-dev split, assigned after shuffling), the task and its tests, a `ground_truth` block with both gold
-solutions, and a `source` provenance block pointing back to BigCodeBench.
+Each row carries a dataset-unique `task_id` (`LRB/T000...` test, `LRB/D000...` dev, `LRB/C000...`
+control, all assigned after shuffling), the task and its tests, a `ground_truth` block with the
+gold solution(s), and a `source` provenance block pointing back to BigCodeBench.
 
 ```json
 { "task_id": "LRB/T000", "category": "html-parsing",
@@ -119,6 +147,17 @@ solutions, and a `source` provenance block pointing back to BigCodeBench.
     "gold_extlib": "<third-party-library reference solution>",
     "gold_extlib_packages": ["pandas==3.0.5"] },
   "source": { "seed_id": "BigCodeBench/52", "seed_libs": ["pandas", "regex"] } }
+```
+
+A control row has no `gold_extlib*` keys and an empty `seed_libs` (its seed used no external
+library):
+
+```json
+{ "task_id": "LRB/C000", "category": "text-processing",
+  "prompt": "<library-agnostic spec: read stdin, print stdout>",
+  "test_inputs": ["...", "..."], "expected_outputs": ["...", "..."],
+  "ground_truth": { "gold_stdlib": "<stdlib reference solution>" },
+  "source": { "seed_id": "BigCodeBench/107", "seed_libs": [] } }
 ```
 
 ## The harness (parse → install → run)

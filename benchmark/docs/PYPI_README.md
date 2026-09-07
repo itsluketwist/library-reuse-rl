@@ -22,7 +22,9 @@ pip install libreusebench
 The package exposes the following functions:
 
 - **`load_dataset(split=None)`** — load the bundled benchmark, returns a dictionary of splits
-  (`test`, `dev`), each a list of task records. Pass a split name to load just one.
+  (`test`, `dev`, `control`), each a list of task records. Pass a split name to load just one.
+  `control` is a no-reuse-expected counterpart to `test`/`dev`: tasks where library reuse isn't
+  expected to help, so a good solution shouldn't need one.
 
 - **`evaluate_responses(responses, env_file=None)`** — evaluate LLM responses already in memory
   (a `{task_id: [response, ...]}` dict) against the benchmark: run each response's program against
@@ -36,7 +38,7 @@ The package exposes the following functions:
 import libreusebench
 
 dataset = libreusebench.load_dataset()
-# {"test": [...], "dev": [...]}
+# {"test": [...], "dev": [...], "control": [...]}
 
 results = libreusebench.evaluate_responses_file("your_responses.jsonl")
 print(results["pass@1"])

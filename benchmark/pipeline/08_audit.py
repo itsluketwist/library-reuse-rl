@@ -2,14 +2,16 @@
 
 Reads whatever stage artefacts exist and reports the drop funnel (how many problems survived each
 stage and why the rest were dropped), the author review outcome, plus coverage of the final
-dataset by category and by seed library. Purely a reporting stage - it changes no data.
+dataset by category and by seed library - for both the reuse track and the control track (the
+no-reuse-expected pool sourced from BCB's stdlib-only seeds). Purely a reporting stage - it changes
+no data.
 
 Usage: python benchmark/pipeline/08_audit.py
 """
 
 from collections import Counter
 
-from build import DATA_DIR, artefact_path, latest_records
+from build import DATA_DIR, latest_records, track_artefact_path
 from review import validated_problems, verdicts
 
 from src.utils.io import load_jsonl
@@ -20,12 +22,13 @@ REPORT_PATH = DATA_DIR.parent.parent / "docs" / "REPORT.md"
 
 def _load(
     name: str,
+    track: str = "reuse",
 ) -> list[dict]:
     """Load a stage artefact, deduplicated to the latest record per seed (reruns append retries).
 
     Returns the rows (empty if the artefact does not exist yet).
     """
-    return list(latest_records(artefact_path(name)).values())
+    return list(latest_records(track_artefact_path(name, track)).values())
 
 
 def _drop_reasons(
@@ -54,8 +57,22 @@ def _md_counts(
     return lines
 
 
-def main() -> None:
-    """Compute the funnel and coverage stats and write REPORT.md."""
+def _load_split(
+    name: str,
+) -> list[dict]:
+    """Load a shipped split file from the data directory, or an empty list if not built yet.
+
+    Returns the rows.
+    """
+    path = DATA_DIR / name
+    return load_jsonl(path) if path.exists() else []
+
+
+def _reuse_section() -> list[str]:
+    """Build the "## Drop funnel" section for the reuse track.
+
+    Returns the markdown lines.
+    """
     extlibs = _load("01_bcb_extlibs.jsonl")
     stdlibs = _load("01_bcb_stdlibs.jsonl")
     candidates = _load("02_candidates.jsonl")
@@ -63,15 +80,11 @@ def main() -> None:
     minted = _load("04_tests.jsonl")
     validated = _load("05_validated.jsonl")
 
-    test_path = DATA_DIR / "test.jsonl"
-    dev_path = DATA_DIR / "dev.jsonl"
-    test = load_jsonl(test_path) if test_path.exists() else []
-    dev = load_jsonl(dev_path) if dev_path.exists() else []
+    test = _load_split("test.jsonl")
+    dev = _load_split("dev.jsonl")
     final = test + dev
 
-    lines = ["# LibReuseBench build report", ""]
-
-    lines += ["## Drop funnel", ""]
+    lines = ["## Drop funnel (reuse track)", ""]
     lines.append(
         f"- 01 fetched: {len(extlibs)} ext-lib seeds (+ {len(stdlibs)} stdlib-only set aside)"
     )
@@ -88,8 +101,8 @@ def main() -> None:
     )
 
     # stage 06 is the human review pass over the validated problems
-    reviewed = verdicts()
-    n_validated = len(validated_problems())
+    reviewed = verdicts("reuse")
+    n_validated = len(validated_problems("reuse"))
     counts = Counter(row.get("verdict", "?") for row in reviewed.values())
     n_pending = n_validated - len(reviewed)
     lines.append(
@@ -124,8 +137,77 @@ def main() -> None:
         )
         lines += _md_counts("Final by seed library", seed_libs)
 
+    return lines
+
+
+def _control_section() -> list[str]:
+    """Build the "## Control track" section: the no-reuse-expected pool, no stage-05 equivalent.
+
+    Returns the markdown lines.
+    """
+    stdlibs = _load("01_bcb_stdlibs.jsonl")
+    candidates = _load("02_candidates.jsonl", "control")
+    rewritten = _load("03_rewritten.jsonl", "control")
+    minted = _load("04_tests.jsonl", "control")
+    final = _load_split("control.jsonl")
+
+    lines = ["## Control track", ""]
+    lines.append(f"- 01 stdlib-only seeds: {len(stdlibs)}")
+    lines.append(
+        f"- 02 candidates: {sum(1 for r in candidates if r['verdict'] in ('keep', 'maybe'))} "
+        f"carried forward of {len(candidates)} annotated"
+    )
+    lines.append(
+        f"- 03 rewritten (faithful): {sum(1 for r in rewritten if r.get('kept'))} of {len(rewritten)}"
+    )
+    lines.append(
+        f"- 04 tests minted (already the fully validated pool - no dual-solvable stage "
+        f"for this track): {sum(1 for r in minted if r.get('kept'))} of {len(minted)}"
+    )
+
+    reviewed = verdicts("control")
+    n_validated = len(validated_problems("control"))
+    counts = Counter(row.get("verdict", "?") for row in reviewed.values())
+    n_pending = n_validated - len(reviewed)
+    lines.append(
+        f"- 06 reviewed: {counts['keep']} keep, {counts['update']} update, "
+        f"{counts['reject']} reject, {n_pending} pending of {n_validated} "
+        f"(shipping {counts['keep'] + counts['update']})"
+    )
+    lines.append(f"- **final control dataset: {len(final)} problems**")
+    lines.append("")
+
+    if candidates:
+        lines += _md_counts(
+            "02 verdicts (control)", Counter(r["verdict"] for r in candidates)
+        )
+    if rewritten:
+        lines += _md_counts("03 drop reasons (control)", _drop_reasons(rewritten))
+    if reviewed:
+        lines += _md_counts(
+            "06 review verdicts (control)",
+            Counter(row.get("verdict", "?") for row in reviewed.values()),
+        )
+    if final:
+        # every control seed's reference solution is stdlib-only, so seed-library coverage
+        # would just be empty - only category coverage is informative here
+        lines += _md_counts(
+            "Control by category", Counter(r.get("category", "?") for r in final)
+        )
+
+    return lines
+
+
+def main() -> None:
+    """Compute the funnel and coverage stats for both tracks and write REPORT.md."""
+    lines = ["# LibReuseBench build report", ""]
+    lines += _reuse_section()
+    lines += _control_section()
+
     REPORT_PATH.write_text("\n".join(lines).rstrip("\n") + "\n")
-    print(f"wrote {REPORT_PATH} ({len(final)} final problems)")
+    n_final = len(_load_split("test.jsonl")) + len(_load_split("dev.jsonl"))
+    n_control = len(_load_split("control.jsonl"))
+    print(f"wrote {REPORT_PATH} ({n_final} reuse + {n_control} control final problems)")
 
 
 if __name__ == "__main__":

@@ -7,14 +7,16 @@ reliable and fast, and requiring one to exist is already half of the dual-solvab
 then confirms an independent library solution reproduces the same outputs - the reuse path).
 
 One model call per problem, so the run is resumable and supports --limit / --model. The gold
-solution is executed with the build interpreter.
+solution is executed with the build interpreter. --track selects the stage-03 pool to mint tests
+for; for the "control" track (no external-library seeds), this stage's output is already the fully
+validated pool - there is no stage-05 equivalent to run afterwards.
 
-Usage: python benchmark/pipeline/04_make_tests.py [--limit N] [--model M]
+Usage: python benchmark/pipeline/04_make_tests.py [--track reuse|control] [--limit N] [--model M]
 """
 
 import argparse
 
-from build import BUILD_PYTHON, artefact_path, succeeded_ids
+from build import BUILD_PYTHON, succeeded_ids, track_artefact_path
 from generation import DEFAULT_GEN_MODEL, complete_json
 from libreusebench.environment import run_program
 from libreusebench.libraries import analyse_source
@@ -119,6 +121,12 @@ def main() -> None:
     """Generate a stdlib gold solution per problem and mint its test cases."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--track",
+        choices=["reuse", "control"],
+        default="reuse",
+        help="which stage-03 rewritten pool to mint tests for",
+    )
+    parser.add_argument(
         "--limit", type=int, default=None, help="only solve the first N"
     )
     parser.add_argument(
@@ -128,10 +136,10 @@ def main() -> None:
 
     rows = [
         row
-        for row in load_jsonl(artefact_path("03_rewritten.jsonl"))
+        for row in load_jsonl(track_artefact_path("03_rewritten.jsonl", args.track))
         if row.get("kept")
     ]
-    out_path = artefact_path("04_tests.jsonl")
+    out_path = track_artefact_path("04_tests.jsonl", args.track)
     done = succeeded_ids(out_path)
     print(
         f"{len(rows)} rewritten problems"
