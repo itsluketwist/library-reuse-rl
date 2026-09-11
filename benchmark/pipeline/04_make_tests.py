@@ -6,12 +6,17 @@ expected output for each input. A stdlib solution runs with no package installs,
 reliable and fast, and requiring one to exist is already half of the dual-solvable gate (stage 05
 then confirms an independent library solution reproduces the same outputs - the reuse path).
 
-One model call per problem, so the run is resumable and supports --limit / --model. The gold
-solution is executed with the build interpreter. --track selects the stage-03 pool to mint tests
-for; for the "control" track (no external-library seeds), this stage's output is already the fully
-validated pool - there is no stage-05 equivalent to run afterwards.
+The run is resumable and supports --limit / --model. The gold solution is executed with the build
+interpreter. --track selects the stage-03 pool to mint tests for; for the "control" track (no
+external-library seeds), this stage's output is already the fully validated pool - there is no
+stage-05 equivalent to run afterwards.
 
-Usage: python benchmark/pipeline/04_make_tests.py [--track reuse|control] [--limit N] [--model M]
+Apparent failures here are dominated by sampling variance, not model capability, so a task is
+retried up to `--attempts` times, keeping the first that mints enough clean tests (mirroring stage
+05's best-of-N). The shipped reuse track was built by running this stage (and stage 05) up to three
+times with Sonnet, then up to three more with Opus on whatever was still not kept.
+
+Usage: python benchmark/pipeline/04_make_tests.py [--track reuse|control] [--limit N] [--model M] [--attempts N]
 """
 
 import argparse
@@ -117,6 +122,37 @@ def _mint(
     return kept_inputs, expected
 
 
+def _attempt_once(
+    prompt: str,
+    model: str,
+) -> dict:
+    """Draw one stdlib gold solution for a task and mint its test cases.
+
+    Returns a result dict: always carries 'passed'; on success the gold solution, its resolved
+    model, and the minted (inputs, expected_outputs); on failure a drop_reason.
+    """
+    result = gold_solution(prompt, model=model)
+    if result is None:
+        return {"passed": False, "drop_reason": "no gold solution"}
+
+    solution, candidate_inputs, gold_model = result
+    # the gold must actually be standard-library-only (proves stdlib-solvability)
+    if analyse_source(solution)[1]:
+        return {"passed": False, "drop_reason": "gold not stdlib"}
+
+    inputs, expected = _mint(solution, candidate_inputs)
+    if len(inputs) < MIN_TESTS:
+        return {"passed": False, "drop_reason": "too few clean tests"}
+
+    return {
+        "passed": True,
+        "gold_stdlib": solution,
+        "gold_stdlib_model": gold_model,
+        "inputs": inputs,
+        "expected_outputs": expected,
+    }
+
+
 def main() -> None:
     """Generate a stdlib gold solution per problem and mint its test cases."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -132,6 +168,12 @@ def main() -> None:
     parser.add_argument(
         "--model", default=DEFAULT_GEN_MODEL, help="generation model id"
     )
+    parser.add_argument(
+        "--attempts",
+        type=int,
+        default=1,
+        help="best-of-N: draw up to N gold solutions, keep the task on the first that passes",
+    )
     args = parser.parse_args()
 
     rows = [
@@ -144,6 +186,7 @@ def main() -> None:
     print(
         f"{len(rows)} rewritten problems"
         + (f", {len(done)} already done" if done else "")
+        + (f", best-of-{args.attempts}" if args.attempts > 1 else "")
     )
 
     processed = kept = 0
@@ -155,33 +198,16 @@ def main() -> None:
             break
         processed += 1
 
-        result = gold_solution(row["prompt"], model=args.model)
-        if result is None:
-            append_jsonl(
-                {"seed_id": seed_id, "kept": False, "drop_reason": "no gold solution"},
-                out_path,
-            )
-            continue
+        # draw up to N solutions, stopping at the first that mints enough clean tests
+        outcome: dict = {}
+        for _ in range(max(1, args.attempts)):
+            outcome = _attempt_once(row["prompt"], model=args.model)
+            if outcome["passed"]:
+                break
 
-        solution, candidate_inputs, gold_model = result
-        # the gold must actually be standard-library-only (proves stdlib-solvability)
-        if analyse_source(solution)[1]:
-            append_jsonl(
-                {"seed_id": seed_id, "kept": False, "drop_reason": "gold not stdlib"},
-                out_path,
-            )
-            continue
-
-        inputs, expected = _mint(solution, candidate_inputs)
-        if len(inputs) < MIN_TESTS:
-            append_jsonl(
-                {
-                    "seed_id": seed_id,
-                    "kept": False,
-                    "drop_reason": "too few clean tests",
-                },
-                out_path,
-            )
+        fields = {key: value for key, value in outcome.items() if key != "passed"}
+        if not outcome["passed"]:
+            append_jsonl({"seed_id": seed_id, "kept": False} | fields, out_path)
             continue
 
         kept += 1
@@ -191,16 +217,13 @@ def main() -> None:
                 "category": row["category"],
                 "seed_libs": row["seed_libs"],
                 "prompt": row["prompt"],
-                "gold_stdlib": solution,
-                "gold_stdlib_model": gold_model,
-                "inputs": inputs,
-                "expected_outputs": expected,
                 "kept": True,
-            },
+            }
+            | fields,
             out_path,
         )
         print(
-            f"solved {processed} | kept {kept} | {len(inputs)} tests | last {seed_id}"
+            f"solved {processed} | kept {kept} | {len(fields['inputs'])} tests | last {seed_id}"
         )
 
     print(f"\ndone: processed {processed}, kept {kept}")

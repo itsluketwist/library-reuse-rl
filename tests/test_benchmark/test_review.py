@@ -2,6 +2,7 @@
 
 from typing import Any
 
+import pytest
 import review
 
 
@@ -146,7 +147,7 @@ class TestReviewGui:
         monkeypatch.setattr(
             review, "review_path", lambda track="reuse": tmp_path / "reviews.jsonl"
         )
-        gui = review.review_gui(problems=[_problem("a"), _problem("b")])
+        gui = review.review_gui("author_1", problems=[_problem("a"), _problem("b")])
 
         by_label = {b.description: b for b in _buttons(gui)}
         assert {"keep", "update", "reject", "← back"} <= set(by_label)
@@ -157,11 +158,34 @@ class TestReviewGui:
         assert review.accepted_ids() == {"a"}
         assert review.verdicts()["b"]["verdict"] == "reject"
 
+    def test_verdict_is_attributed_to_the_reviewing_author(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        monkeypatch.setattr(
+            review, "review_path", lambda track="reuse": tmp_path / "reviews.jsonl"
+        )
+        gui = review.review_gui("author_2", problems=[_problem("a")])
+        {b.description: b for b in _buttons(gui)}["keep"].click()
+        assert review.verdicts()["a"]["author"] == "author_2"
+
+    @pytest.mark.parametrize(
+        "bad_author", ["", "  ", "alice", "Author_1", "author_", "author_0", "author1"]
+    )
+    def test_non_anonymous_author_is_rejected(
+        self, bad_author, tmp_path, monkeypatch
+    ) -> None:
+        # only "author_<N>" (N >= 1) is accepted - a real name would break submission anonymity
+        monkeypatch.setattr(
+            review, "review_path", lambda track="reuse": tmp_path / "reviews.jsonl"
+        )
+        with pytest.raises(ValueError):
+            review.review_gui(bad_author, problems=[_problem("a")])
+
     def test_update_ships_edited_prompt(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setattr(
             review, "review_path", lambda track="reuse": tmp_path / "reviews.jsonl"
         )
-        gui = review.review_gui(problems=[_problem("a"), _problem("b")])
+        gui = review.review_gui("author_1", problems=[_problem("a"), _problem("b")])
 
         # edit the prompt in the editor, then click update
         _textareas(gui)[0].value = "a much clearer prompt"
@@ -180,7 +204,7 @@ class TestReviewGui:
             lambda track="reuse": tmp_path / f"reviews_{track}.jsonl",
         )
         gui = review.review_gui(
-            problems=[_problem("a", with_extlib=False)], track="control"
+            "author_1", problems=[_problem("a", with_extlib=False)], track="control"
         )
         {b.description: b for b in _buttons(gui)}["keep"].click()
 
@@ -193,7 +217,7 @@ class TestReviewGui:
             review, "review_path", lambda track="reuse": tmp_path / "reviews.jsonl"
         )
         gui = review.review_gui(
-            problems=[_problem("a", with_extlib=False)], track="control"
+            "author_1", problems=[_problem("a", with_extlib=False)], track="control"
         )
         assert _extlib_accordion(gui).layout.display == "none"
 
@@ -201,5 +225,5 @@ class TestReviewGui:
         monkeypatch.setattr(
             review, "review_path", lambda track="reuse": tmp_path / "reviews.jsonl"
         )
-        gui = review.review_gui(problems=[_problem("a")])
+        gui = review.review_gui("author_1", problems=[_problem("a")])
         assert _extlib_accordion(gui).layout.display != "none"

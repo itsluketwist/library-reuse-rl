@@ -11,9 +11,12 @@ criteria; "control" judges the stdlib-only seeds (BCB solutions with no external
 where library reuse isn't expected) for determinism and text-serialisability only, since they have
 no library solution to be dual-solvable with.
 
-The judge makes one model call per surviving problem, so the run is resumable: rows already in
-the output artefact are skipped. Use --limit to judge only the first N (for a cheap smoke test)
-and --dry-run to skip the model entirely.
+The judge makes one model call per surviving problem, so the run is resumable: a seed already
+judged "keep" or "maybe" is left alone on a rerun, but a seed still sitting at "drop" is re-judged
+every time - the same pattern stages 03/04/05 use for their own retries. This means simply rerunning
+this stage (optionally with an updated prompt or a stronger --model) is how to recover more of the
+pool without re-touching or re-spending on what's already kept. Use --limit to judge only the first
+N (for a cheap smoke test) and --dry-run to skip the model entirely.
 
 Usage: python benchmark/pipeline/02_filter.py [--track reuse|control] [--limit N] [--dry-run] [--model M]
 """
@@ -21,7 +24,12 @@ Usage: python benchmark/pipeline/02_filter.py [--track reuse|control] [--limit N
 import argparse
 import os
 
-from build import artefact_path, hard_exclude_reason, track_artefact_path
+from build import (
+    artefact_path,
+    hard_exclude_reason,
+    latest_records,
+    track_artefact_path,
+)
 from generation import complete_json
 
 from src.utils.io import append_jsonl, load_jsonl
@@ -59,9 +67,17 @@ Reference solution (currently uses libraries: {libs}):
 
 Decide whether the underlying problem can be rewritten into such a stdin/stdout task meeting ALL:
 1. deterministic, with NO randomness: the output is a pure function of the inputs (no network, no
-   current date/time). Reject any problem that involves random number generation - EVEN if a seed
-   is given - because reproducing a random sequence pins a specific library's generator, which
-   defeats the library-agnostic goal.
+   current date/time). Judge this about the REWRITTEN task, not the original solution's code: if
+   the original only calls a random generator to manufacture its OWN example data (e.g. "generate N
+   random integers, then sum them" or "create a random DataFrame, then normalize it"), and the
+   computation over that data is itself deterministic, this is FINE - the rewrite will read that
+   already-generated data directly from stdin instead of generating it, so the underlying task has
+   no randomness left at all. Do NOT accept a seed as the fix for this (regenerating a sequence from
+   a seed still pins a specific library's generator); the fix is passing the concrete data itself.
+   Reject only when randomness is part of the task's own specified BEHAVIOUR, not just its example
+   setup: the same input must have exactly one correct output, so reject if the task is to shuffle,
+   sample, or otherwise produce a result that legitimately varies between correct runs on identical
+   input (e.g. "output a random password", "pick a random city and report it").
 2. text-serialisable: the rewrite reshapes the input/output, so judge the underlying DATA, not the
    original's file conventions. A single input file's CONTENTS simply become the stdin, and a
    result the original writes to a single file (or returns as a file path) can instead be PRINTED
@@ -161,16 +177,25 @@ def judge_problem(
     return normalise_verdict(data)
 
 
-def _done_seed_ids(
+def _settled_seed_ids(
     out_path,
 ) -> set[str]:
-    """Seed ids already written to the output artefact, so a resumed run skips them.
+    """Seed ids not eligible for (re-)judging, so a rerun only re-judges what's still dropped.
 
-    Returns the set of completed seed ids (empty if the artefact does not exist yet).
+    Mirrors the succeeded_ids pattern the other LLM stages use for their own retries: once a seed
+    clears the judge it is left alone, but a seed still sitting at "drop" is re-judged on every
+    subsequent run - the mechanism for recovering more of the pool with an updated prompt or a
+    stronger model, without re-touching or re-spending on what already passed. A hard-excluded seed
+    is also settled, never retried - that check is deterministic (network/plot-gui libs), so a
+    rerun would only ever reproduce the identical drop.
+
+    Returns the set of settled seed ids.
     """
-    if not out_path.exists():
-        return set()
-    return {row["seed_id"] for row in load_jsonl(out_path)}
+    return {
+        seed_id
+        for seed_id, row in latest_records(out_path).items()
+        if row["verdict"] in ("keep", "maybe") or row["stage"] == "hard-exclude"
+    }
 
 
 def _annotate(
@@ -245,9 +270,11 @@ def main() -> None:
     )
     rows = load_jsonl(artefact_path(seed_file))
     out_path = track_artefact_path("02_candidates.jsonl", args.track)
-    done = _done_seed_ids(out_path)
+    done = _settled_seed_ids(out_path)
     if done:
-        print(f"resuming: {len(done)} problems already annotated")
+        print(
+            f"resuming: {len(done)} problems already kept/maybe (re-judging the rest)"
+        )
 
     judged = 0
     for row in rows:
@@ -278,10 +305,14 @@ def main() -> None:
 def _summarise(
     out_path,
 ) -> None:
-    """Print verdict counts for the full output artefact."""
+    """Print verdict counts for the full output artefact, latest verdict per seed.
+
+    A rerun leaves earlier attempts on disk, so a seed re-judged after a drop has more than one
+    raw row - counting only the latest keeps the summary accurate.
+    """
     from collections import Counter
 
-    rows = load_jsonl(out_path)
+    rows = list(latest_records(out_path).values())
     verdicts = Counter(r["verdict"] for r in rows)
     kept = sum(1 for r in rows if r["verdict"] in ("keep", "maybe"))
     print(f"\ntotal annotated: {len(rows)} -> carried forward (keep+maybe): {kept}")

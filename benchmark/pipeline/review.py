@@ -13,9 +13,16 @@ both the validated-problem source and the verdicts file - the two tracks are rev
 independently. Verdicts live in a JSONL under the (gitignored) artefacts directory; the
 keep/update/reject summary is captured in the audit REPORT. The file is append-only and the latest
 entry per seed wins, so review can span sessions and be revised.
+
+Review is a two-author process: each verdict carries the reviewing author's anonymous id (set once
+per notebook session, see `review_gui`) - "author_1", "author_2", ... never a real name, since this
+repo must stay anonymous for submission. Multiple reviewers can share a track this way - the GUI's
+first-unreviewed-problem resume means they naturally split the pool without double-reviewing the
+same problem.
 """
 
 import html
+import re
 from pathlib import Path
 from typing import Literal
 
@@ -75,12 +82,20 @@ def record_verdict(
     note: str = "",
     prompt: str | None = None,
     track: str = "reuse",
+    author: str = "",
 ) -> None:
     """Append a verdict for one problem (append-only, latest wins).
 
-    Pass `prompt` for an "update" verdict to store the author's edited prompt as an override.
+    Pass `prompt` for an "update" verdict to store the author's edited prompt as an override, and
+    `author` to attribute the review - with two reviewers sharing a track, this is what tells their
+    verdicts apart later (e.g. in the audit report's per-author breakdown).
     """
-    record: dict = {"seed_id": seed_id, "verdict": verdict, "note": note}
+    record: dict = {
+        "seed_id": seed_id,
+        "verdict": verdict,
+        "note": note,
+        "author": author,
+    }
     if prompt is not None:
         record["prompt"] = prompt
     append_jsonl(record, review_path(track))
@@ -169,20 +184,36 @@ def _cases_html(
     return f"<ul style='font-family: monospace; font-size: 12px;'>{items}</ul>"
 
 
+_AUTHOR_PATTERN = re.compile(r"^author_[1-9]\d*$")
+
+
 def review_gui(
+    author: str,
     problems: list[dict] | None = None,
     track: str = "reuse",
 ) -> object:
     """Launch the keep/reject review interface for the validated problems of one track.
 
+    `author` identifies whoever is reviewing in this session (set it in the notebook) - it's
+    stored on every verdict this session records, so two reviewers sharing a track can tell their
+    reviews apart later. Must be an anonymous id of the form "author_1", "author_2", ... - never a
+    real name, since this repo must stay anonymous for submission.
+
     Shows one problem at a time - the prompt, its test cases, and its gold solution(s) in
     collapsible panels - with keep / reject buttons and a notes field. Saves after every click and
-    resumes from the first unreviewed problem, so review can span sittings. Control-track problems
-    have no `gold_extlib`, so that panel is only shown when the problem has one.
+    resumes from the first unreviewed problem (by ANY author), so two reviewers naturally split the
+    pool without double-reviewing the same problem, and review can span sittings. Control-track
+    problems have no `gold_extlib`, so that panel is only shown when the problem has one.
 
     Returns the widget to display in the notebook.
     """
     import ipywidgets as widgets  # lazy: the module must load without a notebook environment
+
+    if not _AUTHOR_PATTERN.match(author):
+        raise ValueError(
+            f'author must look like "author_1", "author_2", ... (got {author!r}) - '
+            "no real names, this repo must stay anonymous for submission"
+        )
 
     problems = validated_problems(track) if problems is None else problems
     reviewed = verdicts(track)
@@ -228,6 +259,7 @@ def review_gui(
         existing = reviewed.get(seed)
         n_done = sum(1 for p in problems if p["seed_id"] in reviewed)
         header.value = (
+            f"<b>reviewing as {html.escape(author)}</b> &nbsp;|&nbsp; "
             f"<b>reviewed {n_done} / {len(problems)}</b> &nbsp;|&nbsp; {seed} "
             f"&nbsp;|&nbsp; {problem.get('category', '?')} &nbsp;|&nbsp; "
             f"seed_libs {problem.get('seed_libs', [])}"
@@ -256,7 +288,9 @@ def review_gui(
             )
         notes.value = existing.get("note", "") if existing else ""
         status.value = (
-            f"current verdict: <b>{existing['verdict']}</b>" if existing else ""
+            f"current verdict: <b>{existing['verdict']}</b> (by {existing.get('author') or '?'})"
+            if existing
+            else ""
         )
 
     def _save(
@@ -270,12 +304,18 @@ def review_gui(
         nonlocal position
         problem = problems[position]
         record_verdict(
-            problem["seed_id"], verdict, notes.value, prompt=prompt, track=track
+            problem["seed_id"],
+            verdict,
+            notes.value,
+            prompt=prompt,
+            track=track,
+            author=author,
         )
         record: dict = {
             "seed_id": problem["seed_id"],
             "verdict": verdict,
             "note": notes.value,
+            "author": author,
         }
         if prompt is not None:
             record["prompt"] = prompt

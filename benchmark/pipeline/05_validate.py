@@ -15,12 +15,18 @@ Apparent failures are dominated by sampling variance, not model capability, so w
 (only non-kept tasks are retried) and supports --limit / --model. Point LRB_BUILD_PYTHON at the
 seeded build venv (benchmark/pipeline/setup_build_venv.sh).
 
+A rerun first checks whether the seed's last attempt failed for an ENVIRONMENT reason (install
+failed, timeout - e.g. two runs racing installs into the same build venv) rather than a genuine
+behavioural one (output mismatch, no library used, a leaked library name): if so, it retries that
+exact already-generated solution's install+run for free before spending a new model call on
+generating a fresh one.
+
 Usage: python benchmark/pipeline/05_validate.py [--limit N] [--model M] [--attempts N]
 """
 
 import argparse
 
-from build import BUILD_PYTHON, artefact_path, succeeded_ids
+from build import BUILD_PYTHON, artefact_path, latest_records
 from generation import DEFAULT_GEN_MODEL, complete_json
 from libreusebench.environment import evaluate_record, temporary_packages
 from libreusebench.libraries import analyse_source, find_named_libraries
@@ -126,6 +132,50 @@ def library_solution(
     return solution, packages, resolved_model
 
 
+# drop reasons that reflect OUR environment breaking mid-install/run, not the generated solution
+# being wrong - so an already-generated solution is worth re-running as-is before generating a
+# fresh one (e.g. this is exactly what a rerun should do after two runs raced installs into the
+# same build venv, corrupting each other's install step)
+_ENVIRONMENT_DROP_REASONS = {"install failed", "timeout"}
+
+
+def _install_and_run(
+    row: dict,
+    solution: str,
+    pip_packages: list[str],
+) -> dict:
+    """Install `pip_packages` into the isolated build venv and run `solution` against the tests.
+
+    Returns a result dict: always carries 'passed'; on success the version-pinned packages; on
+    failure a granular drop_reason and diagnostic detail (not the solution/model, which the caller
+    already has).
+    """
+    # install the declared packages into the isolated build venv, run the tests, then fully
+    # uninstall - recording the exact versions the library solution was validated against
+    with temporary_packages(BUILD_PYTHON, pip_packages) as install:
+        versions = install.versions
+        if install.failed:
+            passed, message = False, f"install failed: {sorted(install.failed)}"
+        else:
+            passed, message = evaluate_record(
+                program=solution,
+                inputs=row["inputs"],
+                expected_outputs=row["expected_outputs"],
+                python_executable=BUILD_PYTHON,
+            )
+
+    if passed:
+        # pin each installed package to the exact version it was validated against
+        pinned = sorted(f"{name}=={version}" for name, version in versions.items())
+        return {"passed": True, "gold_extlib_packages": pinned}
+    # a granular failure kind (not a generic "disagrees") so reruns target only what's worth retrying
+    return {
+        "passed": False,
+        "drop_reason": classify_failure(message),
+        "detail": failure_detail(message),
+    }
+
+
 def validate_once(
     row: dict,
     model: str,
@@ -152,30 +202,51 @@ def validate_once(
     if not library_libs:
         return {"passed": False, "drop_reason": "solution used no library"} | attempt
 
-    # install the declared packages into the isolated build venv, run the tests, then fully
-    # uninstall - recording the exact versions the library solution was validated against
-    with temporary_packages(BUILD_PYTHON, pip_packages) as install:
-        versions = install.versions
-        if install.failed:
-            passed, message = False, f"install failed: {sorted(install.failed)}"
-        else:
-            passed, message = evaluate_record(
-                program=solution,
-                inputs=row["inputs"],
-                expected_outputs=row["expected_outputs"],
-                python_executable=BUILD_PYTHON,
-            )
+    return attempt | _install_and_run(row, solution, pip_packages)
 
-    if passed:
-        # pin each installed package to the exact version it was validated against
-        pinned = sorted(f"{name}=={version}" for name, version in versions.items())
-        return {"passed": True} | attempt | {"gold_extlib_packages": pinned}
-    # a granular failure kind (not a generic "disagrees") so reruns target only what's worth retrying
-    return {
-        "passed": False,
-        "drop_reason": classify_failure(message),
-        "detail": failure_detail(message),
-    } | attempt
+
+def retry_environment_failure(
+    row: dict,
+    prior: dict,
+) -> dict | None:
+    """Re-run a previously-generated library solution's install+test, without a new model call.
+
+    Only applies when the seed's last attempt has a stored solution and failed for an
+    environment reason (see _ENVIRONMENT_DROP_REASONS) - a genuine behavioural failure (output
+    mismatch, runtime error, no library used, a leaked library name) means the solution itself is
+    the problem, so regenerating is the right move, not re-running the same code.
+
+    Returns the same shape as validate_once's outcome, or None if this attempt doesn't apply.
+    """
+    if prior.get("drop_reason") not in _ENVIRONMENT_DROP_REASONS or not prior.get(
+        "gold_extlib"
+    ):
+        return None
+    attempt = {
+        "gold_extlib": prior["gold_extlib"],
+        "gold_extlib_model": prior.get("gold_extlib_model", ""),
+        "gold_extlib_packages": prior["gold_extlib_packages"],
+    }
+    return attempt | _install_and_run(
+        row, prior["gold_extlib"], prior["gold_extlib_packages"]
+    )
+
+
+def _best_of_n(
+    row: dict,
+    model: str,
+    attempts: int,
+) -> dict:
+    """Draw up to `attempts` fresh solutions, stopping at the first that passes.
+
+    Returns the last outcome tried (a pass, or the final attempt's failure).
+    """
+    outcome: dict = {"passed": False}
+    for _ in range(max(1, attempts)):
+        outcome = validate_once(row, model=model)
+        if outcome["passed"]:
+            break
+    return outcome
 
 
 def main() -> None:
@@ -199,7 +270,8 @@ def main() -> None:
         row for row in load_jsonl(artefact_path("04_tests.jsonl")) if row.get("kept")
     ]
     out_path = artefact_path("05_validated.jsonl")
-    done = succeeded_ids(out_path)
+    prior_records = latest_records(out_path)
+    done = {seed_id for seed_id, row in prior_records.items() if row.get("kept")}
     print(
         f"{len(rows)} problems to validate"
         + (f", {len(done)} already done" if done else "")
@@ -228,12 +300,14 @@ def main() -> None:
             )
             continue
 
+        # if the last attempt only failed for an environment reason (a broken/contended install,
+        # not a bad solution), retry that SAME already-generated solution for free first
+        prior = prior_records.get(seed_id)
+        outcome = retry_environment_failure(row, prior) if prior is not None else None
+
         # gate 2/3: draw up to N solutions, stopping at the first that reproduces the gold outputs
-        outcome: dict = {}
-        for _ in range(max(1, args.attempts)):
-            outcome = validate_once(row, model=args.model)
-            if outcome["passed"]:
-                break
+        if outcome is None or not outcome["passed"]:
+            outcome = _best_of_n(row, model=args.model, attempts=args.attempts)
 
         fields = {key: value for key, value in outcome.items() if key != "passed"}
         if not outcome["passed"]:

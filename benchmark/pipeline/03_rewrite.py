@@ -52,8 +52,14 @@ Reword this into a single self-contained task, described in plain natural langua
 - it specifies the input format (what appears on standard input) and the output format (what to
   print), with any rules needed to make the output unambiguous (ordering, tie-breaking, rounding),
   precisely enough that each input has exactly one correct output;
-- the task is a deterministic pure function of its input (no randomness unless a seed is given as
-  part of the input, no network, no clock, no reading or writing files).
+- the task is a deterministic pure function of its input (no network, no clock, no reading or
+  writing files). If the original solution only calls a random generator to manufacture its OWN
+  example data (e.g. it generates a random list, then computes a statistic over it), do NOT carry
+  that generation into the rewrite and do NOT take a seed as input either - reproducing a sequence
+  from a seed still pins a specific library's generator. Instead, have the rewritten task read that
+  already-generated data ITSELF directly from standard input (e.g. "read a list of integers from
+  stdin", not "read a seed and regenerate the list"), so no randomness remains anywhere in the
+  rewritten task.
 
 Keep it concise. Write it the way a clear programming-exercise statement reads - natural-language
 prose, no code - and include AT MOST ONE short example (one sample input and its expected output);

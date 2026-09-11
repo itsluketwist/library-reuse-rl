@@ -52,3 +52,20 @@ class TestClassifyFailure:
     def test_detail_keeps_the_informative_last_line(self) -> None:
         message = "Traceback (most recent call last):\nValueError: bad input"
         assert validate_stage.failure_detail(message) == "ValueError: bad input"
+
+
+class TestRetryEnvironmentFailure:
+    """A prior environment failure (install/timeout) is worth retrying as-is; a behavioural one isn't."""
+
+    def test_none_for_behavioural_failure(self) -> None:
+        prior = {"drop_reason": "output mismatch", "gold_extlib": "print(1)"}
+        assert validate_stage.retry_environment_failure({}, prior) is None
+
+    def test_none_without_a_stored_solution(self) -> None:
+        prior = {"drop_reason": "install failed"}
+        assert validate_stage.retry_environment_failure({}, prior) is None
+
+    def test_none_for_a_fresh_seed_with_no_prior_attempt(self) -> None:
+        # main() only calls this when a prior record exists, but the gate itself should still
+        # fail safe if given an empty prior
+        assert validate_stage.retry_environment_failure({}, {}) is None

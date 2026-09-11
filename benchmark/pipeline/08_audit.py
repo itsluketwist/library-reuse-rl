@@ -126,6 +126,10 @@ def _reuse_section() -> list[str]:
             "06 review verdicts",
             Counter(row.get("verdict", "?") for row in reviewed.values()),
         )
+        lines += _md_counts(
+            "06 reviews by author",
+            Counter(row.get("author") or "?" for row in reviewed.values()),
+        )
 
     if final:
         lines += _md_counts(
@@ -187,6 +191,10 @@ def _control_section() -> list[str]:
         lines += _md_counts(
             "06 review verdicts (control)",
             Counter(row.get("verdict", "?") for row in reviewed.values()),
+        )
+        lines += _md_counts(
+            "06 reviews by author (control)",
+            Counter(row.get("author") or "?" for row in reviewed.values()),
         )
     if final:
         # every control seed's reference solution is stdlib-only, so seed-library coverage
