@@ -17,7 +17,7 @@ from .inference import (
 )
 
 
-DEFAULT_DATASETS = ("library_usage", "libreusebench")
+DEFAULT_DATASETS = ("library_usage", "libreusebench_test")
 
 
 def _dataset_names(value: str) -> list[str]:

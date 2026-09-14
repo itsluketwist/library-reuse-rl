@@ -131,7 +131,7 @@ deployments.
 
 Inference reads named datasets from `config/eval_datasets.yaml` and delegates prompt
 construction to `src.data.load_eval_dataset`, exactly as the main evaluation path does.
-By default it generates both `library_usage` and `libreusebench`. It does not prepare RFT
+By default it generates both `library_usage` and `libreusebench_test`. It does not prepare RFT
 rows and does not run any evaluator.
 
 ```bash
@@ -139,7 +139,7 @@ venv
 python fireworks/infer_base.py \
   --model accounts/ACCOUNT_ID/deployments/library-reuse-qwen3-8b \
   --model-name qwen3-8b-base \
-  --datasets library_usage,libreusebench \
+  --datasets library_usage,libreusebench_test \
   --decoding-profile qwen3 \
   --prompt-style base \
   --seed 42
@@ -347,7 +347,7 @@ venv
 python fireworks/infer_rft.py \
   --model accounts/ACCOUNT_ID/deployments/FINE_TUNED_DEPLOYMENT_ID \
   --model-name library-reuse-qwen3-8b-grpo-r16-v1 \
-  --datasets library_usage,libreusebench \
+  --datasets library_usage,libreusebench_test \
   --decoding-profile qwen3 \
   --prompt-style base \
   --seed 42

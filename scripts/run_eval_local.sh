@@ -23,7 +23,7 @@ models=(
 
 # comma-separated eval dataset names (config/eval_datasets.yaml)
 # product_choice is gitignored and must have been built locally.
-datasets="library_usage,libreusebench"
+datasets="library_usage,libreusebench_test,libreusebench_control"
 
 # decoding profiles to evaluate with (eval_decoding_profiles in config/training.yaml)
 decoding_profiles=(

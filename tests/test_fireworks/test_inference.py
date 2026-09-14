@@ -268,8 +268,8 @@ def test_cli_prepares_both_named_datasets_without_scoring(
         )
         + "\n",
     )
-    libreusebench = tmp_path / "libreusebench.jsonl"
-    libreusebench.write_text(
+    libreusebench_test = tmp_path / "libreusebench_test.jsonl"
+    libreusebench_test.write_text(
         json.dumps(
             {
                 "task_id": "LRB/1",
@@ -286,8 +286,8 @@ def test_cli_prepares_both_named_datasets_without_scoring(
         "library_usage:\n"
         f"  path: {library_usage}\n"
         "  evaluator: library_usage\n"
-        "libreusebench:\n"
-        f"  path: {libreusebench}\n"
+        "libreusebench_test:\n"
+        f"  path: {libreusebench_test}\n"
         "  evaluator: libreusebench\n",
     )
     decoding_config = tmp_path / "decoding.yaml"
@@ -326,7 +326,7 @@ def test_cli_prepares_both_named_datasets_without_scoring(
 
     assert [call["dataset_name"] for call in generated] == [
         "library_usage",
-        "libreusebench",
+        "libreusebench_test",
     ]
     assert all(call["config"].samples == 2 for call in generated)
     assert generated[0]["rows"][0]["task_id"] == "LU/1"

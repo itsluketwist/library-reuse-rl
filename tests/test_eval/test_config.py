@@ -9,7 +9,7 @@ def test_every_eval_dataset_has_an_explicit_evaluator() -> None:
 
     assert datasets
     assert all({"path", "evaluator"} <= set(config) for config in datasets.values())
-    assert datasets["libreusebench"]["evaluator"] == "libreusebench"
+    assert datasets["libreusebench_test"]["evaluator"] == "libreusebench"
 
 
 def test_every_decoding_profile_declares_its_thinking_mode() -> None:

@@ -178,6 +178,6 @@ package per line), which skips both collection and confirmation. If confirmation
 package fails to install, the harness writes that editable `env.txt` for correction —
 remove unwanted or un-installable libraries, fix names/versions, and re-run with `--env`.
 
-The repo's `run_eval -d libreusebench` invokes this same complete evaluator, passing `confirm=None`
-to install automatically since it runs unattended, and uses a separate cached environment for each
-evaluation output.
+The main repo's eval pipeline invokes this same complete evaluator, passing `confirm=None` to install
+automatically since it runs unattended, and uses a separate cached environment for each evaluation
+output.
