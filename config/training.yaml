@@ -30,9 +30,10 @@ eval_steps: 10
 per_device_eval_batch_size: 16  # must be divisible by num_generations
 
 # named decoding profiles, shared by training rollouts (see rollout_decoding_profile
-# above) and run_eval.py (--decoding-profile/--decoding-config). n_samples is eval-only
-# (rollouts use num_generations above instead) - how many completions vllm samples per
-# prompt, e.g. for LibReuseBench's pass@k or library-usage's per-response reuse stats.
+# above) and run_eval.py (--decoding-profile/--decoding-config). how many completions
+# to sample per prompt (e.g. for LibReuseBench's pass@k or library-usage's per-response
+# reuse stats) is an eval-only, per-run choice - see run_eval.py's --n-samples, not a
+# profile field, since rollouts use num_generations above instead.
 # enable_thinking drives the chat template's reasoning mode; api-served models take their
 # provider's own default instead (see src/eval/generate_api.py).
 eval_decoding_profiles:
@@ -41,21 +42,18 @@ eval_decoding_profiles:
     top_p: 1.0
     top_k: 0  # disabled
     max_new_tokens: 8192
-    n_samples: 3
     enable_thinking: true
   greedy:
     temperature: 0.0
     top_p: 1.0
     top_k: 0  # disabled
     max_new_tokens: 8192
-    n_samples: 1  # greedy is deterministic, so more samples would just repeat
     enable_thinking: true
   qwen3:
     temperature: 0.6
     top_p: 0.95
     top_k: 20
     max_new_tokens: 8192
-    n_samples: 1
     enable_thinking: true
 
 # ==============================================================================

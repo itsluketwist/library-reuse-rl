@@ -21,6 +21,22 @@ qwen3-8b:
   base: "Qwen/Qwen3-8B"
   path:
 
+qwen3-14b:
+  base: "Qwen/Qwen3-14B"
+  path:
+
+qwen3-32b:
+  base: "Qwen/Qwen3-32B"
+  path:
+
+olmo3-7b:
+  base: "allenai/OLMo-3-7B-Think"
+  path:
+
+ocr-7b:
+  base: "nvidia/OpenCodeReasoning-Nemotron-1.1-7B"
+  path:
+
 deepseek-v4-flash:
   provider: api
   base: "deepseek-v4-flash"

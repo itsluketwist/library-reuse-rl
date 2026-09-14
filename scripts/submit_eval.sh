@@ -27,13 +27,21 @@ models=(
     # "qwen3-debug"
     "qwen3-4b"
     "qwen3-8b"
-    # "deepseek-v4-flash"
+    "qwen3-14b"
+    "qwen3-32b"
+    "olmo3-7b"
+    "ocr-7b"
+    # "deepseek-flash"
     # "gpt-5.6-luna"
 )
 
 # comma-separated eval dataset names (config/eval_datasets.yaml)
 # product_choice is gitignored and must have been built locally.
 datasets="library_usage,libreusebench_test,libreusebench_control"
+
+# completions sampled per prompt (see --n-samples in src/run_eval.py); eval-only, unrelated
+# to training rollouts. leave blank to use the default of 1.
+n_samples=5
 
 # decoding profiles to evaluate with (eval_decoding_profiles in config/training.yaml)
 decoding_profiles=(
@@ -67,6 +75,12 @@ fi
 debug_flag=""
 if [ "$debug" = true ]; then
     debug_flag="--debug"
+fi
+
+# build n-samples flag string
+n_samples_flag=""
+if [ -n "$n_samples" ]; then
+    n_samples_flag="--n-samples $n_samples"
 fi
 
 # default to the tiny debug model if smoke-testing with no model set
@@ -104,6 +118,7 @@ echo "Evaluating ${#models[@]} models x ${#decoding_profiles[@]} decoding profil
 echo "  Datasets: ${datasets:-all}"
 echo "  Decoding profiles: ${decoding_profiles[*]}"
 echo "  Prompt styles: ${prompt_styles[*]}"
+echo "  n_samples: ${n_samples:-1 (default)}"
 echo
 
 for model in "${models[@]}"; do
@@ -140,6 +155,7 @@ run_eval \
     --decoding-profile $decoding_profile \
     --prompt-style $prompt_style \
     --run-timestamp ${run_timestamp} \
+    $n_samples_flag \
     $debug_flag
 
 echo "Eval complete for model: $model, decoding: $decoding_profile, prompt style: $prompt_style"

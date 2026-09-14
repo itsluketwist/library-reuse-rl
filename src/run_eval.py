@@ -133,6 +133,18 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--n-samples",
+    type=int,
+    default=None,
+    help=(
+        "How many completions to sample per prompt (e.g. for LibReuseBench's pass@k or "
+        "library-usage's per-response reuse stats). Eval-only - training rollouts use "
+        "num_generations instead. Defaults to 1 if not given; with greedy decoding, more "
+        "than 1 just repeats the same output."
+    ),
+)
+
+parser.add_argument(
     "--prompt-style",
     type=str,
     choices=["lib", "use", "std", "base"],
@@ -222,6 +234,7 @@ def run_eval(
     adapter: str | None = None,
     debug: bool = False,
     run_timestamp: str | None = None,
+    n_samples: int | None = None,
 ) -> None:
     """
     Run evaluation of an untrained, pretrained, or trained model against one or more
@@ -248,6 +261,11 @@ def run_eval(
     `run_timestamp` groups this run's output files under output/eval/{run_timestamp}/
     (see eval_results_path); defaults to the current time (RUN_TIMESTAMP_FORMAT) when not
     given, so a standalone invocation still gets its own folder.
+
+    `n_samples` overrides how many completions are sampled per prompt for this run - it is
+    eval-only (training rollouts use num_generations instead, see config/training.yaml),
+    so it is a run_eval choice rather than a decoding-profile field; leave unset to sample
+    just 1.
 
     Resolves the model, decoding settings, and dataset/output paths, then runs
     evaluation (see evaluate_model) against each dataset, saving results under the paths
@@ -287,7 +305,10 @@ def run_eval(
         key=decoding_profile,
         section="eval_decoding_profiles",
     )
+    if n_samples is not None:
+        decoding_settings = {**decoding_settings, "n_samples": n_samples}
     log(f"Decoding profile '{decoding_profile}': {decoding_settings}")
+    log(f"n_samples: {decoding_settings.get('n_samples', 1)}")
 
     available_datasets = load_full_yaml(eval_datasets_config)
     dataset_names = datasets if datasets is not None else list(available_datasets)
@@ -344,6 +365,9 @@ def main() -> None:
     log(f"Adapter: {args.adapter or '(registered)'}")
     log(f"Datasets: {datasets or 'all'}")
     log(f"Decoding: {args.decoding_config} [{args.decoding_profile}]")
+    log(
+        f"n_samples: {args.n_samples if args.n_samples is not None else '(default: 1)'}"
+    )
     log(f"Prompt style: {args.prompt_style}")
     log(f"Debug: {args.debug}")
     log()
@@ -359,6 +383,7 @@ def main() -> None:
         adapter=args.adapter,
         debug=args.debug,
         run_timestamp=args.run_timestamp,
+        n_samples=args.n_samples,
     )
 
     # --- summary ---
