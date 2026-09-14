@@ -10,6 +10,10 @@ datetime:
   - Parse an ISO-8601 timestamp string and return how long ago it was.
   - Normalise a date string in an unknown common format to YYYY-MM-DD.
   - Add a given number of business days to a date and return the result.
+  - Parse date strings given in mixed formats and tally them by weekday.
+  - Filter a table's rows to those whose date falls in a given range.
+  - Round-trip a JSON document containing ISO-8601 timestamps.
+  - Find the next business day after a given date.
 http-requests:
   - Fetch JSON from an external REST API and return the parsed body.
   - Download a file from a URL and save it to disk.
@@ -26,6 +30,10 @@ data-validation:
 csv-excel:
   - Read a CSV file and return the number of rows per distinct column value.
   - Write a list of records out to a spreadsheet file.
+  - Read a CSV held in a string and return it with the data rows reversed.
+  - Convert a JSON array of records into a CSV table with a fixed column order.
+  - Emit a table as one JSON object per line.
+  - Sum every column of a block of comma-separated data.
 pdf:
   - Extract the text from a PDF file and return it.
   - Generate a simple one-page PDF report from a title and body text.
@@ -44,9 +52,16 @@ graphs:
 crypto-hashing:
   - Hash a user password securely for storage and verify it on login.
   - Issue and verify a signed token for an authenticated user.
+  - Encrypt a message with a symmetric key and decrypt it back.
 numerics:
   - Multiply two matrices supplied as nested lists.
   - Fit a simple linear regression to a set of points and return the slope.
+  - Multiply together all the values in a list.
+  - Take the base-10 logarithm of a column of numbers, handling zeros without warnings.
+  - Join two matrices side by side into one wider matrix.
+  - Apply a trigonometric function elementwise to a row of numbers.
+  - Compute the running cumulative sum of a sequence of numbers.
+  - Round every value in a column up to the nearest multiple of a given number.
 templating:
   - Render an HTML email body from a template and a context dict.
   - Generate a config file from a template with variable substitution.
@@ -62,6 +77,10 @@ image-processing:
 timezones:
   - Convert a naive local timestamp to UTC for a given timezone.
   - Show what time it is in three named cities right now.
+  - Convert a naive timestamp from one named timezone to another, respecting daylight saving.
+  - Report the average gap in seconds between timestamps given in different timezones.
+  - Bucket a list of timestamps by their local hour of day.
+  - Compute the seconds remaining until midnight on new year's day in a given timezone.
 uuid-slugs:
   - Generate a short unique id for a new record.
   - Turn an article title into a url-safe slug.
@@ -104,6 +123,10 @@ geo-distance:
 hypothesis-testing:
   - Run a t-test between two samples and return the p-value.
   - Compute the Pearson correlation between two lists of numbers.
+  - Build the pairwise correlation matrix of a table's columns.
+  - Report every pair of columns whose absolute correlation exceeds a threshold.
+  - Run a chi-square test of independence on a contingency table.
+  - Report the skewness of a sample.
 plotting:
   - Plot a line chart from a list of values and save it as a PNG.
   - Render a bar chart of category counts to an image file.
@@ -155,6 +178,94 @@ geometry:
 nlp-tokenize:
   - Split a paragraph into sentences and then into word tokens.
   - Count the most common words in a document, ignoring stop words.
+  - Split text into word and punctuation tokens, keeping hyphenated words whole.
+  - Count word n-gram frequencies in a document.
+  - Remove the standard English stop words from a block of text.
+  - Report the most frequent non-stop words in a document with their counts.
 ip-address:
   - Check whether an IP address falls within a given CIDR range.
   - List all the host addresses in a subnet.
+
+# tasks for the benchmark-derived categories (see EXPANSION.md). their shapes deliberately mirror
+# what LibReuseBench actually asks for: tabular records in, a summary or transformed table out.
+feature-scaling:
+  - Standardise every numeric column of a table to zero mean and unit variance.
+  - Rescale a list of values into the range 0 to 1, handling the all-equal case.
+  - Z-score two columns of a table and report the rows with the largest gap between them.
+  - Flag the values in a sample whose z-score exceeds a given threshold.
+descriptive-stats:
+  - Report the mean, median, mode and variance of each column of a table.
+  - Compute the column means of a table that contains missing values.
+  - Find the median of an arbitrarily nested list of numbers.
+  - Summarise a list of records with the mean and median of every key.
+  - Compute the Shannon entropy of a distribution of values.
+regex-text-extraction:
+  - Extract every token that starts with a dollar sign from a block of text.
+  - Parse timestamped log lines into structured fields and drop the malformed ones.
+  - Pull a decimal number out of every cell of a table, marking the cells with no match.
+  - Replace every acronym in a text column using a lookup table of expansions.
+frequency-counting:
+  - Count how many times each distinct value occurs in a column.
+  - Find the most common value in a list, breaking ties by the smallest.
+  - Report the most frequent value of every column of a table.
+  - Tally how many names start with each letter and sort by count.
+text-vectorisation:
+  - Build a document-term count matrix from a list of documents.
+  - Compute TF-IDF scores for the words in a collection of documents.
+  - Turn a sentence into a bag-of-words vector over a fixed vocabulary.
+  - Compute the cosine similarity between two documents from their word counts.
+categorical-encoding:
+  - Replace each distinct category label in a column with an integer code.
+  - One-hot encode a list of category labels into a matrix.
+  - Encode a column of labels using the alphabetical order of the distinct values.
+  - Convert a string column of a table into categorical codes in place.
+dataframe-groupby:
+  - Report the total and average value per group from a list of records.
+  - Count the rows per distinct category after removing duplicates.
+  - Compute each person's average score from a list of name/score pairs.
+  - Standardise a column within each group rather than across the whole table.
+dataframe-reshape:
+  - Drop a named column from a table and return the remaining rows.
+  - Add a computed length column to a table of strings.
+  - Insert a positional index column at the front of a table.
+  - Replace a marker substring throughout one column of a table.
+pairwise-distance:
+  - Compute the euclidean distance between every pair of rows in a matrix.
+  - Find the largest distance between any two points in a list of coordinates.
+  - Report the distances between each pair of consecutive points on a path.
+  - Build a condensed distance matrix from a set of feature vectors.
+clustering:
+  - Cluster a set of points by density given a radius and a minimum group size.
+  - Assign points to k clusters and return each point's cluster label.
+  - Identify the points that belong to no cluster.
+  - Group similar feature vectors and report the size of each cluster.
+regression-fitting:
+  - Fit a linear model predicting one column from the others and report the r-squared.
+  - Fit a least-squares line to a set of points and return its coefficients.
+  - Predict a target column from a feature table and report the residuals.
+  - Fit a polynomial to a series of measurements and return the fitted values.
+missing-data:
+  - Fill the blanks in each numeric column with that column's mean.
+  - Drop the rows of a table that have any missing field.
+  - Impute the missing values of a column with its most frequent value.
+  - Report which columns of a table contain missing values and how many.
+iterator-tools:
+  - Flatten a list of lists into a single sequence.
+  - Interleave two lists of unequal length into one sequence.
+  - Split a long sequence into fixed-size chunks.
+  - Take the distinct elements of a sequence, preserving first-seen order.
+combinatorics:
+  - Enumerate every distinct combination of three values that sums to a target.
+  - Report the highest subset products for a given subset size.
+  - List the distinct combinations of a list that contains repeated values.
+  - Rank all the subsets of a set by their total and return the top few.
+signal-processing:
+  - Compute the frequency spectrum of a sampled signal.
+  - Apply a low-pass filter to a noisy series of readings.
+  - Find the dominant frequency in a list of samples.
+  - Smooth a time series with a rolling window before summarising it.
+number-theory:
+  - Keep only the prime numbers from a list of integers.
+  - Return the prime factorisation of an integer.
+  - Find the next prime after a given number.
+  - Compute the greatest common divisor of a list of integers.

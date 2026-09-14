@@ -1,18 +1,27 @@
 # deterministic phrasing templates for the library-usage rows (see data/README.md).
 #
-# each task is wrapped in these templates to produce several natural wordings, in two modes:
-#   - repo:  the task is asked inside a vendored python repo's context (carries local_modules)
-#   - bare:  the task is asked on its own, "how do i implement x", with no repo context
-# build.py substitutes {context} (repo summary), {task} (the task verbatim) and {task_lower}
-# (the task with a lowercased first letter - kept as-is for acronyms like "POST" - and no
-# trailing full stop, for mid-sentence use). the LLM cache
-# (phrasings.json) layers extra bare-mode wordings on top of these.
+# each task is wrapped in these templates to produce a row in each of three modes:
+#   - repo:   the task is asked inside one vendored python repo's context (see taxonomy.yaml's
+#             repo_hint), carrying local_modules
+#   - simple: the task is asked on its own, "how do i implement x", with no repo context
+#   - script: the task is asked as a stdin/stdout program, reminiscent of the LibReuseBench
+#             eval benchmark's wording
+# each mode has exactly 2 templates; build.py deterministically picks ONE per task (not both),
+# so every task gets exactly one template-sourced row per mode. build.py substitutes {context}
+# (repo summary), {task} (the task verbatim), {task_lower} (the task with a lowercased first
+# letter - kept as-is for acronyms like "POST" - and no trailing full stop, for mid-sentence
+# use) and {task_stdio} (the task reworded to drop its "...and return the result" ending, for
+# stdin/stdout framing). simple_prompts.json / script_prompts.json / repo_prompts.json layer a
+# claude-generated wording on top of each mode.
 
 repo:
   - "{context}\n\nTask: {task}\n\nImplement this in Python."
   - "{context}\n\nWe need a new helper in this project: {task_lower}. Write it in Python."
 
-bare:
+simple:
   - "How do I {task_lower} in Python?"
-  - "I need to {task_lower}. Write the Python for it."
   - "Write a short Python program to {task_lower}."
+
+script:
+  - "Write a Python program that reads the necessary input from standard input and prints the result to standard output, to {task_stdio}."
+  - "Write a script that takes its input on standard input and prints its output to standard output: {task_stdio}."

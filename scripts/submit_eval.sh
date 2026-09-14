@@ -21,23 +21,35 @@ CPU_PARTITION="cpu"
 #                          evaluation configuration                           #
 ###############################################################################
 
-# the models to evaluate (untrained or pretrained, see config/models.yaml). api-provider
-# entries (deepseek-v4-flash, gpt-5.6-luna) run on the cpu partition, see model_provider below.
+# the models to evaluate, prefixed with their provider (matching config/models.yaml's
+# "provider" field - "vllm" for local weights, "api" for api-served models). api-provider
+# entries run on the cpu partition instead of the gpu one below - see partition selection.
 models=(
-    # "qwen3-debug"
-    "qwen3-4b"
-    "qwen3-8b"
-    "qwen3-14b"
-    "qwen3-32b"
-    "olmo3-7b"
-    "ocr-7b"
-    # "deepseek-flash"
-    # "gpt-5.6-luna"
+    ################################################
+    #### local vllm models (require a GPU node) ####
+    ################################################
+    # "vllm:qwen3-debug"
+    "vllm:qwen3-4b"
+    "vllm:qwen3-8b"
+    "vllm:qwen3-14b"
+    "vllm:qwen3-32b"
+    "vllm:olmo3-7b"
+    "vllm:ocr-7b"
+
+    ####################################################
+    #### api-served models (require network access) ####
+    ####################################################
+    # "api:deepseek-flash"
+    # "api:gpt-5.6-luna"
 )
 
-# comma-separated eval dataset names (config/eval_datasets.yaml)
-# product_choice is gitignored and must have been built locally.
-datasets="library_usage,libreusebench_test,libreusebench_control"
+# eval dataset names (config/eval_datasets.yaml). leave empty to evaluate every dataset in
+# that file. product_choice is gitignored and must have been built locally.
+datasets=(
+    "library_usage"
+    "libreusebench_test"
+    "libreusebench_control"
+)
 
 # completions sampled per prompt (see --n-samples in src/run_eval.py); eval-only, unrelated
 # to training rollouts. leave blank to use the default of 1.
@@ -62,13 +74,14 @@ prompt_styles=(
 debug=false
 
 ###############################################################################
-#                            submit jobs                                      #
+#                      submit jobs - do not edit below                        #
 ###############################################################################
 
-# build datasets flag string
+# build datasets flag string, joining the array into the comma-separated list run_eval
+# expects (-d)
 datasets_flag=""
-if [ -n "$datasets" ]; then
-    datasets_flag="-d $datasets"
+if [ ${#datasets[@]} -gt 0 ]; then
+    datasets_flag="-d $(IFS=,; echo "${datasets[*]}")"
 fi
 
 # build debug flag string
@@ -85,7 +98,7 @@ fi
 
 # default to the tiny debug model if smoke-testing with no model set
 if [ "$debug" = true ] && [ ${#models[@]} -eq 0 ]; then
-    models=("qwen3-debug")
+    models=("vllm:qwen3-debug")
 fi
 
 # fail loudly instead of silently submitting nothing if `models` is empty
@@ -99,40 +112,31 @@ run_timestamp=$(date +%y%m%dT%H%M%S)
 log_dir="logs/${run_timestamp}"
 echo "Log directory: $log_dir"
 
-# look up a model's provider from config/models.yaml, defaulting to "vllm" the same way
-# src/run_eval.py does for entries that omit the key (every local/trained model)
-model_provider() {
-    .venv/bin/python -c '
-import sys
-
-import yaml
-
-with open("config/models.yaml") as f:
-    config = yaml.safe_load(f)
-print(config[sys.argv[1]].get("provider", "vllm"))
-' "$1"
-}
-
 echo
 echo "Evaluating ${#models[@]} models x ${#decoding_profiles[@]} decoding profiles x ${#prompt_styles[@]} prompt styles"
-echo "  Datasets: ${datasets:-all}"
+echo "  Datasets: ${datasets[*]:-all}"
 echo "  Decoding profiles: ${decoding_profiles[*]}"
 echo "  Prompt styles: ${prompt_styles[*]}"
 echo "  n_samples: ${n_samples:-1 (default)}"
 echo
 
-for model in "${models[@]}"; do
+for model_entry in "${models[@]}"; do
+    provider="${model_entry%%:*}"
+    model="${model_entry#*:}"
+
     echo "Submitting jobs for $model"
     mkdir -p "${log_dir}/eval-$model"
 
-    provider=$(model_provider "$model")
     if [ "$provider" = "api" ]; then
         partition="$CPU_PARTITION"
         gpu_directives=""
         echo "  Provider: api -> partition=$CPU_PARTITION (no GPU requested)"
-    else
+    elif [ "$provider" = "vllm" ]; then
         partition="gpu"
         gpu_directives=$'#SBATCH --gres=gpu\n#SBATCH --gpus=1\n#SBATCH --constraint='"${GPU_CONSTRAINT}"
+    else
+        echo "Unknown provider '$provider' for model entry '$model_entry' - expected 'vllm:<model>' or 'api:<model>'."
+        exit 1
     fi
 
     for decoding_profile in "${decoding_profiles[@]}"; do

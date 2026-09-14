@@ -25,30 +25,34 @@ the upstream seed has no licence.
 | `product_choice` | `train/product_choice/` | prose pick | allowlist prose match, no execution | option |
 | `library_usage` | `train/library_usage/` | code (in/around a repo) | **import classification, no execution** | **main focus** |
 
-`library_usage` is the one we care about: `~50` code categories where a mature python library
+`library_usage` is the one we care about: 66 code categories where a mature python library
 exists but a model is tempted to hand-roll it. Reuse is detected programmatically — extract the
 solution's imports, subtract the standard library and the repo's own modules (`local_modules`),
-and any remaining *used* import is genuine reuse (no labels, no execution). Each task is asked in
-several wordings, in two modes: set **in a python repo's context**, or a **bare "how do I
-implement X"**. See `src/grpo/rewards/library_usage.py`.
+and any remaining *used* import is genuine reuse (no labels, no execution). Each task is asked
+in 3 modes — set **in a python repo's context** (`repo`), as a **bare "how do I implement X"**
+(`simple`), or as a **stdin/stdout script** (`script`, reminiscent of the LibReuseBench eval
+benchmark's wording) — each from 2 sources, a deterministic template and a claude-generated
+wording, so every task has up to 6 rows. See `src/grpo/rewards/library_usage.py`.
 
 **Ids.** Every row carries a unique `task_id` in the benchmark's style — `LRRL/U####` for
 `library_usage`, `LRRL/P####` for `product_choice`. Ids are assigned within the splits, numbered
 in test → train → val order, so they are contiguous per split and the test set starts at `…0000`.
 
-**Versioning.** Every `library_usage` row carries a `dataset_version`. **v1** (current) is the
-deterministic, template-only build — no LLM calls. **v2** (future) will fold in the
-LLM-diversified phrasings via `build/library/augment.py` → `phrasings.json`, plus any further
-expansion work; bump `DATASET_VERSION` in `build/library/build.py` when that lands.
+**Versioning.** Every `library_usage` row carries a `dataset_version`. **v1** was the
+deterministic, template-only build. **v2** (current) is the 3-mode (`repo`/`simple`/`script`) x
+2-source (`template`/`claude`) build: every task gets one row per (mode, source) - 6 rows/task
+once the claude caches (`build/library/*_prompts.json`) are populated via `augment.py`'s CLI, 3
+rows/task (template-only) while a cache is still empty. Bump `DATASET_VERSION` in
+`build/library/build.py` when the construction method changes again.
 
 **Splits.** Made by `build/split.py:split_disjoint_test`, with two deliberately different holdouts:
 
 - **test** holds out **whole, unseen tasks** — every wording of a held-out task is removed from
   training, so test measures generalisation to tasks the model never trained on. Test tasks are
   spread across categories (at most one per category, only from categories with >1 task, so no
-  category is emptied). With v1's 2–3 tasks/category this covers ~10 categories.
+  category is emptied). With v2's 194 tasks across 66 categories this covers ~19 categories.
 - **val** is an in-distribution, **`category_id`-stratified** subset of the *seen* tasks (held-out
-  rows/wordings of tasks that are also in train, across all 50 categories) — so val tracks whether
+  rows/wordings of tasks that are also in train, across all 66 categories) — so val tracks whether
   the model is learning the training distribution, while test is the final unseen check.
 
 ## `build/`
@@ -73,13 +77,18 @@ Shared helpers (used by both pipelines):
 
 **`build/library/`** — the library-usage pipeline (the main focus):
 
-- **`taxonomy.yaml`** — the ~50 code categories (`seed_libraries` are pip import names).
+- **`taxonomy.yaml`** — the 66 code categories (`seed_libraries` are pip import names;
+  `repo_hint` picks which repo below a category's repo-mode rows are set in).
 - **`tasks.yaml`** — the concrete feature tasks per category.
-- **`templates.yaml`** — deterministic phrasing templates for the repo and bare modes.
+- **`templates.yaml`** — 2 deterministic phrasing templates per mode (`repo`/`simple`/`script`);
+  build.py deterministically picks one per task.
 - **`repos/`** — committed repos we author (e.g. `pytoolbox`, a deliberately broad toolbox) used
   as repo-mode contexts, so every category has a plausible repo it could be added to.
-- **`augment.py`** — LLM seam that diversifies task wordings (hybrid); writes `phrasings.json`.
-- **`phrasings.json`** — committed cache of LLM wordings the build folds in (empty ⇒ templates only).
+- **`augment.py`** — LLM seam that adds one claude-generated wording per task per mode; also the
+  CLI (`python data/build/library/augment.py --type simple|script|repo|all`) that regenerates
+  the caches offline (needs `ANTHROPIC_API_KEY`; build.py itself never calls an LLM).
+- **`simple_prompts.json` / `script_prompts.json` / `repo_prompts.json`** — committed caches of
+  claude-generated wordings the build folds in, one per mode (empty ⇒ templates only).
 - **`build.py`** — build the `library_usage` split → `train/library_usage/`.
 
 ## Run order (from the repo root)
@@ -108,7 +117,7 @@ run_eval -m <model> -d library_usage,product_choice
 The eval dataset configuration stores an explicit `evaluator` beside every path. The
 library-usage evaluator examines every fenced answer code block and reports valid-code
 rate, reuse rate, appropriate-library rate, average distinct libraries used, library counts,
-and bare/repository-phrasing breakdowns. LibReuseBench uses its package's complete official
+and per-phrasing-mode breakdowns (`repo`/`simple`/`script`). LibReuseBench uses its package's complete official
 evaluator:
 it discovers and installs the generated responses' dependencies in an isolated environment,
 runs the official tests, and saves the official correctness and reuse statistics together with
