@@ -51,6 +51,11 @@ prompt_styles=(
 # true = tiny smoke test instead of full evaluation (see --debug in src/run_eval.py)
 debug=false
 
+# true = regenerate results even if already saved (see --update in src/run_eval.py).
+# false skips a model/dataset/decoding-profile/prompt-style combination whose result file
+# already exists under output/eval/, so rerunning only fills in what is missing.
+update=false
+
 ###############################################################################
 #                              run jobs                                       #
 ###############################################################################
@@ -65,6 +70,12 @@ fi
 debug_flag=""
 if [ "$debug" = true ]; then
     debug_flag="--debug"
+fi
+
+# build update flag string
+update_flag=""
+if [ "$update" = true ]; then
+    update_flag="--update"
 fi
 
 # build n-samples flag string
@@ -113,16 +124,14 @@ for model in "${models[@]}"; do
 
             # tee so progress is visible live and also kept per-run, like the slurm jobs'
             # ${log_dir}/eval-<model>/*.out; run_eval's own exit code still drives $? below.
-            # --run-timestamp reuses this invocation's $run_timestamp, so output/eval/ and
-            # logs/ land under matching folder names (see eval_results_path).
             run_eval \
                 -m "$model" \
                 $datasets_flag \
                 --decoding-profile "$decoding_profile" \
                 --prompt-style "$prompt_style" \
-                --run-timestamp "$run_timestamp" \
                 $n_samples_flag \
                 $debug_flag \
+                $update_flag \
                 2>&1 | tee "${log_dir}/eval-$model/${decoding_profile}-${prompt_style}-local.out"
 
             if [ "${PIPESTATUS[0]}" -ne 0 ]; then

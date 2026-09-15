@@ -73,6 +73,11 @@ prompt_styles=(
 # true = tiny smoke test instead of full evaluation (see --debug in src/run_eval.py)
 debug=false
 
+# true = regenerate results even if already saved (see --update in src/run_eval.py).
+# false skips a model/dataset/decoding-profile/prompt-style combination whose result file
+# already exists under output/eval/, so resubmitting only fills in what is missing.
+update=false
+
 ###############################################################################
 #                      submit jobs - do not edit below                        #
 ###############################################################################
@@ -88,6 +93,12 @@ fi
 debug_flag=""
 if [ "$debug" = true ]; then
     debug_flag="--debug"
+fi
+
+# build update flag string
+update_flag=""
+if [ "$update" = true ]; then
+    update_flag="--update"
 fi
 
 # build n-samples flag string
@@ -158,9 +169,9 @@ run_eval \
     $datasets_flag \
     --decoding-profile $decoding_profile \
     --prompt-style $prompt_style \
-    --run-timestamp ${run_timestamp} \
     $n_samples_flag \
-    $debug_flag
+    $debug_flag \
+    $update_flag
 
 echo "Eval complete for model: $model, decoding: $decoding_profile, prompt style: $prompt_style"
 EOF

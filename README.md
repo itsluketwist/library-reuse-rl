@@ -86,19 +86,19 @@ configuration block at the top of each, then run e.g. `bash scripts/submit_grpo.
 evaluation separately after the trained run ids have been registered in `config/models.yaml`.
 
 There are two eval launchers, each with its own configuration block at the top (models,
-datasets, decoding profiles, prompt styles, debug), so the two can be pointed at different
+datasets, decoding profiles, prompt styles, debug, update), so the two can be pointed at different
 model sets: [`scripts/submit_eval.sh`](scripts/submit_eval.sh) submits one slurm job per
 combination, and [`scripts/run_eval_local.sh`](scripts/run_eval_local.sh) runs them
 sequentially on the current node.
 
-Each invocation gets its own timestamp, and results are saved under
-`output/eval/{run_timestamp}/{model}/`, so re-running a combination never overwrites an
-earlier run. The launchers pass their timestamp through with `--run-timestamp`, so results
-and the matching `logs/{run_timestamp}/` folder share a name. Summarise a finished run
-into per-task comparison tables (and a `summary.csv`) with:
+Results are saved under `output/eval/{model}/`, keyed by dataset/decoding-profile/prompt-style,
+so re-running the same combination overwrites its previous result - a combination whose
+result file already exists is skipped instead, unless the `update` setting (`--update` on
+`run_eval`) is set. Each invocation's logs still get their own `logs/{run_timestamp}/`
+folder. Summarise results into per-task comparison tables (and a `summary.csv`) with:
 
 ```shell
-python scripts/summarize_eval.py output/eval/260816T174336
+python scripts/summarize_eval.py
 ```
 
 ### *api-served models*
@@ -194,8 +194,8 @@ existing component names.
   belong in `src/`.
 - [`output/`](output/) - Trained model outputs, named and registered automatically by
   `run_grpo` (see `trained_model_path` in [`src/run_grpo.py`](src/run_grpo.py)), and
-  evaluation results under `output/eval/{run_timestamp}/`. Debug runs are gitignored;
-  finished results are committed as the experimental record.
+  evaluation results under `output/eval/{model}/`. Debug runs are gitignored; finished
+  results are committed as the experimental record.
 - [`scripts/`](scripts/) - Job launchers (`setup_job.sh`, `submit_grpo.sh`,
   `submit_eval.sh` for slurm, `run_eval_local.sh` for the current node), and
   `summarize_eval.py` for reading results back.

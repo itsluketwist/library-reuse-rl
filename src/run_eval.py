@@ -1,7 +1,6 @@
 """The command-line entry point and orchestration for evaluating untrained, pretrained, or trained models."""
 
 from argparse import ArgumentParser
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal, get_args
 
@@ -10,12 +9,6 @@ from src.eval.generate_api import DEFAULT_MAX_TOKENS_PARAM, ApiSettings
 from src.prompts import PromptStyle, library_prompt_suffix
 from src.utils.config import load_full_yaml, load_yaml_config
 from src.utils.log import log, log_header
-
-
-# strftime format for run_timestamp, matching the `date +%y%m%dT%H%M%S` the shell launcher
-# scripts (scripts/submit_eval.sh, scripts/run_eval_local.sh) use for their log directory,
-# so a run's output and log folders share the same name when they pass theirs through.
-RUN_TIMESTAMP_FORMAT = "%y%m%dT%H%M%S"
 
 
 # tiny model (see config/models.yaml) used to smoke-test --debug runs
@@ -169,20 +162,20 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--run-timestamp",
-    type=str,
-    default=None,
+    "-u",
+    "--update",
+    action="store_true",
+    default=False,
     help=(
-        "Timestamp (RUN_TIMESTAMP_FORMAT, e.g. 260816T174336) grouping this run's output "
-        "files (see eval_results_path). The launcher scripts generate one per invocation "
-        "and pass it to every run_eval call in that batch, so results and the matching "
-        "logs/<timestamp>/ folder share a name. Defaults to the current time if omitted."
+        "Regenerate results even if the output file already exists (see "
+        "eval_results_path). Without this, a dataset whose result file is already there "
+        "is skipped, so resubmitting the same models/datasets only fills in what is "
+        "missing."
     ),
 )
 
 
 def eval_results_path(
-    run_timestamp: str,
     model: str,
     dataset: str,
     decoding_profile: str,
@@ -193,12 +186,12 @@ def eval_results_path(
     """
     Compute the output path an evaluation run saves its results to.
 
-    Output lives under output/eval/{run_timestamp}/{model}/, with the file name encoding
-    the dataset and decoding profile. Grouping by `run_timestamp` first means rerunning a
-    model/decoding-profile/prompt-style combination never overwrites a previous run's
-    results - each invocation gets its own folder (see RUN_TIMESTAMP_FORMAT). A suffix
-    ("-libv1"/"-usev1", else the style name) separates runs under different system-prompt
-    settings (see library_prompt_suffix).
+    Output lives under output/eval/{model}/, with the file name encoding the dataset and
+    decoding profile. A rerun of the same model/dataset/decoding-profile/prompt-style
+    combination overwrites the previous result file at this same path - see the `update`
+    flag on `run_eval`, which skips regenerating a result that already exists here unless
+    told otherwise. A suffix ("-libv1"/"-usev1", else the style name) separates runs under
+    different system-prompt settings (see library_prompt_suffix).
 
     `adapter_override` is the --adapter path when given: its directory name is appended
     so trying an arbitrary adapter under a base-model key doesn't overwrite that model's
@@ -217,7 +210,6 @@ def eval_results_path(
     return (
         Path("output")
         / "eval"
-        / run_timestamp
         / model
         / f"{dataset}-{decoding_profile}{lib_suffix}{adapter_suffix}.json"
     )
@@ -233,7 +225,7 @@ def run_eval(
     prompt_style: PromptStyle = "lib",
     adapter: str | None = None,
     debug: bool = False,
-    run_timestamp: str | None = None,
+    update: bool = False,
     n_samples: int | None = None,
 ) -> None:
     """
@@ -258,9 +250,10 @@ def run_eval(
     If `debug` is set, each dataset is truncated to a few samples (a quick end-to-end
     check) and `model` defaults to DEBUG_MODEL_KEY; otherwise `model` is required.
 
-    `run_timestamp` groups this run's output files under output/eval/{run_timestamp}/
-    (see eval_results_path); defaults to the current time (RUN_TIMESTAMP_FORMAT) when not
-    given, so a standalone invocation still gets its own folder.
+    A dataset whose result file (see `eval_results_path`) already exists is skipped unless
+    `update` is set, so resubmitting the same models/datasets only fills in what is
+    missing rather than redoing everything. If every requested dataset already has
+    results, the model is never loaded at all.
 
     `n_samples` overrides how many completions are sampled per prompt for this run - it is
     eval-only (training rollouts use num_generations instead, see config/training.yaml),
@@ -275,10 +268,6 @@ def run_eval(
         if not debug:
             raise ValueError("--model is required unless --debug is set.")
         model = DEBUG_MODEL_KEY
-
-    if run_timestamp is None:
-        run_timestamp = datetime.now().strftime(RUN_TIMESTAMP_FORMAT)
-    log(f"Run timestamp: {run_timestamp}")
 
     model_settings = load_yaml_config(config_file=model_config, key=model)
     # --adapter override wins, else the entry's registered adapter, else base alone
@@ -330,7 +319,6 @@ def run_eval(
             )
     output_paths = {
         name: eval_results_path(
-            run_timestamp=run_timestamp,
             model=model,
             dataset=name,
             decoding_profile=decoding_profile,
@@ -341,12 +329,26 @@ def run_eval(
         for name in dataset_names
     }
 
+    # skip a dataset whose result file already exists unless told to regenerate it - debug
+    # runs are cheap smoke tests, so they always rerun regardless of what is on disk
+    datasets_to_run = {}
+    for name, path in output_paths.items():
+        if update or debug or not path.exists():
+            datasets_to_run[name] = path
+        else:
+            log(f"  - {name}: results already exist at {path}, skipping")
+    if not datasets_to_run:
+        log(
+            "All requested datasets already have results - nothing to do (use --update to regenerate)."
+        )
+        return
+
     evaluate_model(
         base=base,
         adapter_path=adapter_path,
-        dataset_configs=dataset_configs,
+        dataset_configs={name: dataset_configs[name] for name in datasets_to_run},
         decoding_settings=decoding_settings,
-        output_paths=output_paths,
+        output_paths=datasets_to_run,
         max_lora_rank=max_lora_rank,
         libraries_requirements_file=libraries_requirements_file,
         prompt_style=prompt_style,
@@ -370,6 +372,7 @@ def main() -> None:
     )
     log(f"Prompt style: {args.prompt_style}")
     log(f"Debug: {args.debug}")
+    log(f"Update: {args.update}")
     log()
 
     run_eval(
@@ -382,7 +385,7 @@ def main() -> None:
         prompt_style=args.prompt_style,
         adapter=args.adapter,
         debug=args.debug,
-        run_timestamp=args.run_timestamp,
+        update=args.update,
         n_samples=args.n_samples,
     )
 

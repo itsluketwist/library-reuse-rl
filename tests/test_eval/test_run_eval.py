@@ -12,15 +12,14 @@ from src.run_eval import build_api_settings, eval_results_path
 class TestEvalResultsPath:
     """eval_results_path decides where a run's results are saved."""
 
-    def test_groups_by_run_timestamp_and_model(self) -> None:
+    def test_groups_by_model(self) -> None:
         path = eval_results_path(
-            run_timestamp="260816T174336",
             model="qwen3-8b",
             dataset="libreusebench",
             decoding_profile="greedy",
         )
 
-        assert path.parts[:4] == ("output", "eval", "260816T174336", "qwen3-8b")
+        assert path.parts[:3] == ("output", "eval", "qwen3-8b")
 
     def test_prompt_styles_never_share_a_path(self) -> None:
         """ "base", and "lib"/"use" with no requirements file, all produce an empty library
@@ -28,7 +27,6 @@ class TestEvalResultsPath:
         which is exactly what concurrent slurm jobs from one submission would do."""
         paths = {
             eval_results_path(
-                run_timestamp="260816T174336",
                 model="qwen3-8b",
                 dataset="libreusebench",
                 decoding_profile="greedy",
@@ -43,7 +41,6 @@ class TestEvalResultsPath:
         """A requirements file keeps its versioned suffix, so runs under different library
         prompts stay distinguishable."""
         path = eval_results_path(
-            run_timestamp="260816T174336",
             model="qwen3-8b",
             dataset="libreusebench",
             decoding_profile="greedy",

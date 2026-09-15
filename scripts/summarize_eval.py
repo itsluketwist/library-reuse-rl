@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Summarize an eval run's result JSON files into per-task comparison tables.
+"""Summarize eval result JSON files into per-task comparison tables.
 
-Reads every output/eval/{run_timestamp}/{model}/*.json file (see eval_results_path in
-src/run_eval.py) under a given run directory, and prints one table per dataset task,
-comparing models and prompt/decoding settings on that task's key metrics. Also writes a
-combined summary.csv into the run directory.
+Reads every output/eval/{model}/*.json file (see eval_results_path in src/run_eval.py),
+and prints one table per dataset task, comparing models and prompt/decoding settings on
+that task's key metrics. Also writes a combined summary.csv into the results directory.
 """
 
 import argparse
@@ -51,9 +50,9 @@ def _dig(
 
 def _load_results(run_dir: Path) -> list[dict]:
     """
-    Load every result JSON under `run_dir` (output/eval/{run_timestamp}/{model}/*.json),
-    pulling the run's identifiers and that task's metrics out of each file's
-    "metadata"/"analysis" blocks.
+    Load every result JSON under `run_dir` (output/eval/{model}/*.json), pulling the
+    run's identifiers and that task's metrics out of each file's "metadata"/"analysis"
+    blocks.
 
     Returns one row per result file, as a flat dict.
     """
@@ -115,7 +114,10 @@ def main() -> None:
     parser.add_argument(
         "run_dir",
         type=Path,
-        help="output/eval/{run_timestamp} directory to summarize",
+        nargs="?",
+        default=Path("output/eval"),
+        help="Directory to summarize, in the output/eval/{model}/ layout. "
+        "Defaults to output/eval/ (every model's results).",
     )
     args = parser.parse_args()
 
