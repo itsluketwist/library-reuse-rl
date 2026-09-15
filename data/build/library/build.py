@@ -94,12 +94,12 @@ def _task_stdio(
 
 def _pick_one(
     candidates: list[str],
-    task: str,
+    seed_task: str,
     salt: str,
 ) -> str | None:
     """Deterministically pick one candidate wording for a task.
 
-    Reproducible per (SEED, salt, task) via a seeded RNG, so re-running the build without
+    Reproducible per (SEED, salt, seed_task) via a seeded RNG, so re-running the build without
     changing inputs always assigns the same wording to the same task - "random" only in the
     sense of spreading tasks evenly across the available wordings, not in being unstable
     across runs.
@@ -108,7 +108,7 @@ def _pick_one(
     """
     if not candidates:
         return None
-    return random.Random(f"{SEED}:{salt}:{task}").choice(candidates)
+    return random.Random(f"{SEED}:{salt}:{seed_task}").choice(candidates)
 
 
 def _render(
@@ -131,6 +131,7 @@ def _render(
 def _row(
     prompt: str,
     category_id: str,
+    seed_task: str,
     task: str,
     useful_libs: list[str],
     context: Context | None,
@@ -145,8 +146,12 @@ def _row(
         "prompt": prompt,
         "task_type": "library_usage",
         "category_id": category_id,
-        # the canonical task this row is a wording of - used to keep every wording of a task
-        # in the same split, so the test set can hold out whole (unseen) tasks
+        # the taxonomy id of the task this row is a wording of ("<category_id>.<number>",
+        # matching tasks.yaml's per-category numbering) - used to keep every wording of a task
+        # in the same split (so test can hold out whole, unseen tasks) and as the key into the
+        # claude prompt caches
+        "seed_task": seed_task,
+        # the task's descriptive text, for readability/rendering - not itself an id
         "task": task,
         "language": "python",
         "context_id": context.context_id if context else "none",
@@ -161,7 +166,7 @@ def _row(
 
 def build_library_usage_rows(
     taxonomy: dict,
-    tasks: dict[str, list[str]],
+    tasks: dict[str, dict[int, str]],
     templates: dict[str, list[str]],
     contexts_by_id: dict[str, Context],
     prompt_caches: dict[str, dict[str, list[str]]],
@@ -181,19 +186,21 @@ def build_library_usage_rows(
         useful_libs = entry["seed_libraries"]
         repo_context = contexts_by_id[entry["repo_hint"]]
 
-        for task in tasks.get(cid, []):
+        for number, task in tasks.get(cid, {}).items():
+            seed_task = f"{cid}.{number}"
             for mode, context in (
                 ("repo", repo_context),
                 ("simple", None),
                 ("script", None),
             ):
                 # every mode has a fixed, non-empty template list, so this is never None
-                template = _pick_one(templates[mode], task, salt=mode)
+                template = _pick_one(templates[mode], seed_task, salt=mode)
                 assert template is not None
                 rows.append(
                     _row(
                         _render(template, task, context),
                         cid,
+                        seed_task,
                         task,
                         useful_libs,
                         context,
@@ -203,13 +210,16 @@ def build_library_usage_rows(
                 )
 
                 claude_prompt = _pick_one(
-                    prompt_caches[mode].get(task, []), task, salt=f"{mode}-llm"
+                    prompt_caches[mode].get(seed_task, []),
+                    seed_task,
+                    salt=f"{mode}-llm",
                 )
                 if claude_prompt is not None:
                     rows.append(
                         _row(
                             claude_prompt,
                             cid,
+                            seed_task,
                             task,
                             useful_libs,
                             context,
@@ -244,6 +254,11 @@ def main() -> None:
     prompt_caches = {
         mode: load_prompt_cache(mode) for mode in ("simple", "script", "repo")
     }
+    aligned_categories = {
+        entry["id"]
+        for entry in taxonomy.get("code", [])
+        if entry.get("benchmark_aligned")
+    }
 
     # repo-mode context comes from the vendored python-api plus the committed repos we author
     # (pytoolbox, ...); each category picks exactly one of these via taxonomy.yaml's repo_hint
@@ -271,14 +286,17 @@ def main() -> None:
         )
     )
     # test holds out whole (unseen) tasks; val is an in-distribution, category-stratified
-    # subset of the seen tasks - so val tracks learning and test tracks generalisation
+    # subset of the seen tasks - so val tracks learning and test tracks generalisation. the
+    # held-out test categories are balanced by benchmark_aligned so test's aligned/unaligned
+    # row split tracks train/val's, instead of just the (lower) aligned share of categories
     train, val, test = split_disjoint_test(
         rows,
-        group_key=lambda row: row["task"],
+        group_key=lambda row: row["seed_task"],
         stratify_key=lambda row: row["category_id"],
         test_frac=TEST_FRAC,
         val_frac=VAL_FRAC,
         seed=SEED,
+        balance_key=lambda row: row["category_id"] in aligned_categories,
     )
     # label rows within the splits (test -> train -> val); the "U" tags the library-usage dataset
     train, val, test = assign_task_ids(train, val, test, prefix="LRRL/U")

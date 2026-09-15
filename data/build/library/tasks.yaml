@@ -5,267 +5,269 @@
 # one of the category's libraries. build.py wraps each task in several phrasings (repo context
 # or a bare "how do i implement x") to produce the training rows. tasks should end with a full
 # stop and start with a capitalised verb (build.py derives a lowercased variant for phrasing).
+#
+# each category's tasks are a {number: text} mapping, not a bare list - the number combines
+# with the category id to make each row's seed_task ("<category_id>.<number>", e.g.
+# "datetime.1"), used as the key in the LLM prompt caches (simple_prompts.json etc.) and to
+# group a task's wordings for the train/val/test split, instead of the unwieldy full task text.
 
 datetime:
-  - Parse an ISO-8601 timestamp string and return how long ago it was.
-  - Normalise a date string in an unknown common format to YYYY-MM-DD.
-  - Add a given number of business days to a date and return the result.
-  - Parse date strings given in mixed formats and tally them by weekday.
-  - Filter a table's rows to those whose date falls in a given range.
-  - Round-trip a JSON document containing ISO-8601 timestamps.
-  - Find the next business day after a given date.
+  1: Parse an ISO-8601 timestamp string and return how long ago it was.
+  2: Normalise a date string in an unknown common format to YYYY-MM-DD.
+  3: Add a given number of business days to a date and return the result.
+  4: Parse date strings given in mixed formats and tally them by weekday.
+  5: Filter a table's rows to those whose date falls in a given range.
+  6: Round-trip a JSON document containing ISO-8601 timestamps.
+  7: Find the next business day after a given date.
 http-requests:
-  - Fetch JSON from an external REST API and return the parsed body.
-  - Download a file from a URL and save it to disk.
-  - POST a JSON payload to a webhook URL and return the response status.
+  1: Fetch JSON from an external REST API and return the parsed body.
+  2: Download a file from a URL and save it to disk.
+  3: POST a JSON payload to a webhook URL and return the response status.
 retries:
-  - Call a flaky external API, retrying with exponential backoff up to five times.
-  - Wrap a function so transient errors are retried with jitter.
+  1: Call a flaky external API, retrying with exponential backoff up to five times.
+  2: Wrap a function so transient errors are retried with jitter.
 yaml-config:
-  - Load application settings from a config file into a dict.
-  - Merge a base config with an environment-specific override file.
+  1: Load application settings from a config file into a dict.
+  2: Merge a base config with an environment-specific override file.
 data-validation:
-  - Validate that an incoming JSON payload has the required fields and types.
-  - Parse and validate a request body into a typed model, raising on bad input.
+  1: Validate that an incoming JSON payload has the required fields and types.
+  2: Parse and validate a request body into a typed model, raising on bad input.
 csv-excel:
-  - Read a CSV file and return the number of rows per distinct column value.
-  - Write a list of records out to a spreadsheet file.
-  - Read a CSV held in a string and return it with the data rows reversed.
-  - Convert a JSON array of records into a CSV table with a fixed column order.
-  - Emit a table as one JSON object per line.
-  - Sum every column of a block of comma-separated data.
+  1: Read a CSV file and return the number of rows per distinct column value.
+  2: Write a list of records out to a spreadsheet file.
+  3: Read a CSV held in a string and return it with the data rows reversed.
+  4: Convert a JSON array of records into a CSV table with a fixed column order.
+  5: Emit a table as one JSON object per line.
+  6: Sum every column of a block of comma-separated data.
 pdf:
-  - Extract the text from a PDF file and return it.
-  - Generate a simple one-page PDF report from a title and body text.
+  1: Extract the text from a PDF file and return it.
+  2: Generate a simple one-page PDF report from a title and body text.
 cli-parsing:
-  - Add a command-line entry point that accepts --input and --output options.
-  - Build a subcommand that takes a required argument and a verbosity flag.
+  1: Add a command-line entry point that accepts --input and --output options.
+  2: Build a subcommand that takes a required argument and a verbosity flag.
 html-parsing:
-  - Extract all the links from an HTML page and return them as a list.
-  - Parse an HTML table into a list of row dicts.
+  1: Extract all the links from an HTML page and return them as a list.
+  2: Parse an HTML table into a list of row dicts.
 fuzzy-matching:
-  - Given a query string, find the closest match from a list of names.
-  - Deduplicate a list of near-identical strings by similarity.
+  1: Given a query string, find the closest match from a list of names.
+  2: Deduplicate a list of near-identical strings by similarity.
 graphs:
-  - Given a list of task dependencies, return a valid execution order.
-  - Find the shortest path between two nodes in a weighted graph.
+  1: Given a list of task dependencies, return a valid execution order.
+  2: Find the shortest path between two nodes in a weighted graph.
 crypto-hashing:
-  - Hash a user password securely for storage and verify it on login.
-  - Issue and verify a signed token for an authenticated user.
-  - Encrypt a message with a symmetric key and decrypt it back.
+  1: Hash a user password securely for storage and verify it on login.
+  2: Issue and verify a signed token for an authenticated user.
+  3: Encrypt a message with a symmetric key and decrypt it back.
 numerics:
-  - Multiply two matrices supplied as nested lists.
-  - Fit a simple linear regression to a set of points and return the slope.
-  - Multiply together all the values in a list.
-  - Take the base-10 logarithm of a column of numbers, handling zeros without warnings.
-  - Join two matrices side by side into one wider matrix.
-  - Apply a trigonometric function elementwise to a row of numbers.
-  - Compute the running cumulative sum of a sequence of numbers.
-  - Round every value in a column up to the nearest multiple of a given number.
+  1: Multiply two matrices supplied as nested lists.
+  2: Fit a simple linear regression to a set of points and return the slope.
+  3: Multiply together all the values in a list.
+  4: Take the base-10 logarithm of a column of numbers, handling zeros without warnings.
+  5: Join two matrices side by side into one wider matrix.
+  6: Apply a trigonometric function elementwise to a row of numbers.
+  7: Compute the running cumulative sum of a sequence of numbers.
+  8: Round every value in a column up to the nearest multiple of a given number.
 templating:
-  - Render an HTML email body from a template and a context dict.
-  - Generate a config file from a template with variable substitution.
+  1: Render an HTML email body from a template and a context dict.
+  2: Generate a config file from a template with variable substitution.
 structured-logging:
-  - Add structured, leveled logging around a job-processing function.
-  - Emit JSON-formatted log lines with contextual fields for a worker.
+  1: Add structured, leveled logging around a job-processing function.
+  2: Emit JSON-formatted log lines with contextual fields for a worker.
 progress-bars:
-  - Show a progress bar while processing a long list of files.
-  - Report progress as a percentage while iterating over a large dataset.
+  1: Show a progress bar while processing a long list of files.
+  2: Report progress as a percentage while iterating over a large dataset.
 image-processing:
-  - Resize an uploaded image to a thumbnail and save it.
-  - Convert an image to grayscale and write it back out.
+  1: Resize an uploaded image to a thumbnail and save it.
+  2: Convert an image to grayscale and write it back out.
 timezones:
-  - Convert a naive local timestamp to UTC for a given timezone.
-  - Show what time it is in three named cities right now.
-  - Convert a naive timestamp from one named timezone to another, respecting daylight saving.
-  - Report the average gap in seconds between timestamps given in different timezones.
-  - Bucket a list of timestamps by their local hour of day.
-  - Compute the seconds remaining until midnight on new year's day in a given timezone.
+  1: Convert a naive local timestamp to UTC for a given timezone.
+  2: Show what time it is in three named cities right now.
+  3: Convert a naive timestamp from one named timezone to another, respecting daylight saving.
+  4: Report the average gap in seconds between timestamps given in different timezones.
+  5: Bucket a list of timestamps by their local hour of day.
+  6: Compute the seconds remaining until midnight on new year's day in a given timezone.
 uuid-slugs:
-  - Generate a short unique id for a new record.
-  - Turn an article title into a url-safe slug.
+  1: Generate a short unique id for a new record.
+  2: Turn an article title into a url-safe slug.
 env-config:
-  - Load secrets and settings from environment variables into a config object.
-  - Read a .env file and return one of its values with a default.
+  1: Load secrets and settings from environment variables into a config object.
+  2: Read a .env file and return one of its values with a default.
 json-schema:
-  - Validate a config document against a JSON schema and report the first error.
-  - Check that a list of records all match an expected schema.
+  1: Validate a config document against a JSON schema and report the first error.
+  2: Check that a list of records all match an expected schema.
 compression:
-  - Compress a large log file and write the compressed output to disk.
-  - Decompress a downloaded archive and return its contents.
+  1: Compress a large log file and write the compressed output to disk.
+  2: Decompress a downloaded archive and return its contents.
 url-parsing:
-  - Add or replace a query parameter on a given URL and return the new URL.
-  - Extract the host and path components from a URL.
+  1: Add or replace a query parameter on a given URL and return the new URL.
+  2: Extract the host and path components from a URL.
 email-validation:
-  - Validate that a user-supplied email address is well-formed and deliverable.
-  - Extract the sender and subject from a raw email message.
+  1: Validate that a user-supplied email address is well-formed and deliverable.
+  2: Extract the sender and subject from a raw email message.
 rate-limiting:
-  - Limit calls to an external API to at most five per second.
-  - Throttle a function so it runs no more than once per minute.
+  1: Limit calls to an external API to at most five per second.
+  2: Throttle a function so it runs no more than once per minute.
 caching-memoize:
-  - Cache the result of an expensive function with a time-to-live.
-  - Add an LRU cache with a maximum size to a lookup function.
+  1: Cache the result of an expensive function with a time-to-live.
+  2: Add an LRU cache with a maximum size to a lookup function.
 phone-numbers:
-  - Validate and format a phone number into international format.
-  - Extract the country code from a phone number.
+  1: Validate and format a phone number into international format.
+  2: Extract the country code from a phone number.
 money-currency:
-  - Add two monetary amounts in the same currency and format the result.
-  - Format an amount as localised currency for a given locale.
+  1: Add two monetary amounts in the same currency and format the result.
+  2: Format an amount as localised currency for a given locale.
 markdown-render:
-  - Render a markdown document to HTML.
-  - Extract the plain text from a markdown string, dropping the formatting.
+  1: Render a markdown document to HTML.
+  2: Extract the plain text from a markdown string, dropping the formatting.
 color-manipulation:
-  - Convert a hex colour to its RGB components.
-  - Darken a given colour by a percentage and return the new hex value.
+  1: Convert a hex colour to its RGB components.
+  2: Darken a given colour by a percentage and return the new hex value.
 geo-distance:
-  - Compute the distance in kilometres between two latitude/longitude points.
-  - Find the nearest location to a point from a list of coordinates.
+  1: Compute the distance in kilometres between two latitude/longitude points.
+  2: Find the nearest location to a point from a list of coordinates.
 hypothesis-testing:
-  - Run a t-test between two samples and return the p-value.
-  - Compute the Pearson correlation between two lists of numbers.
-  - Build the pairwise correlation matrix of a table's columns.
-  - Report every pair of columns whose absolute correlation exceeds a threshold.
-  - Run a chi-square test of independence on a contingency table.
-  - Report the skewness of a sample.
+  1: Run a t-test between two samples and return the p-value.
+  2: Compute the Pearson correlation between two lists of numbers.
+  3: Build the pairwise correlation matrix of a table's columns.
+  4: Report every pair of columns whose absolute correlation exceeds a threshold.
+  5: Run a chi-square test of independence on a contingency table.
+  6: Report the skewness of a sample.
 plotting:
-  - Plot a line chart from a list of values and save it as a PNG.
-  - Render a bar chart of category counts to an image file.
+  1: Plot a line chart from a list of values and save it as a PNG.
+  2: Render a bar chart of category counts to an image file.
 xml-parsing:
-  - Parse an XML document and extract the text of a named element.
-  - Convert an XML string into a nested dict.
+  1: Parse an XML document and extract the text of a named element.
+  2: Convert an XML string into a nested dict.
 sql-builder:
-  - Build and run a parameterised SELECT with optional filters.
-  - Insert a batch of records into a table safely.
+  1: Build and run a parameterised SELECT with optional filters.
+  2: Insert a batch of records into a table safely.
 file-watching:
-  - Watch a directory and print a message whenever a file changes.
-  - Trigger a callback when a specific file is modified.
+  1: Watch a directory and print a message whenever a file changes.
+  2: Trigger a callback when a specific file is modified.
 fast-serialization:
-  - Serialise a large list of dicts to bytes and back as fast as possible.
-  - Write a nested data structure to a compact binary file and reload it.
+  1: Serialise a large list of dicts to bytes and back as fast as possible.
+  2: Write a nested data structure to a compact binary file and reload it.
 subprocess-shell:
-  - Run an external command and capture its stdout, raising on failure.
-  - Pipe the output of one command into another and return the result.
+  1: Run an external command and capture its stdout, raising on failure.
+  2: Pipe the output of one command into another and return the result.
 natural-sort:
-  - Sort a list of filenames like file2, file10 in natural order.
-  - Sort version strings so 1.10 comes after 1.9.
+  1: Sort a list of filenames like file2, file10 in natural order.
+  2: Sort version strings so 1.10 comes after 1.9.
 unit-conversion:
-  - Convert a distance from miles to kilometres.
-  - Add two quantities with different units and return the result.
+  1: Convert a distance from miles to kilometres.
+  2: Add two quantities with different units and return the result.
 qr-barcode:
-  - Generate a QR code for a URL and save it as an image.
-  - Create a barcode image for a product code.
+  1: Generate a QR code for a URL and save it as an image.
+  2: Create a barcode image for a product code.
 fake-data:
-  - Generate a list of fake user records with names and emails for a test.
-  - Produce a realistic fake address.
+  1: Generate a list of fake user records with names and emails for a test.
+  2: Produce a realistic fake address.
 encoding-detect:
-  - Detect the text encoding of a file's bytes and decode it correctly.
-  - Read a file whose encoding is unknown and return its text.
+  1: Detect the text encoding of a file's bytes and decode it correctly.
+  2: Read a file whose encoding is unknown and return its text.
 structured-diff:
-  - Report the differences between two nested dictionaries.
-  - Detect what changed between two versions of a config object.
+  1: Report the differences between two nested dictionaries.
+  2: Detect what changed between two versions of a config object.
 scheduling:
-  - Run a cleanup function every day at a fixed time.
-  - Compute the next run time from a cron expression.
+  1: Run a cleanup function every day at a fixed time.
+  2: Compute the next run time from a cron expression.
 terminal-tables:
-  - Print a list of records as an aligned table in the terminal.
-  - Format a summary as a bordered table for console output.
+  1: Print a list of records as an aligned table in the terminal.
+  2: Format a summary as a bordered table for console output.
 audio:
-  - Read an audio file and return its duration in seconds.
-  - Trim the first ten seconds off an audio clip and save it.
+  1: Read an audio file and return its duration in seconds.
+  2: Trim the first ten seconds off an audio clip and save it.
 geometry:
-  - Test whether a point lies inside a polygon.
-  - Compute the area of a polygon from its vertices.
+  1: Test whether a point lies inside a polygon.
+  2: Compute the area of a polygon from its vertices.
 nlp-tokenize:
-  - Split a paragraph into sentences and then into word tokens.
-  - Count the most common words in a document, ignoring stop words.
-  - Split text into word and punctuation tokens, keeping hyphenated words whole.
-  - Count word n-gram frequencies in a document.
-  - Remove the standard English stop words from a block of text.
-  - Report the most frequent non-stop words in a document with their counts.
+  1: Split a paragraph into sentences and then into word tokens.
+  2: Count the most common words in a document, ignoring stop words.
+  3: Split text into word and punctuation tokens, keeping hyphenated words whole.
+  4: Count word n-gram frequencies in a document.
+  5: Remove the standard English stop words from a block of text.
+  6: Report the most frequent non-stop words in a document with their counts.
 ip-address:
-  - Check whether an IP address falls within a given CIDR range.
-  - List all the host addresses in a subnet.
-
-# tasks for the benchmark-derived categories (see EXPANSION.md). their shapes deliberately mirror
-# what LibReuseBench actually asks for: tabular records in, a summary or transformed table out.
+  1: Check whether an IP address falls within a given CIDR range.
+  2: List all the host addresses in a subnet.
 feature-scaling:
-  - Standardise every numeric column of a table to zero mean and unit variance.
-  - Rescale a list of values into the range 0 to 1, handling the all-equal case.
-  - Z-score two columns of a table and report the rows with the largest gap between them.
-  - Flag the values in a sample whose z-score exceeds a given threshold.
+  1: Standardise every numeric column of a table to zero mean and unit variance.
+  2: Rescale a list of values into the range 0 to 1, handling the all-equal case.
+  3: Z-score two columns of a table and report the rows with the largest gap between them.
+  4: Flag the values in a sample whose z-score exceeds a given threshold.
 descriptive-stats:
-  - Report the mean, median, mode and variance of each column of a table.
-  - Compute the column means of a table that contains missing values.
-  - Find the median of an arbitrarily nested list of numbers.
-  - Summarise a list of records with the mean and median of every key.
-  - Compute the Shannon entropy of a distribution of values.
+  1: Report the mean, median, mode and variance of each column of a table.
+  2: Compute the column means of a table that contains missing values.
+  3: Find the median of an arbitrarily nested list of numbers.
+  4: Summarise a list of records with the mean and median of every key.
+  5: Compute the Shannon entropy of a distribution of values.
 regex-text-extraction:
-  - Extract every token that starts with a dollar sign from a block of text.
-  - Parse timestamped log lines into structured fields and drop the malformed ones.
-  - Pull a decimal number out of every cell of a table, marking the cells with no match.
-  - Replace every acronym in a text column using a lookup table of expansions.
+  1: Extract every token that starts with a dollar sign from a block of text.
+  2: Parse timestamped log lines into structured fields and drop the malformed ones.
+  3: Pull a decimal number out of every cell of a table, marking the cells with no match.
+  4: Replace every acronym in a text column using a lookup table of expansions.
 frequency-counting:
-  - Count how many times each distinct value occurs in a column.
-  - Find the most common value in a list, breaking ties by the smallest.
-  - Report the most frequent value of every column of a table.
-  - Tally how many names start with each letter and sort by count.
+  1: Count how many times each distinct value occurs in a column.
+  2: Find the most common value in a list, breaking ties by the smallest.
+  3: Report the most frequent value of every column of a table.
+  4: Tally how many names start with each letter and sort by count.
 text-vectorisation:
-  - Build a document-term count matrix from a list of documents.
-  - Compute TF-IDF scores for the words in a collection of documents.
-  - Turn a sentence into a bag-of-words vector over a fixed vocabulary.
-  - Compute the cosine similarity between two documents from their word counts.
+  1: Build a document-term count matrix from a list of documents.
+  2: Compute TF-IDF scores for the words in a collection of documents.
+  3: Turn a sentence into a bag-of-words vector over a fixed vocabulary.
+  4: Compute the cosine similarity between two documents from their word counts.
 categorical-encoding:
-  - Replace each distinct category label in a column with an integer code.
-  - One-hot encode a list of category labels into a matrix.
-  - Encode a column of labels using the alphabetical order of the distinct values.
-  - Convert a string column of a table into categorical codes in place.
+  1: Replace each distinct category label in a column with an integer code.
+  2: One-hot encode a list of category labels into a matrix.
+  3: Encode a column of labels using the alphabetical order of the distinct values.
+  4: Convert a string column of a table into categorical codes in place.
 dataframe-groupby:
-  - Report the total and average value per group from a list of records.
-  - Count the rows per distinct category after removing duplicates.
-  - Compute each person's average score from a list of name/score pairs.
-  - Standardise a column within each group rather than across the whole table.
+  1: Report the total and average value per group from a list of records.
+  2: Count the rows per distinct category after removing duplicates.
+  3: Compute each person's average score from a list of name/score pairs.
+  4: Standardise a column within each group rather than across the whole table.
 dataframe-reshape:
-  - Drop a named column from a table and return the remaining rows.
-  - Add a computed length column to a table of strings.
-  - Insert a positional index column at the front of a table.
-  - Replace a marker substring throughout one column of a table.
+  1: Drop a named column from a table and return the remaining rows.
+  2: Add a computed length column to a table of strings.
+  3: Insert a positional index column at the front of a table.
+  4: Replace a marker substring throughout one column of a table.
 pairwise-distance:
-  - Compute the euclidean distance between every pair of rows in a matrix.
-  - Find the largest distance between any two points in a list of coordinates.
-  - Report the distances between each pair of consecutive points on a path.
-  - Build a condensed distance matrix from a set of feature vectors.
+  1: Compute the euclidean distance between every pair of rows in a matrix.
+  2: Find the largest distance between any two points in a list of coordinates.
+  3: Report the distances between each pair of consecutive points on a path.
+  4: Build a condensed distance matrix from a set of feature vectors.
 clustering:
-  - Cluster a set of points by density given a radius and a minimum group size.
-  - Assign points to k clusters and return each point's cluster label.
-  - Identify the points that belong to no cluster.
-  - Group similar feature vectors and report the size of each cluster.
+  1: Cluster a set of points by density given a radius and a minimum group size.
+  2: Assign points to k clusters and return each point's cluster label.
+  3: Identify the points that belong to no cluster.
+  4: Group similar feature vectors and report the size of each cluster.
 regression-fitting:
-  - Fit a linear model predicting one column from the others and report the r-squared.
-  - Fit a least-squares line to a set of points and return its coefficients.
-  - Predict a target column from a feature table and report the residuals.
-  - Fit a polynomial to a series of measurements and return the fitted values.
+  1: Fit a linear model predicting one column from the others and report the r-squared.
+  2: Fit a least-squares line to a set of points and return its coefficients.
+  3: Predict a target column from a feature table and report the residuals.
+  4: Fit a polynomial to a series of measurements and return the fitted values.
 missing-data:
-  - Fill the blanks in each numeric column with that column's mean.
-  - Drop the rows of a table that have any missing field.
-  - Impute the missing values of a column with its most frequent value.
-  - Report which columns of a table contain missing values and how many.
+  1: Fill the blanks in each numeric column with that column's mean.
+  2: Drop the rows of a table that have any missing field.
+  3: Impute the missing values of a column with its most frequent value.
+  4: Report which columns of a table contain missing values and how many.
 iterator-tools:
-  - Flatten a list of lists into a single sequence.
-  - Interleave two lists of unequal length into one sequence.
-  - Split a long sequence into fixed-size chunks.
-  - Take the distinct elements of a sequence, preserving first-seen order.
+  1: Flatten a list of lists into a single sequence.
+  2: Interleave two lists of unequal length into one sequence.
+  3: Split a long sequence into fixed-size chunks.
+  4: Take the distinct elements of a sequence, preserving first-seen order.
 combinatorics:
-  - Enumerate every distinct combination of three values that sums to a target.
-  - Report the highest subset products for a given subset size.
-  - List the distinct combinations of a list that contains repeated values.
-  - Rank all the subsets of a set by their total and return the top few.
+  1: Enumerate every distinct combination of three values that sums to a target.
+  2: Report the highest subset products for a given subset size.
+  3: List the distinct combinations of a list that contains repeated values.
+  4: Rank all the subsets of a set by their total and return the top few.
 signal-processing:
-  - Compute the frequency spectrum of a sampled signal.
-  - Apply a low-pass filter to a noisy series of readings.
-  - Find the dominant frequency in a list of samples.
-  - Smooth a time series with a rolling window before summarising it.
+  1: Compute the frequency spectrum of a sampled signal.
+  2: Apply a low-pass filter to a noisy series of readings.
+  3: Find the dominant frequency in a list of samples.
+  4: Smooth a time series with a rolling window before summarising it.
 number-theory:
-  - Keep only the prime numbers from a list of integers.
-  - Return the prime factorisation of an integer.
-  - Find the next prime after a given number.
-  - Compute the greatest common divisor of a list of integers.
+  1: Keep only the prime numbers from a list of integers.
+  2: Return the prime factorisation of an integer.
+  3: Find the next prime after a given number.
+  4: Compute the greatest common divisor of a list of integers.

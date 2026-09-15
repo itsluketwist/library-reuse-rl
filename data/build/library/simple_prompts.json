@@ -1,1 +1,572 @@
-{}
+{
+  "datetime.1": [
+    "Can you write a function called time_since that takes an ISO-8601 timestamp string and returns a readable string like '3 hours ago' or '2 days ago'?"
+  ],
+  "datetime.2": [
+    "Can you write me a function that takes a date string in some common but unknown format and converts it into a standard YYYY-MM-DD string? It should handle things like '03/14/2021', 'March 14, 2021', or '14-03-2021' without me having to specify which format it's in."
+  ],
+  "datetime.3": [
+    "Can you write a function that takes a date and a number of days, then adds that many business days to it and returns the new date? Weekends shouldn't count toward the total."
+  ],
+  "datetime.4": [
+    "I have a list of date strings in a bunch of different formats and I need a function that figures out what weekday each one falls on, then gives me back a count of how many dates landed on each day of the week. Could you write something like count_weekdays that takes a list of strings and returns a dict mapping weekday names to counts?"
+  ],
+  "datetime.5": [
+    "Can you write a function that takes a list of dictionaries representing table rows along with a start date string and end date string, and returns only the rows whose date field falls within that range?"
+  ],
+  "datetime.6": [
+    "Can you write a function that takes a JSON string with ISO-8601 timestamp fields, parses it into a dict, and then serializes it back to JSON while making sure the timestamps come out in the exact same format they started in?"
+  ],
+  "datetime.7": [
+    "Can you write a function called next_business_day that takes a date and returns the next weekday, skipping Saturdays and Sundays?"
+  ],
+  "http-requests.1": [
+    "Can you write a function called fetch_json_data that takes a URL string and returns the parsed JSON response as a dict? It should hit the endpoint, grab the response body, and give me back usable data."
+  ],
+  "http-requests.2": [
+    "Can you write a function that takes a URL and a file path as strings, downloads the file, and saves it to that location on disk?"
+  ],
+  "http-requests.3": [
+    "Can you write a function called send_webhook that takes a URL string and a dict payload, sends it as JSON via POST, and returns the response status code as an int?"
+  ],
+  "retries.1": [
+    "Can you write something that calls an unreliable external API and automatically retries if it fails, waiting longer between each attempt, giving up after five tries?"
+  ],
+  "retries.2": [
+    "Can you write a decorator called retry_with_jitter that wraps a function and retries it a few times with a randomized delay if it fails, so we don't hammer a flaky service?"
+  ],
+  "yaml-config.1": [
+    "Can you write a function that reads a config file from disk and returns its contents as a dict? Something like load_settings that takes a file path string and gives back a dictionary."
+  ],
+  "yaml-config.2": [
+    "Can you write a function that merges a base config dict with an environment-specific override dict, so the overrides take precedence but nested settings still combine properly? Something like merge_configs(base, override) returning a dict would be great."
+  ],
+  "data-validation.1": [
+    "Can you write a function called validate_payload that takes a dict and a list of required field names, checks that each field exists and matches an expected type, and returns True or an error message describing what's missing or wrong?"
+  ],
+  "data-validation.2": [
+    "Can you write a function that takes a raw request body as a dict and parses it into a strongly typed object, throwing an error if any fields are missing or the wrong type?"
+  ],
+  "csv-excel.1": [
+    "Can you write a function that reads a CSV file and gives back a dictionary showing how many rows exist for each unique value in a given column?"
+  ],
+  "csv-excel.2": [
+    "Can you write a function called export_records_to_spreadsheet that takes a list of dictionaries and a filename, and saves the data into a spreadsheet file where each dictionary becomes a row?"
+  ],
+  "csv-excel.3": [
+    "Can you write a function that takes a CSV string, keeps the header where it is, but reverses the order of the data rows, and returns the result as a string?"
+  ],
+  "csv-excel.4": [
+    "Can you write a function called records_to_csv that takes a list of dicts and a list of column names, and returns a string with the data formatted as CSV rows in that exact column order?"
+  ],
+  "csv-excel.5": [
+    "Can you write a function called table_to_jsonlines that takes a list of dicts representing rows and writes each one as a separate JSON line to a file?"
+  ],
+  "csv-excel.6": [
+    "Can you write a function that takes a block of comma-separated text (multiple lines) and returns the sum of each column as a list of numbers?"
+  ],
+  "pdf.1": [
+    "Can you write a function called extract_pdf_text that takes the path to a PDF file as a string and returns all the text content as a string?"
+  ],
+  "pdf.2": [
+    "Can you write a function that takes a title string and a body string and generates a simple one-page PDF report from them, saving it to a given file path?"
+  ],
+  "cli-parsing.1": [
+    "Can you add a command-line entry point to my script so users can run it and pass in --input and --output options to specify file paths?"
+  ],
+  "cli-parsing.2": [
+    "Can you help me set up a subcommand for my CLI tool that requires one positional argument and also supports a verbose/quiet flag to control output detail?"
+  ],
+  "html-parsing.1": [
+    "Can you write a function called extract_links that takes the raw HTML content of a page as a string and returns a list of all the URLs found in it?"
+  ],
+  "html-parsing.2": [
+    "Can you write a function called html_table_to_rows that takes a string of HTML containing a table and returns a list of dicts, where each dict maps the column header to the cell value for that row?"
+  ],
+  "fuzzy-matching.1": [
+    "Can you write a function that takes a search string and a list of names, then returns whichever name is the closest match? Something like find_closest_name(query, names) returning a str."
+  ],
+  "fuzzy-matching.2": [
+    "I have a list of strings that are almost duplicates of each other, like slightly different spellings or typos, and I want to collapse them down so only one version of each similar group remains. Can you write a function called dedupe_similar that takes a list of strings and returns a cleaned up list?"
+  ],
+  "graphs.1": [
+    "Can you write a function called topo_sort that takes a list of task pairs, where each pair is like (task, dependency), and returns a list of tasks in an order that satisfies all the dependencies? If there's a cycle it should raise an error instead of hanging."
+  ],
+  "graphs.2": [
+    "Can you write a function called shortest_path that takes a graph represented as a dictionary of nodes with weighted edges, plus a start and end node, and returns the shortest path as a list along with its total cost?"
+  ],
+  "crypto-hashing.1": [
+    "Can you write a couple of functions, hash_password and verify_password, that take a plain text password (and maybe a stored hash string) and let me safely store passwords and check logins without keeping them in plain text?"
+  ],
+  "crypto-hashing.2": [
+    "Can you write a function that issues a signed token for a logged-in user and another that verifies it later? Something like create_token that takes a user id and returns a string, and verify_token that takes the string and returns the user id if it's valid, or None if it's expired or tampered with."
+  ],
+  "crypto-hashing.3": [
+    "Can you write a function that takes a message and a key as strings, encrypts the message, and then has a matching function to decrypt it back to the original text?"
+  ],
+  "numerics.1": [
+    "Can you write a function called multiply_matrices that takes two matrices as nested lists and returns their product as a new nested list?"
+  ],
+  "numerics.2": [
+    "Can you write a function that takes a list of (x, y) point pairs and returns just the slope of the best-fit line through them?"
+  ],
+  "numerics.3": [
+    "Can you write a quick function called multiply_list that takes a list of numbers and returns the product of all of them?"
+  ],
+  "numerics.4": [
+    "Can you write a function called safe_log10 that takes a list of numbers and returns their base-10 logs, but replaces zeros with something sensible instead of throwing a warning or error?"
+  ],
+  "numerics.5": [
+    "Can you write a function called hstack_matrices that takes two matrices, given as lists of lists, and returns a new matrix with them joined side by side into one wider matrix? Should error out if the row counts don't match."
+  ],
+  "numerics.6": [
+    "Can you write a function that takes a list of numbers and applies sine to each one, returning a new list of the results?"
+  ],
+  "numerics.7": [
+    "Can you write a function called running_total that takes a list of numbers and returns a new list where each element is the sum of all numbers up to that point?"
+  ],
+  "numerics.8": [
+    "Can you write a function called round_up_to_multiple that takes a list of numbers and a multiple, then rounds each value up to the nearest multiple of that number?"
+  ],
+  "templating.1": [
+    "Can you write a function called render_email_body that takes a template string and a dict of values and returns the final HTML as a string, filling in placeholders from the dict?"
+  ],
+  "templating.2": [
+    "Can you write a function called generate_config that reads a template file, replaces placeholders with values from a dictionary, and writes the result to a new config file?"
+  ],
+  "structured-logging.1": [
+    "Can you wrap my process_job function so it logs structured, leveled messages at each stage—start, progress, success, and failure—including the job id and any relevant details as key-value pairs?"
+  ],
+  "structured-logging.2": [
+    "Can you write a function called log_event that takes a message string, a log level string, and a dict of extra context fields, and outputs a single JSON-formatted log line to stdout including a timestamp and the worker id?"
+  ],
+  "progress-bars.1": [
+    "Can you write a function called process_files that takes a list of file paths and shows a progress bar while it processes each one?"
+  ],
+  "progress-bars.2": [
+    "Can you write a function that loops through a big list and prints out the percentage done every so often, like updating me as it processes each item?"
+  ],
+  "image-processing.1": [
+    "Can you write a function called make_thumbnail that takes the path to an uploaded image and a max size, resizes it down to a thumbnail keeping the aspect ratio, and saves the result to a new file? Return the path of the saved thumbnail as a string."
+  ],
+  "image-processing.2": [
+    "Can you write a function called grayscale_image that takes a path to an image and a path to save the output, converts the image to grayscale, and writes the result to the new file?"
+  ],
+  "timezones.1": [
+    "Can you write a function called local_to_utc that takes a plain timestamp string and a timezone name, then gives back the equivalent UTC timestamp as a string?"
+  ],
+  "timezones.2": [
+    "Can you write a function called get_city_times that shows the current time in three specific cities I pick, like New York, London, and Tokyo?"
+  ],
+  "timezones.3": [
+    "Can you write a function called convert_timezone that takes a naive timestamp string, a source timezone name, and a target timezone name, and returns the converted timestamp as a string, making sure it accounts for daylight saving changes?"
+  ],
+  "timezones.4": [
+    "Can you write a function that takes a list of timestamp strings, each with its own timezone offset, and returns the average gap between consecutive timestamps in seconds? Something like average_timestamp_gap(timestamps) that outputs a float would be great."
+  ],
+  "timezones.5": [
+    "Can you write a function called bucket_by_hour that takes a list of timestamps and their local timezone info, and groups them into a dict keyed by hour of day (0-23), with each value being the list of timestamps that fall in that hour?"
+  ],
+  "timezones.6": [
+    "Can you write a function called seconds_until_new_year that takes a timezone name as a string and returns how many seconds are left until midnight on New Year's Day in that timezone?"
+  ],
+  "uuid-slugs.1": [
+    "Can you write me a function that generates a short unique id for a new record? Just needs to return it as a string."
+  ],
+  "uuid-slugs.2": [
+    "Can you write something that takes an article title and turns it into a clean, url-friendly slug, lowercase with hyphens instead of spaces and no weird punctuation?"
+  ],
+  "env-config.1": [
+    "Can you write a function called load_config that reads a bunch of environment variables like API keys and settings, and packs them into a config object or dict so the rest of the app can just import that instead of calling os.environ everywhere?"
+  ],
+  "env-config.2": [
+    "Can you write a function called get_env_value that reads a .env file, looks up a given key, and returns its value as a string, falling back to a default if the key isn't found?"
+  ],
+  "json-schema.1": [
+    "Can you write a function called validate_config that takes a config dict and a schema dict, checks the config against the schema, and returns the first error message it finds, or None if everything's valid?"
+  ],
+  "json-schema.2": [
+    "Can you write a function called validate_records that takes a list of dictionaries and an expected schema (like a dict of field names to types) and checks that every record matches it, returning True or False?"
+  ],
+  "compression.1": [
+    "Can you write a function called compress_log_file that takes the path to a large log file as a string and writes a compressed version of it to disk, returning the path of the new file?"
+  ],
+  "compression.2": [
+    "Can you write a function that takes the path to a downloaded archive file and extracts it, then returns the contents as a list of file names or data?"
+  ],
+  "url-parsing.1": [
+    "Can you write a function that takes a URL string, a parameter name, and a value, and returns the URL with that query parameter added or replaced if it already exists?"
+  ],
+  "url-parsing.2": [
+    "Can you write a function called split_url that takes a URL string and returns just the host and path as separate strings?"
+  ],
+  "email-validation.1": [
+    "Can you write a function called validate_email that takes a string and checks whether it's properly formatted and actually has a working mail server behind it, returning true or false?"
+  ],
+  "email-validation.2": [
+    "Can you write a function that takes the raw text of an email message and pulls out the sender and subject line, returning them as a dictionary with 'from' and 'subject' keys?"
+  ],
+  "rate-limiting.1": [
+    "Can you write a function that throttles calls to an external API so it never fires more than five times per second?"
+  ],
+  "rate-limiting.2": [
+    "Can you write a function that throttles another function so it only actually runs once per minute, no matter how often it's called? Something like throttle(func) that returns a wrapped version of it."
+  ],
+  "caching-memoize.1": [
+    "Can you write a decorator or wrapper that caches the return value of a slow function for a set number of seconds, so repeated calls within that window just return the cached result instead of recomputing?"
+  ],
+  "caching-memoize.2": [
+    "I have a slow lookup function that takes a key and returns a value from some expensive computation. Can you wrap it so repeated calls with the same key are cached, but limit the cache to a fixed number of entries so old ones get evicted once it's full?"
+  ],
+  "phone-numbers.1": [
+    "Can you write a function called format_phone_number that takes a phone number string and a default country code, checks if it's valid, and returns it formatted in international style like +1 555 123 4567? If it's not a valid number it should just return None or an error message."
+  ],
+  "phone-numbers.2": [
+    "Can you write a function that takes a phone number as a string and returns just the country code part?"
+  ],
+  "money-currency.1": [
+    "Can you write a function called add_money that takes two amounts in the same currency and returns a nicely formatted string with the total, like '$45.67'?"
+  ],
+  "money-currency.2": [
+    "Can you write a function that takes a number and a locale code and returns the amount formatted as that locale's currency string, like $1,234.56 for US or 1.234,56 € for German?"
+  ],
+  "color-manipulation.1": [
+    "Can you write a function called hex_to_rgb that takes a hex color string like '#ff5733' and returns a tuple of the red, green, and blue integer values?"
+  ],
+  "color-manipulation.2": [
+    "Can you write a function called darken_color that takes a hex color string and a percentage (as a float) and returns a new hex string that's darker by that amount?"
+  ],
+  "geo-distance.1": [
+    "Can you write a function that takes two latitude/longitude pairs as floats and returns the distance between them in kilometres?"
+  ],
+  "geo-distance.2": [
+    "Can you write a function called find_nearest that takes a point as a tuple of two floats and a list of coordinate tuples, then returns the one closest to that point?"
+  ],
+  "hypothesis-testing.1": [
+    "Can you write a function that takes two lists of numbers and runs a t-test between them, returning just the p-value as a float?"
+  ],
+  "hypothesis-testing.2": [
+    "Can you write a function called pearson_correlation that takes two lists of numbers and returns a float representing how correlated they are?"
+  ],
+  "hypothesis-testing.3": [
+    "Can you write a function that takes a list of dictionaries (each dict being a row of data) and returns a matrix showing how correlated each pair of columns is with each other?"
+  ],
+  "hypothesis-testing.4": [
+    "Can you write a function that takes a list of dicts representing rows of data and a float threshold, then returns pairs of column names whose absolute correlation is above that threshold?"
+  ],
+  "hypothesis-testing.5": [
+    "Can you write a function called chi_square_independence that takes a 2D list representing a contingency table and returns the test statistic, p-value, and degrees of freedom? I want to check if two categorical variables are related."
+  ],
+  "hypothesis-testing.6": [
+    "Can you write a function called sample_skewness that takes a list of numbers and returns a float representing how skewed the distribution is?"
+  ],
+  "plotting.1": [
+    "Can you write a function called plot_values_to_png that takes a list of numbers and a filename, then draws a line chart of the values and saves it as a PNG file?"
+  ],
+  "plotting.2": [
+    "Can you write a function called plot_category_counts that takes a dict of category names to counts and saves a bar chart as an image file? I just need the categories on one axis and their counts as bars, with the output written to disk."
+  ],
+  "xml-parsing.1": [
+    "Can you write a function that takes an XML string and a tag name, then returns the text content of that element? Something like get_element_text(xml_string, tag_name) returning a str."
+  ],
+  "xml-parsing.2": [
+    "Can you write a function called xml_to_dict that takes an XML string and turns it into a nested dictionary, preserving the tag hierarchy?"
+  ],
+  "sql-builder.1": [
+    "Can you write a function called build_select_query that takes a table name and a dict of optional filters, then builds and runs a parameterised SELECT statement against the database, only including the filters that are actually provided?"
+  ],
+  "sql-builder.2": [
+    "Can you write a function called batch_insert that takes a table name and a list of dicts (each dict being a record) and safely inserts them all into the table, making sure to avoid injection issues and handle any failures gracefully?"
+  ],
+  "file-watching.1": [
+    "Can you write a function called watch_directory that takes a folder path as a string and keeps checking for any file changes, printing a message whenever something gets modified, added, or removed?"
+  ],
+  "file-watching.2": [
+    "Can you write a function called watch_file that takes a file path string and a callback function, and runs the callback whenever that file gets changed on disk?"
+  ],
+  "fast-serialization.1": [
+    "I've got a huge list of dicts I need to convert to bytes and then back to the original list as quickly as possible. Can you write two functions for that, something like dump_records and load_records?"
+  ],
+  "fast-serialization.2": [
+    "I need a couple of functions, save_data and load_data, that take a nested structure of dicts and lists and dump it into a compact binary file, then read it back into the same structure later."
+  ],
+  "subprocess-shell.1": [
+    "Can you write a function called run_command that takes a list of command args and returns the captured stdout as a string, but throws an error if the command exits with a non-zero status?"
+  ],
+  "subprocess-shell.2": [
+    "Can you write a function called run_piped_commands that takes two command strings, runs the first one and feeds its output as input to the second, then returns the final output as a string?"
+  ],
+  "natural-sort.1": [
+    "Can you write a function that sorts a list of filenames so file2 comes before file10 instead of alphabetical order putting file10 first?"
+  ],
+  "natural-sort.2": [
+    "Can you write a function that sorts a list of version strings correctly, so something like 1.10 doesn't come before 1.9?"
+  ],
+  "unit-conversion.1": [
+    "Can you write a quick function that converts miles to kilometres? It should take a number and just return the converted value."
+  ],
+  "unit-conversion.2": [
+    "Can you write a function that adds two measurements even when they're expressed in different units, like meters and feet, and gives back the combined total?"
+  ],
+  "qr-barcode.1": [
+    "Can you write a function called generate_qr_code that takes a URL string and a filename string, then saves a QR code image for that URL?"
+  ],
+  "fake-data.1": [
+    "Can you write a function called generate_fake_users that takes an integer count and returns a list of dictionaries, each with a random name and email, for testing purposes?"
+  ],
+  "fake-data.2": [
+    "Can you write a function called generate_fake_address that returns a realistic-looking street address as a string?"
+  ],
+  "encoding-detect.1": [
+    "Can you write a function called decode_file_bytes that takes the raw bytes of a file and returns the properly decoded string, automatically figuring out what encoding it's using?"
+  ],
+  "encoding-detect.2": [
+    "Can you write a function called read_unknown_file that takes a file path as a string and returns the text content, even if we don't know what encoding it's saved in?"
+  ],
+  "structured-diff.1": [
+    "Can you write a function called diff_nested_dicts that takes two dictionaries, possibly with nested dictionaries inside them, and returns a report of what keys were added, removed, or changed in value between the two? I just need plain dict/list output, nothing fancy."
+  ],
+  "structured-diff.2": [
+    "Can you write a function called diff_configs that takes two config dictionaries and returns a dict showing which keys were added, removed, or changed?"
+  ],
+  "scheduling.1": [
+    "Can you write a function that runs a cleanup task automatically every day at a specific time, like 2am? I don't want to have to trigger it manually."
+  ],
+  "terminal-tables.1": [
+    "Can you write a function called print_table that takes a list of dicts and prints them out as a neatly aligned table in the terminal, with columns lined up based on the widest value in each one?"
+  ],
+  "terminal-tables.2": [
+    "Can you write a function called format_summary_table that takes a dict of labels and values and returns a nicely bordered table as a string, ready to print in a terminal?"
+  ],
+  "audio.1": [
+    "Can you write a function called get_audio_duration that takes the path to an audio file as a string and returns its length in seconds as a float?"
+  ],
+  "audio.2": [
+    "Can you write a function that cuts off the first ten seconds of an audio file and saves the rest as a new file? It should just take the input file path and output file path as strings."
+  ],
+  "geometry.1": [
+    "Can you write a function called point_in_polygon that takes a point as a tuple of two floats and a list of vertex tuples defining a polygon, and returns a bool telling me whether the point is inside?"
+  ],
+  "geometry.2": [
+    "Can you write a function called polygon_area that takes a list of (x, y) coordinate tuples for a polygon's vertices, in order, and returns the area as a float? Should work for any simple polygon, not just rectangles or triangles."
+  ],
+  "nlp-tokenize.1": [
+    "Can you write a function that takes a paragraph as a string and breaks it down first into sentences, then splits each sentence into individual word tokens, returning a list of lists?"
+  ],
+  "nlp-tokenize.2": [
+    "Can you write a function called top_words that takes a chunk of text and a count n, strips out common stop words like 'the', 'and', 'is', and returns the n most frequent remaining words along with how many times each appears?"
+  ],
+  "nlp-tokenize.3": [
+    "Can you write a function that splits a sentence into a list of tokens, where words and punctuation marks are separate items but hyphenated words like 'well-known' stay as one token?"
+  ],
+  "nlp-tokenize.4": [
+    "Can you write a function called count_ngrams that takes a text string and an n value, then returns a dictionary mapping each word n-gram (as a tuple or string) to how many times it appears?"
+  ],
+  "nlp-tokenize.5": [
+    "Can you write a function that takes a string of text and returns it with all the common English stop words removed?"
+  ],
+  "nlp-tokenize.6": [
+    "Can you write a function called top_words that takes a chunk of text and an integer for how many words to return, filters out common stop words, and gives back a list of the most frequent remaining words along with their counts?"
+  ],
+  "ip-address.1": [
+    "Can you write a function called ip_in_cidr that takes an IP address string and a CIDR range string and returns a bool saying whether that IP falls inside the range?"
+  ],
+  "ip-address.2": [
+    "Can you write a function that takes a subnet in CIDR notation as a string and returns a list of all the usable host addresses in it?"
+  ],
+  "feature-scaling.1": [
+    "Can you write me a function that takes a table of data and rescales every numeric column so it has zero mean and unit variance, leaving non-numeric columns untouched?"
+  ],
+  "feature-scaling.2": [
+    "Can you write a function called normalize_values that takes a list of numbers and rescales them to fit between 0 and 1? If all the numbers are the same, just return a list of 0s or something sensible instead of dividing by zero."
+  ],
+  "feature-scaling.3": [
+    "Can you write a function that takes a list of rows (each row a dict with two numeric fields) plus the names of those two fields, z-scores both columns, and returns the rows with the biggest absolute difference between their z-scores, sorted from largest gap to smallest?"
+  ],
+  "feature-scaling.4": [
+    "Can you write a function called flag_outliers that takes a list of numbers and a z-score threshold, and returns which values are outliers based on that threshold?"
+  ],
+  "descriptive-stats.1": [
+    "Can you write a function called column_stats that takes a table represented as a list of lists (with a header row) and returns a dictionary mapping each column name to its mean, median, mode, and variance?"
+  ],
+  "descriptive-stats.2": [
+    "Can you write a function that takes a table represented as a list of lists (with some entries possibly missing or None) and returns a list of the average value for each column, ignoring the missing entries?"
+  ],
+  "descriptive-stats.3": [
+    "Can you write a function that flattens a nested list of numbers, no matter how deeply it's nested, and returns the median value?"
+  ],
+  "descriptive-stats.4": [
+    "Can you write a function that takes a list of dicts and returns a summary dict with the mean and median for each key? Assume all values are numbers."
+  ],
+  "descriptive-stats.5": [
+    "Can you write a function called shannon_entropy that takes a list of numbers or counts and returns a float representing the entropy of that distribution?"
+  ],
+  "regex-text-extraction.1": [
+    "Can you write a function that pulls out all the tokens starting with a dollar sign from a chunk of text and returns them as a list of strings?"
+  ],
+  "regex-text-extraction.2": [
+    "Can you write a function that takes a list of log line strings and pulls out the timestamp, level, and message into a list of dicts, skipping any lines that don't match the expected format?"
+  ],
+  "regex-text-extraction.3": [
+    "Can you write a function that goes through every cell in a table and pulls out the first decimal number it finds, and flags the cell somehow if there's no number there? Something like extract_decimals taking a list of lists of strings and returning a list of lists with the numbers or a marker for no match."
+  ],
+  "regex-text-extraction.4": [
+    "Can you write a function called expand_acronyms that takes a list of text strings and a dictionary mapping acronyms to their full forms, then returns the texts with each acronym replaced by its expansion?"
+  ],
+  "frequency-counting.1": [
+    "Can you write a function called count_values that takes a list of values from a column and returns a dictionary mapping each distinct value to how many times it appears?"
+  ],
+  "frequency-counting.2": [
+    "Can you write a function that takes a list of numbers and returns the most frequent one, and if there's a tie, picks the smallest value among them?"
+  ],
+  "frequency-counting.3": [
+    "Can you write a function that takes a table represented as a list of dictionaries and returns a dictionary mapping each column name to its most common value?"
+  ],
+  "frequency-counting.4": [
+    "Can you write a function that takes a list of names and counts how many start with each letter, then returns the results sorted from most to least common?"
+  ],
+  "text-vectorisation.1": [
+    "Can you write a function that takes a list of text documents and returns a count matrix showing how many times each word appears in each document, along with the list of vocabulary words used for the columns?"
+  ],
+  "text-vectorisation.2": [
+    "Can you write a function called compute_tfidf that takes a list of documents (each a string) and returns a dictionary mapping each word to its tf-idf score across the collection? I want it from scratch without pulling in any heavy dependencies, just plain Python logic for term frequency and inverse document frequency."
+  ],
+  "text-vectorisation.3": [
+    "Can you write a function called sentence_to_bow that takes a sentence string and a fixed list of vocabulary words, and returns a list of counts showing how many times each vocab word appears in the sentence?"
+  ],
+  "text-vectorisation.4": [
+    "Can you write a function called cosine_similarity that takes two dictionaries of word counts and returns a float representing how similar the documents are?"
+  ],
+  "categorical-encoding.1": [
+    "Can you write a function called encode_labels that takes a list of category strings and returns a list where each distinct label is swapped for a unique integer code?"
+  ],
+  "categorical-encoding.2": [
+    "Can you write a function called one_hot_encode that takes a list of category labels and returns a matrix where each row has a 1 in the position of its category and 0s elsewhere?"
+  ],
+  "categorical-encoding.3": [
+    "Can you write a function called encode_labels that takes a list of string labels and returns a list of integers, where each unique label gets a number based on its alphabetical order?"
+  ],
+  "categorical-encoding.4": [
+    "Can you write a function called encode_column_inplace that takes a table and a column name, and replaces the string values in that column with integer codes representing each unique category, modifying the table directly instead of returning a new one?"
+  ],
+  "dataframe-groupby.1": [
+    "Can you write a function called group_totals that takes a list of dicts with a 'group' key and a 'value' key, and returns a dict mapping each group to its total and average value?"
+  ],
+  "dataframe-groupby.2": [
+    "Can you write a function that takes a list of records, drops any exact duplicates, and then returns a count of how many rows belong to each distinct category?"
+  ],
+  "dataframe-groupby.3": [
+    "Can you write a function that takes a list of name/score pairs and returns each person's average score as a dictionary?"
+  ],
+  "dataframe-groupby.4": [
+    "Can you write a function that standardises (z-score) a numeric column separately within each group of another column, instead of across the whole dataset? Something like standardize_within_group taking a list of records, the value column name, and the group column name, and returning the updated records with the standardized values."
+  ],
+  "dataframe-reshape.1": [
+    "Can you write a function called drop_column that takes a list of dicts representing table rows and a column name, then returns the rows with that column removed from each one?"
+  ],
+  "dataframe-reshape.2": [
+    "Can you write a function that takes a table of strings and adds a new column showing the length of each string in a given column? Something like add_length_column that takes the table and a column name and returns the updated table."
+  ],
+  "dataframe-reshape.3": [
+    "Can you write a function that takes a table of rows and adds a new column at the very beginning showing each row's position, starting from 0 or 1?"
+  ],
+  "dataframe-reshape.4": [
+    "Can you write me a function that goes through a table and replaces every occurrence of a marker substring with a new value, but only within one specific column, leaving the rest of the table untouched?"
+  ],
+  "pairwise-distance.1": [
+    "Can you write a function called pairwise_distances that takes a matrix as a list of lists of floats and returns a matrix (list of lists) with the euclidean distance between every pair of rows?"
+  ],
+  "pairwise-distance.2": [
+    "Can you write a function that takes a list of (x, y) coordinate tuples and returns the largest distance found between any two of them?"
+  ],
+  "pairwise-distance.3": [
+    "Can you write a function called consecutive_distances that takes a list of (x, y) points and returns a list of the distances between each pair of neighboring points along the path?"
+  ],
+  "pairwise-distance.4": [
+    "Can you write a function called build_condensed_distance_matrix that takes a list of feature vectors (lists of floats) and returns a flat list representing the pairwise distances between all points, similar to the condensed format used in clustering, so I don't store the full square matrix?"
+  ],
+  "clustering.1": [
+    "Can you write a function that groups a list of 2D points into clusters based on how close they are to each other, where a group only counts if it has at least a certain number of points within a given radius? I'd like to pass in the points, the radius, and the minimum group size, and get back a list of cluster labels for each point."
+  ],
+  "clustering.2": [
+    "Can you write a function called cluster_points that takes a list of points and a number k, then returns a list of cluster labels for each point?"
+  ],
+  "clustering.3": [
+    "Can you write a function called find_noise_points that takes a list of cluster labels and returns the indices of points that aren't assigned to any cluster?"
+  ],
+  "clustering.4": [
+    "Can you write a function called cluster_feature_vectors that takes a list of feature vectors (lists of floats) and groups the similar ones together, then returns a dict mapping cluster id to the count of items in that cluster?"
+  ],
+  "regression-fitting.1": [
+    "Can you write a function that takes a list of records (each a dict of column name to number) and a target column name, fits a linear regression predicting that column from the rest, and returns the r-squared value as a float?"
+  ],
+  "regression-fitting.2": [
+    "Can you write a function called fit_line that takes a list of (x, y) point tuples and returns the slope and intercept of the best-fit line through them?"
+  ],
+  "regression-fitting.3": [
+    "Can you write a function that takes a list of records with features and a target value, fits a simple model to predict the target, and returns the residuals (actual minus predicted) as a list of numbers?"
+  ],
+  "regression-fitting.4": [
+    "Can you write a function that takes a list of numbers representing measurements and fits a polynomial of a given degree to them, then returns the fitted values as a list?"
+  ],
+  "missing-data.1": [
+    "Can you write a function called fill_missing_with_mean that takes a list of dictionaries representing rows of data and fills in any missing numeric values with the average of that column?"
+  ],
+  "missing-data.2": [
+    "Can you write a function that takes a table of rows and removes any row that has a missing or empty field, then returns the cleaned rows?"
+  ],
+  "missing-data.3": [
+    "Can you write a function that fills in missing values in a column using the most common value found in that column? It should take a list and return a new list with the gaps filled."
+  ],
+  "missing-data.4": [
+    "Can you write a function that goes through a table and tells me which columns have missing values along with how many are missing in each one?"
+  ],
+  "iterator-tools.1": [
+    "Can you write a quick function that takes a list of lists and flattens it into one single list? Just plain Python, nothing fancy."
+  ],
+  "iterator-tools.2": [
+    "Can you write a function called interleave_lists that takes two lists which might be different lengths and merges them by alternating elements, just appending whatever's left over from the longer one at the end?"
+  ],
+  "iterator-tools.3": [
+    "Can you write a function called chunk_list that takes a list and a chunk size, and returns a list of smaller lists each with that many items?"
+  ],
+  "iterator-tools.4": [
+    "Can you write a function called unique_preserve_order that takes a list and returns a new list with duplicates removed, keeping the original order of first appearance?"
+  ],
+  "combinatorics.1": [
+    "Can you write a function called three_sum_combinations that takes a list of numbers and a target integer, then returns every unique triplet from the list that adds up to that target?"
+  ],
+  "combinatorics.2": [
+    "Can you write a function that takes a list of numbers and a subset size, then returns the highest product achievable from a subset of that size along with the numbers used?"
+  ],
+  "combinatorics.3": [
+    "Can you write a function that takes a list with possible duplicate values and returns all the unique combinations, without repeating the same combination twice?"
+  ],
+  "combinatorics.4": [
+    "Can you write a function that takes a list of numbers and an integer k, and returns the k subsets with the highest sums, sorted from biggest to smallest? Each result should include the subset itself and its total."
+  ],
+  "signal-processing.1": [
+    "Can you write a function called get_frequency_spectrum that takes a list of signal samples and the sample rate, and returns the list of frequencies along with their magnitudes?"
+  ],
+  "signal-processing.2": [
+    "Can you write a function called smooth_readings that takes a list of floats representing noisy sensor data and a smoothing factor, and returns a new list with the high-frequency noise filtered out?"
+  ],
+  "signal-processing.3": [
+    "Can you write a function called find_dominant_frequency that takes a list of numeric samples and a sample rate, and returns the frequency with the strongest signal?"
+  ],
+  "signal-processing.4": [
+    "Can you write a function that smooths a list of numbers using a rolling window average before computing summary stats like mean and max? Something like smooth_and_summarize taking a list of floats and a window size, returning a dict with the results."
+  ],
+  "number-theory.1": [
+    "Can you write a function called filter_primes that takes a list of integers and returns only the ones that are prime?"
+  ],
+  "number-theory.2": [
+    "Can you write a function called prime_factors that takes an integer and returns its prime factorization as a list of tuples with each prime and its exponent?"
+  ],
+  "number-theory.3": [
+    "Can you write a function that takes an integer and returns the next prime number after it?"
+  ],
+  "number-theory.4": [
+    "Can you write a function called gcd_list that takes a list of integers and returns their greatest common divisor?"
+  ]
+}

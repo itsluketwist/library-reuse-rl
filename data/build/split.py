@@ -91,6 +91,7 @@ def split_disjoint_test(
     test_frac: float,
     val_frac: float,
     seed: int = 42,
+    balance_key: Callable[[dict], bool] | None = None,
 ) -> tuple[list[dict], list[dict], list[dict]]:
     """Split rows so test holds out whole groups (unseen), while val is an in-distribution subset.
 
@@ -100,6 +101,14 @@ def split_disjoint_test(
     `stratify_key`-stratified holdout of rows from the remaining (seen) groups. So test measures
     generalisation to unseen tasks, while val measures learning on familiar ones.
 
+    `balance_key`, if given, marks each row's category as a priority category (e.g. whether it's
+    benchmark-aligned). Without it, the categories that give up a group to test are picked with a
+    uniform shuffle, which under-represents a priority category set that has fewer *categories*
+    but more *groups per category* than the rest - test would then reflect the priority set's
+    share of categories, not its (larger) share of groups, unlike train/val. With it, the held-out
+    categories are drawn from priority and non-priority pools in proportion to each pool's share
+    of all groups, so test's priority/non-priority balance tracks train/val's instead.
+
     Returns the (train, val, test) row lists, each shuffled.
     """
     rng = random.Random(seed)
@@ -108,20 +117,45 @@ def split_disjoint_test(
     by_category: dict[str, dict[str, list[dict]]] = defaultdict(
         lambda: defaultdict(list)
     )
+    category_is_priority: dict[str, bool] = {}
     for row in rows:
-        by_category[stratify_key(row)][group_key(row)].append(row)
+        cat = stratify_key(row)
+        by_category[cat][group_key(row)].append(row)
+        if balance_key is not None:
+            category_is_priority[cat] = balance_key(row)
 
     # choose the held-out test groups: whole groups, spread across categories (at most one each),
     # and only from categories with more than one group so train/val never lose a category
     n_groups = sum(len(groups) for groups in by_category.values())
     n_test = round(n_groups * test_frac)
     eligible = [cat for cat, groups in by_category.items() if len(groups) > 1]
-    rng.shuffle(eligible)
+
+    if balance_key is None:
+        rng.shuffle(eligible)
+        selected_cats = eligible[:n_test]
+    else:
+        priority_pool = [c for c in eligible if category_is_priority.get(c)]
+        other_pool = [c for c in eligible if not category_is_priority.get(c)]
+        rng.shuffle(priority_pool)
+        rng.shuffle(other_pool)
+
+        priority_groups = sum(
+            len(groups)
+            for cat, groups in by_category.items()
+            if category_is_priority.get(cat)
+        )
+        target_priority = round(n_test * priority_groups / n_groups) if n_groups else 0
+        n_priority = min(target_priority, len(priority_pool))
+        n_other = min(n_test - n_priority, len(other_pool))
+        # backfill from whichever pool has room if the other fell short of its target/capacity
+        n_priority = min(
+            n_priority + (n_test - n_priority - n_other), len(priority_pool)
+        )
+        selected_cats = priority_pool[:n_priority] + other_pool[:n_other]
+        rng.shuffle(selected_cats)
 
     test_groups: set[tuple[str, str]] = set()
-    for cat in eligible:
-        if len(test_groups) >= n_test:
-            break
+    for cat in selected_cats:
         group_ids = sorted(by_category[cat])
         rng.shuffle(group_ids)
         test_groups.add((cat, group_ids[0]))

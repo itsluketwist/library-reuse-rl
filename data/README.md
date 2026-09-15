@@ -9,7 +9,10 @@ called `data` (not `datasets`) so it never shadows the HuggingFace `datasets` li
   without a redistribution licence, so those two are gitignored and must be built locally.
 - **`eval/`** — the committed evaluation sets (`livecodebench.jsonl`, `apps_introductory.jsonl`).
 - **`build/`** — all the construction code (an installed package, `data.build.*`, run by path).
-- **`REPORT.md`** — auto-generated audit of the built library-reuse splits (`build/audit.py`).
+  `audit.py` writes one report per pipeline: `build/library/docs/REPORT.md` (library_usage, the
+  main focus) and `build/amplify/docs/REPORT.md` (everything else, e.g. product_choice).
+- **`build/library/docs/`** — `CONSTRUCTION.md` (how the library_usage dataset is built),
+  `REPORT.md`, `PROMPT_COMPARISON.md`.
 
 The `product_choice` split and the amplify seed are derived from amplifying.ai's **claude-code-picks**
 study — [blog](https://amplifying.ai/research/claude-code-picks) ·
@@ -64,7 +67,8 @@ Shared helpers (used by both pipelines):
 - **`split.py`** — stratified train/val/test split.
 - **`download_skywork.py`** — the `implement_tested` / skywork code split → `train/skywork/`.
 - **`download_eval.py`** — the LiveCodeBench + APPS eval sets → `eval/`.
-- **`audit.py`** — summarise the built library-reuse splits → `REPORT.md`.
+- **`audit.py`** — summarise the built splits, one report per pipeline: `library/docs/REPORT.md`
+  and `amplify/docs/REPORT.md`.
 
 **`build/amplify/`** — the amplify (`product_choice`) pipeline (an option, not expanded):
 
@@ -74,6 +78,7 @@ Shared helpers (used by both pipelines):
 - **`taxonomy.yaml`** — the 20 amplify product categories.
 - **`allowlists.py`** — build `config/library_allowlists.yaml` from the taxonomies + amplify data.
 - **`build.py`** — build the `product_choice` split → `train/product_choice/`.
+- **`docs/REPORT.md`** — `audit.py`'s report for every dataset besides library_usage.
 
 **`build/library/`** — the library-usage pipeline (the main focus):
 
@@ -90,6 +95,8 @@ Shared helpers (used by both pipelines):
 - **`simple_prompts.json` / `script_prompts.json` / `repo_prompts.json`** — committed caches of
   claude-generated wordings the build folds in, one per mode (empty ⇒ templates only).
 - **`build.py`** — build the `library_usage` split → `train/library_usage/`.
+- **`docs/`** — `CONSTRUCTION.md` (how this all fits together), `REPORT.md`, `PROMPT_COMPARISON.md`
+  (sample prompts from each mode/source, for reviewing `augment.py`'s output by eye).
 
 ## Run order (from the repo root)
 
@@ -99,7 +106,7 @@ python data/build/amplify/vendor_seed.py    # -> data/build/vendor/ (needed by b
 python data/build/amplify/allowlists.py     # -> config/library_allowlists.yaml
 python data/build/amplify/build.py          # -> data/train/product_choice/
 python data/build/library/build.py          # -> data/train/library_usage/   (the focus)
-python data/build/audit.py                  # -> data/REPORT.md
+python data/build/audit.py                  # -> */docs/REPORT.md (library + amplify)
 python data/build/download_skywork.py       # -> data/train/skywork/  (large, optional)
 
 # evaluation benchmarks

@@ -28,13 +28,16 @@ LIBRARY_REPOS_DIR = BUILD_DIR / "library" / "repos"
 AMPLIFY_TAXONOMY_FILE = BUILD_DIR / "amplify" / "taxonomy.yaml"
 LIBRARY_TAXONOMY_FILE = BUILD_DIR / "library" / "taxonomy.yaml"
 
-# built dataset output dirs (train splits gitignored, eval committed) and the audit report
+# built dataset output dirs (train splits gitignored, eval committed)
 TRAIN_DIR = DATA_DIR / "train"
 EVAL_DIR = DATA_DIR / "eval"
 SKYWORK_DIR = TRAIN_DIR / "skywork"
 PRODUCT_CHOICE_DIR = TRAIN_DIR / "product_choice"
 LIBRARY_USAGE_DIR = TRAIN_DIR / "library_usage"
-REPORT_FILE = DATA_DIR / "REPORT.md"
+
+# audit.py writes one report per pipeline, alongside that pipeline's other docs
+LIBRARY_REPORT_FILE = BUILD_DIR / "library" / "docs" / "REPORT.md"
+AMPLIFY_REPORT_FILE = BUILD_DIR / "amplify" / "docs" / "REPORT.md"
 
 # per-category allowlists live in the repo config dir (committed): written by
 # build/amplify/allowlists.py, read by the reward at train time. relative to the repo root,
