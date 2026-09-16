@@ -3,7 +3,7 @@
 The executable gates (stages 02-05 for the reuse track; 02-04 for the control track, which has no
 dual-solvability stage) prove a problem runs, but not that it reads coherently. Stage 06 is a light
 human coherence check - not a deep audit - over the survivors: a companion notebook
-(06_review.ipynb, or 06_review_control.ipynb for the control track) shows each problem one at a
+(06_review_test.ipynb, or 06_review_control.ipynb for the control track) shows each problem one at a
 time so the author can confirm the task makes sense and catch anything that slipped through the
 automated gates, recording keep / update / reject. The build stage (07) then enforces that every
 problem was seen.
@@ -14,11 +14,14 @@ independently. Verdicts live in a JSONL under the (gitignored) artefacts directo
 keep/update/reject summary is captured in the audit REPORT. The file is append-only and the latest
 entry per seed wins, so review can span sessions and be revised.
 
-Review is a two-author process: each verdict carries the reviewing author's anonymous id (set once
-per notebook session, see `review_gui`) - "author_1", "author_2", ... never a real name, since this
-repo must stay anonymous for submission. Multiple reviewers can share a track this way - the GUI's
-first-unreviewed-problem resume means they naturally split the pool without double-reviewing the
-same problem.
+Review is a two-author process, and both authors independently review the whole pool (not a split
+of it) - each verdict carries the reviewing author's anonymous id (set once per notebook session,
+see `review_gui`) - "author_1", "author_2", never a real name, since this repo must stay anonymous
+for submission. The two authors' verdicts for a seed are kept separately (never overwriting one
+another), so each reviewer's GUI resumes from their OWN first-unreviewed problem and never shows
+the other author's verdict, note or edited prompt - that would bias an independent second look. A
+problem only ships once both authors have weighed in and neither rejected it: reject wins on any
+disagreement (see `accepted_ids`).
 """
 
 import html
@@ -33,6 +36,11 @@ from src.utils.io import append_jsonl, load_jsonl
 
 # keep = ship as-is, reject = drop, update = ship with the author's edited prompt
 Verdict = Literal["keep", "reject", "update"]
+
+# the two reviewers this project is set up for - a problem only ships once both have weighed in.
+# rows recorded before per-author attribution existed (no "author" field at all) predate the
+# two-reviewer setup, when REVIEWERS[0] was reviewing solo, so they count as REVIEWERS[0]'s.
+REVIEWERS: tuple[str, ...] = ("author_1", "author_2")
 
 
 def review_path(
@@ -60,19 +68,41 @@ def validated_problems(
     return [row for row in rows if row.get("kept")]
 
 
-def verdicts(
+def author_verdicts(
     track: str = "reuse",
+    author: str = "",
 ) -> dict[str, dict]:
-    """The latest recorded review verdict per seed for a track (later entries override earlier).
+    """One reviewer's latest verdict per seed for a track (later entries override that author's earlier ones).
 
-    Returns the {seed_id: verdict record} map (empty if nothing has been reviewed yet).
+    Used to resume a single author's own review session - see `review_gui`.
+
+    Returns the {seed_id: verdict record} map (empty if this author hasn't reviewed anything yet).
     """
     path = review_path(track)
     if not path.exists():
         return {}
     latest: dict[str, dict] = {}
     for row in load_jsonl(path):
+        if (row.get("author") or REVIEWERS[0]) != author:
+            continue
         latest[row["seed_id"]] = row
+    return latest
+
+
+def verdicts(
+    track: str = "reuse",
+) -> dict[str, dict[str, dict]]:
+    """Every reviewer's latest verdict per seed for a track, nested by author.
+
+    Returns {seed_id: {author: verdict record}} (empty if nothing has been reviewed yet).
+    """
+    path = review_path(track)
+    if not path.exists():
+        return {}
+    latest: dict[str, dict[str, dict]] = {}
+    for row in load_jsonl(path):
+        author = row.get("author") or REVIEWERS[0]
+        latest.setdefault(row["seed_id"], {})[author] = row
     return latest
 
 
@@ -104,48 +134,81 @@ def record_verdict(
 def pending(
     problems: list[dict] | None = None,
     track: str = "reuse",
+    author: str | None = None,
 ) -> list[dict]:
-    """Validated problems that do not yet have a review verdict, in order.
+    """Validated problems still missing a verdict, in order.
+
+    With `author`, missing means that reviewer specifically hasn't recorded one yet - the review
+    GUI uses this to resume each author's own, independent pass over the pool. Without one, missing
+    means at least one of the two REVIEWERS hasn't - the build gate uses this stricter check, since
+    a problem only ships once both authors have independently weighed in (see `accepted_ids`).
 
     Returns the unreviewed problem rows.
     """
     problems = validated_problems(track) if problems is None else problems
-    reviewed = verdicts(track)
-    return [problem for problem in problems if problem["seed_id"] not in reviewed]
+    if author is not None:
+        reviewed = author_verdicts(track, author)
+        return [problem for problem in problems if problem["seed_id"] not in reviewed]
+    all_verdicts = verdicts(track)
+    return [
+        problem
+        for problem in problems
+        if not all(
+            reviewer in all_verdicts.get(problem["seed_id"], {})
+            for reviewer in REVIEWERS
+        )
+    ]
 
 
 def accepted_ids(
     track: str = "reuse",
 ) -> set[str]:
-    """Seed ids that will ship - kept as-is or updated with an edited prompt.
+    """Seed ids that will ship - every reviewer accepted it (kept or updated), reject wins on any disagreement.
+
+    A seed only ships once both REVIEWERS have independently recorded a verdict for it and neither
+    rejected it.
 
     Returns the set of accepted seed ids.
     """
-    return {
-        seed
-        for seed, row in verdicts(track).items()
-        if row.get("verdict") in ("keep", "update")
-    }
+    accepted: set[str] = set()
+    for seed, by_author in verdicts(track).items():
+        if not all(reviewer in by_author for reviewer in REVIEWERS):
+            continue
+        if all(
+            by_author[reviewer]["verdict"] in ("keep", "update")
+            for reviewer in REVIEWERS
+        ):
+            accepted.add(seed)
+    return accepted
 
 
 def approved_problems(
     track: str = "reuse",
 ) -> list[dict]:
-    """Validated problems the author accepted, with any edited prompt applied.
+    """Validated problems both authors accepted, with an edited prompt applied if either left one.
 
-    Keeps problems whose verdict is keep or update; for an update, the stored prompt override
-    replaces the original prompt so the improved version is what ships.
+    Keeps problems where every reviewer's verdict is keep or update; if more than one reviewer
+    edited the prompt, the first reviewer in `REVIEWERS` order whose edit was recorded ships.
 
     Returns the shippable problem rows.
     """
-    reviewed = verdicts(track)
+    accepted = accepted_ids(track)
+    all_verdicts = verdicts(track)
     approved: list[dict] = []
     for problem in validated_problems(track):
-        record = reviewed.get(problem["seed_id"])
-        if not record or record.get("verdict") not in ("keep", "update"):
+        by_author = all_verdicts.get(problem["seed_id"], {})
+        if problem["seed_id"] not in accepted:
             continue
-        if record.get("prompt"):
-            problem = problem | {"prompt": record["prompt"]}
+        prompt = next(
+            (
+                by_author[reviewer]["prompt"]
+                for reviewer in REVIEWERS
+                if by_author[reviewer].get("prompt")
+            ),
+            None,
+        )
+        if prompt:
+            problem = problem | {"prompt": prompt}
         approved.append(problem)
     return approved
 
@@ -201,9 +264,11 @@ def review_gui(
 
     Shows one problem at a time - the prompt, its test cases, and its gold solution(s) in
     collapsible panels - with keep / reject buttons and a notes field. Saves after every click and
-    resumes from the first unreviewed problem (by ANY author), so two reviewers naturally split the
-    pool without double-reviewing the same problem, and review can span sittings. Control-track
-    problems have no `gold_extlib`, so that panel is only shown when the problem has one.
+    resumes from the first problem THIS author hasn't verdicted yet, so both authors independently
+    review the whole pool and review can span sittings. Only this author's own past verdict for a
+    problem is ever shown - never the other author's, so an independent second look isn't biased.
+    Control-track problems have no `gold_extlib`, so that panel is only shown when the problem has
+    one.
 
     Returns the widget to display in the notebook.
     """
@@ -216,9 +281,9 @@ def review_gui(
         )
 
     problems = validated_problems(track) if problems is None else problems
-    reviewed = verdicts(track)
+    reviewed = author_verdicts(track, author)
 
-    # start on the first problem without a verdict
+    # start on the first problem THIS author has no verdict for yet
     position = next(
         (i for i, p in enumerate(problems) if p["seed_id"] not in reviewed),
         max(len(problems) - 1, 0),
@@ -264,7 +329,7 @@ def review_gui(
             f"&nbsp;|&nbsp; {problem.get('category', '?')} &nbsp;|&nbsp; "
             f"seed_libs {problem.get('seed_libs', [])}"
         )
-        # prefill the editor with the author's edited prompt if there is one, else the original
+        # prefill the editor with THIS author's own edited prompt if there is one, else the original
         prompt_editor.value = (
             existing["prompt"]
             if existing and existing.get("prompt")
@@ -287,11 +352,7 @@ def review_gui(
                 f"[{problem.get('gold_extlib_model', '?')}]",
             )
         notes.value = existing.get("note", "") if existing else ""
-        status.value = (
-            f"current verdict: <b>{existing['verdict']}</b> (by {existing.get('author') or '?'})"
-            if existing
-            else ""
-        )
+        status.value = f"your verdict: <b>{existing['verdict']}</b>" if existing else ""
 
     def _save(
         verdict: Verdict,

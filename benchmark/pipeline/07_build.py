@@ -12,8 +12,9 @@ LRB/D000... dev), and ground_truth carries both gold solutions.
 library-reuse signal to hold a dev set out for; ground_truth carries only the stdlib gold, as these
 problems have no library solution.
 
-Only problems the author kept in stage 06 ship, and the build refuses to run while any validated
-problem is still unreviewed - so the released set is always fully human-checked.
+Only problems both stage-06 reviewers kept (or updated) ship - reject wins on any disagreement, see
+`review.accepted_ids` - and the build refuses to run while any validated problem is still missing a
+verdict from either reviewer, so the released set is always fully double human-checked.
 
 Usage: python benchmark/pipeline/07_build.py [--track reuse|control]
 """
@@ -75,7 +76,8 @@ def main() -> None:
 
     problems = validated_problems(track)
 
-    # every validated problem must have a verdict - the shipped set is fully human-reviewed
+    # every validated problem must have a verdict from both reviewers - the shipped set is fully
+    # double human-reviewed
     unreviewed = pending(problems, track)
     if unreviewed:
         examples = [problem["seed_id"] for problem in unreviewed[:5]]

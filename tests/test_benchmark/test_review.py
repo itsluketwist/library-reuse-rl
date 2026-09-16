@@ -31,42 +31,100 @@ def _problem(seed_id: str, with_extlib: bool = True) -> dict:
 
 
 class TestVerdicts:
-    """Verdicts persist to the review file, latest entry per seed wins."""
+    """Both reviewers independently verdict the same pool; reject wins on any disagreement."""
 
     def test_record_and_accept(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setattr(
             review, "review_path", lambda track="reuse": tmp_path / "reviews.jsonl"
         )
-        review.record_verdict("a", "keep")
-        review.record_verdict("b", "reject", "too trivial")
+        review.record_verdict("a", "keep", author="author_1")
+        review.record_verdict("a", "keep", author="author_2")
+        review.record_verdict("b", "reject", "too trivial", author="author_1")
+        review.record_verdict("b", "keep", author="author_2")
 
         assert set(review.verdicts()) == {"a", "b"}
         assert review.accepted_ids() == {"a"}
 
-    def test_latest_verdict_wins(self, tmp_path, monkeypatch) -> None:
+    def test_reject_wins_on_disagreement(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setattr(
             review, "review_path", lambda track="reuse": tmp_path / "reviews.jsonl"
         )
-        review.record_verdict("a", "reject")
-        review.record_verdict("a", "keep")  # revised on a second look
+        review.record_verdict("a", "keep", author="author_1")
+        review.record_verdict("a", "reject", author="author_2")
+        assert review.accepted_ids() == set()
+
+    def test_needs_both_reviewers_to_accept(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setattr(
+            review, "review_path", lambda track="reuse": tmp_path / "reviews.jsonl"
+        )
+        review.record_verdict("a", "keep", author="author_1")
+        assert review.accepted_ids() == set()  # author_2 hasn't weighed in yet
+
+    def test_latest_verdict_wins_per_author(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setattr(
+            review, "review_path", lambda track="reuse": tmp_path / "reviews.jsonl"
+        )
+        review.record_verdict("a", "reject", author="author_1")
+        review.record_verdict(
+            "a", "keep", author="author_1"
+        )  # revised on a second look
+        review.record_verdict("a", "keep", author="author_2")
         assert review.accepted_ids() == {"a"}
 
-    def test_pending_excludes_reviewed(self, tmp_path, monkeypatch) -> None:
+    def test_pending_without_author_needs_both_reviewers(
+        self, tmp_path, monkeypatch
+    ) -> None:
         monkeypatch.setattr(
             review, "review_path", lambda track="reuse": tmp_path / "reviews.jsonl"
         )
-        review.record_verdict("a", "keep")
+        review.record_verdict("a", "keep", author="author_1")
+        review.record_verdict("a", "keep", author="author_2")
+        review.record_verdict(
+            "b", "keep", author="author_1"
+        )  # only one reviewer so far
         problems = [_problem("a"), _problem("b"), _problem("c")]
         assert [p["seed_id"] for p in review.pending(problems)] == ["b", "c"]
+
+    def test_pending_with_author_is_that_authors_own_progress(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        monkeypatch.setattr(
+            review, "review_path", lambda track="reuse": tmp_path / "reviews.jsonl"
+        )
+        review.record_verdict("a", "keep", author="author_1")
+        problems = [_problem("a"), _problem("b"), _problem("c")]
+        assert [p["seed_id"] for p in review.pending(problems, author="author_1")] == [
+            "b",
+            "c",
+        ]
+        # author_2 hasn't reviewed anything yet - everything is pending for them
+        assert [p["seed_id"] for p in review.pending(problems, author="author_2")] == [
+            "a",
+            "b",
+            "c",
+        ]
+
+    def test_legacy_rows_without_an_author_count_as_the_first_reviewer(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        """Rows written before per-author attribution existed predate the two-reviewer setup."""
+        path = tmp_path / "reviews.jsonl"
+        monkeypatch.setattr(review, "review_path", lambda track="reuse": path)
+        path.write_text('{"seed_id": "a", "verdict": "keep", "note": ""}\n')
+        assert review.author_verdicts(author="author_1") == {
+            "a": {"seed_id": "a", "verdict": "keep", "note": ""}
+        }
+        assert review.author_verdicts(author="author_2") == {}
 
     def test_update_counts_as_accepted(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setattr(
             review, "review_path", lambda track="reuse": tmp_path / "reviews.jsonl"
         )
-        review.record_verdict("a", "keep")
-        review.record_verdict("b", "update", prompt="a clearer prompt")
-        review.record_verdict("c", "reject")
-        assert review.accepted_ids() == {"a", "b"}
+        review.record_verdict("a", "keep", author="author_1")
+        review.record_verdict(
+            "a", "update", prompt="a clearer prompt", author="author_2"
+        )
+        assert review.accepted_ids() == {"a"}
 
     def test_tracks_use_separate_verdict_files(self, tmp_path, monkeypatch) -> None:
         """The reuse and control tracks are reviewed and shipped independently."""
@@ -75,11 +133,12 @@ class TestVerdicts:
             "review_path",
             lambda track="reuse": tmp_path / f"reviews_{track}.jsonl",
         )
-        review.record_verdict("a", "keep", track="reuse")
-        review.record_verdict("a", "reject", track="control")
+        review.record_verdict("a", "keep", track="reuse", author="author_1")
+        review.record_verdict("a", "keep", track="reuse", author="author_2")
+        review.record_verdict("a", "reject", track="control", author="author_1")
 
-        assert review.verdicts("reuse")["a"]["verdict"] == "keep"
-        assert review.verdicts("control")["a"]["verdict"] == "reject"
+        assert review.verdicts("reuse")["a"]["author_1"]["verdict"] == "keep"
+        assert review.verdicts("control")["a"]["author_1"]["verdict"] == "reject"
         assert review.accepted_ids("reuse") == {"a"}
         assert review.accepted_ids("control") == set()
 
@@ -96,9 +155,16 @@ class TestApprovedProblems:
             "validated_problems",
             lambda track="reuse": [_problem("a"), _problem("b"), _problem("c")],
         )
-        review.record_verdict("a", "keep")
-        review.record_verdict("b", "update", prompt="a clearer prompt")
-        review.record_verdict("c", "reject")
+        review.record_verdict("a", "keep", author="author_1")
+        review.record_verdict("a", "keep", author="author_2")
+        review.record_verdict(
+            "b", "update", prompt="a clearer prompt", author="author_1"
+        )
+        review.record_verdict("b", "keep", author="author_2")
+        review.record_verdict("c", "reject", author="author_1")
+        review.record_verdict(
+            "c", "keep", author="author_2"
+        )  # disagreement - reject wins
 
         approved = {p["seed_id"]: p for p in review.approved_problems()}
         assert set(approved) == {"a", "b"}
@@ -140,6 +206,22 @@ def _extlib_accordion(gui: object) -> Any:
     return getattr(gui, "children", [])[5]
 
 
+def _header(gui: object) -> str:
+    """The header HTML - the first child of the GUI's top-level VBox.
+
+    Returns the header text.
+    """
+    return getattr(gui, "children", [])[0].value
+
+
+def _status(gui: object) -> str:
+    """The status HTML - the last child of the GUI's top-level VBox.
+
+    Returns the status text.
+    """
+    return getattr(gui, "children", [])[-1].value
+
+
 class TestReviewGui:
     """The GUI drives keep/update/reject on the current problem and persists the verdict."""
 
@@ -155,8 +237,9 @@ class TestReviewGui:
         by_label["keep"].click()  # verdict for the first problem (a), advance to b
         by_label["reject"].click()  # verdict for b
 
+        assert review.author_verdicts(author="author_1")["b"]["verdict"] == "reject"
+        review.record_verdict("a", "keep", author="author_2")
         assert review.accepted_ids() == {"a"}
-        assert review.verdicts()["b"]["verdict"] == "reject"
 
     def test_verdict_is_attributed_to_the_reviewing_author(
         self, tmp_path, monkeypatch
@@ -166,7 +249,7 @@ class TestReviewGui:
         )
         gui = review.review_gui("author_2", problems=[_problem("a")])
         {b.description: b for b in _buttons(gui)}["keep"].click()
-        assert review.verdicts()["a"]["author"] == "author_2"
+        assert review.verdicts()["a"]["author_2"]["author"] == "author_2"
 
     @pytest.mark.parametrize(
         "bad_author", ["", "  ", "alice", "Author_1", "author_", "author_0", "author1"]
@@ -191,7 +274,7 @@ class TestReviewGui:
         _textareas(gui)[0].value = "a much clearer prompt"
         {b.description: b for b in _buttons(gui)}["update"].click()
 
-        record = review.verdicts()["a"]
+        record = review.verdicts()["a"]["author_1"]
         assert record["verdict"] == "update"
         assert record["prompt"] == "a much clearer prompt"
 
@@ -208,7 +291,7 @@ class TestReviewGui:
         )
         {b.description: b for b in _buttons(gui)}["keep"].click()
 
-        assert review.verdicts("control")["a"]["verdict"] == "keep"
+        assert review.verdicts("control")["a"]["author_1"]["verdict"] == "keep"
         assert review.verdicts("reuse") == {}
 
     def test_no_extlib_panel_for_control_problem(self, tmp_path, monkeypatch) -> None:
@@ -227,3 +310,39 @@ class TestReviewGui:
         )
         gui = review.review_gui("author_1", problems=[_problem("a")])
         assert _extlib_accordion(gui).layout.display != "none"
+
+    def test_second_author_starts_at_zero_reviewed_and_first_problem(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        """The bug this guards: author_2 must not see author_1's problems as already reviewed."""
+        monkeypatch.setattr(
+            review, "review_path", lambda track="reuse": tmp_path / "reviews.jsonl"
+        )
+        problems = [_problem("a"), _problem("b")]
+        gui_1 = review.review_gui("author_1", problems=problems)
+        {b.description: b for b in _buttons(gui_1)}[
+            "keep"
+        ].click()  # author_1 reviews "a"
+
+        gui_2 = review.review_gui("author_2", problems=problems)
+        assert "reviewed 0 / 2" in _header(gui_2)
+        # resumes at the first problem ("a"), not "b" - author_1 reviewing "a" doesn't count
+        assert _textareas(gui_2)[0].value == problems[0]["prompt"]
+
+    def test_second_author_does_not_see_first_authors_answer(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        monkeypatch.setattr(
+            review, "review_path", lambda track="reuse": tmp_path / "reviews.jsonl"
+        )
+        problems = [_problem("a")]
+        gui_1 = review.review_gui("author_1", problems=problems)
+        _textareas(gui_1)[0].value = "author 1's edited prompt"
+        {b.description: b for b in _buttons(gui_1)}["update"].click()
+
+        gui_2 = review.review_gui("author_2", problems=problems)
+        assert (
+            _textareas(gui_2)[0].value == problems[0]["prompt"]
+        )  # original, not author_1's
+        # no verdict shown - author_2 hasn't reviewed it yet
+        assert "verdict" not in _status(gui_2)

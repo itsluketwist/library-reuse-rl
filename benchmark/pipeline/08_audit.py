@@ -12,7 +12,7 @@ Usage: python benchmark/pipeline/08_audit.py
 from collections import Counter
 
 from build import DATA_DIR, latest_records, track_artefact_path
-from review import validated_problems, verdicts
+from review import accepted_ids, pending, validated_problems, verdicts
 
 from src.utils.io import load_jsonl
 
@@ -100,15 +100,19 @@ def _reuse_section() -> list[str]:
         f"- 05 validated (dual-solvable): {sum(1 for r in validated if r.get('kept'))} of {len(validated)}"
     )
 
-    # stage 06 is the human review pass over the validated problems
+    # stage 06 is the human review pass over the validated problems - both authors independently
+    # double-review the whole pool, and a problem only ships once both weighed in and neither
+    # rejected it (reject wins on any disagreement, see review.accepted_ids)
     reviewed = verdicts("reuse")
+    individual = [row for by_author in reviewed.values() for row in by_author.values()]
     n_validated = len(validated_problems("reuse"))
-    counts = Counter(row.get("verdict", "?") for row in reviewed.values())
-    n_pending = n_validated - len(reviewed)
+    n_pending = len(pending(track="reuse"))
+    n_shipping = len(accepted_ids("reuse"))
+    counts = Counter(row.get("verdict", "?") for row in individual)
     lines.append(
         f"- 06 reviewed: {counts['keep']} keep, {counts['update']} update, "
-        f"{counts['reject']} reject, {n_pending} pending of {n_validated} "
-        f"(shipping {counts['keep'] + counts['update']})"
+        f"{counts['reject']} reject (individual verdicts across both reviewers), "
+        f"{n_pending} pending of {n_validated} (shipping {n_shipping})"
     )
     lines.append(
         f"- **final dataset: {len(final)} problems** (test {len(test)}, dev {len(dev)})"
@@ -121,14 +125,13 @@ def _reuse_section() -> list[str]:
         lines += _md_counts("03 drop reasons", _drop_reasons(rewritten))
     if validated:
         lines += _md_counts("05 drop reasons", _drop_reasons(validated))
-    if reviewed:
+    if individual:
         lines += _md_counts(
-            "06 review verdicts",
-            Counter(row.get("verdict", "?") for row in reviewed.values()),
+            "06 review verdicts", Counter(row.get("verdict", "?") for row in individual)
         )
         lines += _md_counts(
             "06 reviews by author",
-            Counter(row.get("author") or "?" for row in reviewed.values()),
+            Counter(row.get("author") or "?" for row in individual),
         )
 
     if final:
@@ -170,13 +173,15 @@ def _control_section() -> list[str]:
     )
 
     reviewed = verdicts("control")
+    individual = [row for by_author in reviewed.values() for row in by_author.values()]
     n_validated = len(validated_problems("control"))
-    counts = Counter(row.get("verdict", "?") for row in reviewed.values())
-    n_pending = n_validated - len(reviewed)
+    n_pending = len(pending(track="control"))
+    n_shipping = len(accepted_ids("control"))
+    counts = Counter(row.get("verdict", "?") for row in individual)
     lines.append(
         f"- 06 reviewed: {counts['keep']} keep, {counts['update']} update, "
-        f"{counts['reject']} reject, {n_pending} pending of {n_validated} "
-        f"(shipping {counts['keep'] + counts['update']})"
+        f"{counts['reject']} reject (individual verdicts across both reviewers), "
+        f"{n_pending} pending of {n_validated} (shipping {n_shipping})"
     )
     lines.append(f"- **final control dataset: {len(final)} problems**")
     lines.append("")
@@ -187,14 +192,14 @@ def _control_section() -> list[str]:
         )
     if rewritten:
         lines += _md_counts("03 drop reasons (control)", _drop_reasons(rewritten))
-    if reviewed:
+    if individual:
         lines += _md_counts(
             "06 review verdicts (control)",
-            Counter(row.get("verdict", "?") for row in reviewed.values()),
+            Counter(row.get("verdict", "?") for row in individual),
         )
         lines += _md_counts(
             "06 reviews by author (control)",
-            Counter(row.get("author") or "?" for row in reviewed.values()),
+            Counter(row.get("author") or "?" for row in individual),
         )
     if final:
         # every control seed's reference solution is stdlib-only, so seed-library coverage
