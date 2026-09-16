@@ -43,7 +43,7 @@ benchmark/
     cli.py              # `libreuseeval`
     data/               # bundled, committed splits (test/dev/control.jsonl) + CANARY.txt
   pipeline/             # dataset construction (build-time; calls into libreusebench + repo src)
-    01_fetch_bcb.py … 08_audit.py (06_review is a notebook)
+    01_fetch_bcb.py … 08_audit.py (06_review_test/06_review_control are notebooks)
     build.py            # stage paths, BCB analysis, hard-exclude buckets
     generation.py       # LLM prompts + parsers (Anthropic)
   docs/                 # CONSTRUCTION.md, PYPI_README.md, HF_README.md, REPORT.md
@@ -74,7 +74,7 @@ python benchmark/pipeline/02_filter.py       # -> artefacts/02_candidates.jsonl
 python benchmark/pipeline/03_rewrite.py      # -> artefacts/03_rewritten.jsonl
 python benchmark/pipeline/04_make_tests.py   # -> artefacts/04_tests.jsonl
 python benchmark/pipeline/05_validate.py     # -> artefacts/05_validated.jsonl
-# 06 review is an interactive notebook (06_review.ipynb) -> artefacts/06_reviews.jsonl
+# 06 review is an interactive notebook (06_review_test.ipynb) -> artefacts/06_reviews.jsonl
 python benchmark/pipeline/07_build.py        # -> libreusebench/data/{test,dev}.jsonl  (bundled)
 python benchmark/pipeline/08_audit.py        # -> docs/REPORT.md
 ```
@@ -117,14 +117,17 @@ fully validated pool, since these problems don't need a library solution to prov
   and the failing solution, so failures are diagnosable without re-running. **Reuse track only** -
   the control track has nothing to dual-validate, so stage 04's output ships as-is.
 - **06 review** — a light human coherence check, not a deep audit. An interactive notebook
-  (`06_review.ipynb`, or `06_review_control.ipynb` for the control track) shows each validated
-  problem one at a time (prompt, sample tests, and its gold solution(s)); the author skims that the
+  (`06_review_test.ipynb`, or `06_review_control.ipynb` for the control track) shows each validated
+  problem one at a time (prompt, sample tests, and its gold solution(s)); each author skims that the
   task makes sense and reads cleanly, and catches anything the automated gates cannot — a confusing
   prompt, an odd expected output, something that slipped through — then records keep / update (ship
-  an edited prompt) / reject. Verdicts persist to `artefacts/06_reviews.jsonl`
-  (`06_reviews_control.jsonl` for the control track - the two tracks are reviewed and shipped
-  independently; resumable, and each track's keep/update/reject summary is captured in the audit
-  REPORT), and the build refuses to run until every problem in that track has one.
+  an edited prompt) / reject. Both authors independently review the whole pool - never a split of
+  it, and never shown each other's verdict - and a problem only ships once both have weighed in and
+  neither rejected it (reject wins on any disagreement). Verdicts persist to
+  `artefacts/06_reviews.jsonl` (`06_reviews_control.jsonl` for the control track - the two tracks
+  are reviewed and shipped independently; resumable per author, and each track's keep/update/reject
+  summary is captured in the audit REPORT), and the build refuses to run until every problem in
+  that track has a verdict from both authors.
 - **07 build** — write the author-approved survivors straight into the package's `data/`. The reuse
   track holds out a small dev split (`test.jsonl` / `dev.jsonl`); the control track ships as a
   single split (`control.jsonl`), since there's no dual-solvability signal to hold a dev set out
