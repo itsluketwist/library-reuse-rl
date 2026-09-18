@@ -8,20 +8,21 @@ echo ">>> Running eval jobs locally (no slurm) >>>"
 ###############################################################################
 
 # the models to evaluate (untrained or pretrained, see config/models.yaml). local (vllm)
-# entries need a GPU node; api-provider entries (deepseek-v4-flash, gpt-5.6-luna) just
-# need network access - both run fine on this node, one after another.
+# entries need a GPU node; api-provider entries just need network access - both run fine
+# on this node, one after another.
 models=(
     # "qwen3-debug"
-    "qwen3-4b"
-    "qwen3-8b"
-    "qwen3-14b"
-    "qwen3-32b"
-    "olmo3-7b"
-    "ocr-7b"
-    "deepseek-v4-flash"
-    "gpt-5.6-luna"
+    # "qwen3-4b"
+    # "qwen3-8b"
+    # "qwen3-14b"
+    # "qwen3-32b"
+    # "olmo3-7b"
+    # "ocr-7b"
+    "gpt-5.6-sol"
     "gpt-5.6-terra"
-    # "glm-5.2"
+    "gpt-5.6-luna"
+    "deepseek-flash"
+    "glm-5.2"
     "kimi-k3"
 )
 

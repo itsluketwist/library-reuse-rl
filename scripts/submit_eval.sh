@@ -39,8 +39,12 @@ models=(
     ####################################################
     #### api-served models (require network access) ####
     ####################################################
-    # "api:deepseek-flash"
-    # "api:gpt-5.6-luna"
+    "api:gpt-5.6-sol"
+    "api:gpt-5.6-terra"
+    "api:gpt-5.6-luna"
+    "api:deepseek-flash"
+    "api:glm-5.2"
+    "api:kimi-k3"
 )
 
 # eval dataset names (config/eval_datasets.yaml). leave empty to evaluate every dataset in
