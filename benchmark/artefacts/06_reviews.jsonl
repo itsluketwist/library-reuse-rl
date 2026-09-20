@@ -357,3 +357,221 @@
 {"seed_id": "BigCodeBench/1057", "verdict": "keep", "note": "", "author": "author_1"}
 {"seed_id": "BigCodeBench/1088", "verdict": "keep", "note": "", "author": "author_1"}
 {"seed_id": "BigCodeBench/723", "verdict": "keep", "note": "", "author": "author_1"}
+{"seed_id": "BigCodeBench/23", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/33", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/52", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/54", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/55", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/56", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/90", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/114", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/115", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/137", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/148", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/149", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/153", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/161", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/232", "verdict": "update", "note": "test case inconsistency", "author": "author_2", "prompt": "You are given transaction records describing customer purchases. Each record has a customer name, a purchase category, and a sales amount. Read all input from standard input and write the required summary to standard output.\n\nInput format:\n- The first line contains a single token that should be a non-negative integer N, the number of transaction records that follow.\n- If this first token cannot be parsed as a non-negative integer, the input is considered invalid; in that case print exactly the line `Invalid input` and stop (do not print anything else).\n- Otherwise, each of the next N lines contains a record in the form `Customer,Category,Sales`, where `Customer` and `Category` are strings (containing no commas) and `Sales` is an integer.\n\nProcessing rules:\n- If the same customer name appears more than once, keep only the first occurrence of that customer (in the order the records appear) and discard the later ones.\n- Compute the total sales as the sum of the `Sales` values from the retained (deduplicated) records.\n- Determine the most popular category as the category that occurs most often among the retained records. If two or more categories are tied for the highest frequency, choose the one that comes first alphabetically.\n- If N is 0 (no records), the total sales is 0 and there is no popular category; in that case print `Total Sales: 0` and `Most Popular Category: None`.\n\nOutput format:\nPrint exactly two lines:\n```\nTotal Sales: <total>\nMost Popular Category: <category>\n```\nwhere `<total>` is the computed integer total sales and `<category>` is the determined most popular category (or `None` as described above).\n\nExample:\nInput:\n```\n4\nJohn,Electronics,500\nMary,Home,300\nPeter,Beauty,400\nNick,Sports,600\n```\nOutput:\n```\nTotal Sales: 1800\nMost Popular Category: Beauty\n```"}
+{"seed_id": "BigCodeBench/250", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/275", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/294", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/299", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/301", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/303", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/303", "verdict": "reject", "note": "prompt only give 2 example, but i the test it has more than 2 formats", "author": "author_2"}
+{"seed_id": "BigCodeBench/317", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/332", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/334", "verdict": "reject", "note": "inconsistency between example test case and actual test case 1", "author": "author_2"}
+{"seed_id": "BigCodeBench/347", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/376", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/408", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/409", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/410", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/411", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/415", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/420", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/465", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/471", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/483", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/487", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/500", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/501", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/507", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/518", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/526", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/536", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/549", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/550", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/561", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/597", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/598", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/600", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/600", "verdict": "reject", "note": "inconsistency between example test and test 1", "author": "author_2"}
+{"seed_id": "BigCodeBench/603", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/606", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/630", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/632", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/633", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/634", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/643", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/648", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/649", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/650", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/658", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/674", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/679", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/681", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/683", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/684", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/686", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/687", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/692", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/693", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/697", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/700", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/701", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/703", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/704", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/707", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/710", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/727", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/735", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/736", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/737", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/742", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/744", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/748", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/749", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/757", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/763", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/763", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/780", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/787", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/790", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/797", "verdict": "reject", "note": "confused. how should we treat the header row?", "author": "author_2"}
+{"seed_id": "BigCodeBench/801", "verdict": "reject", "note": "the 'Temp' test case (-5 vs -3, both count 2) expects '-5', the numerically smaller value, not '-3' which is alphabetically first as a string", "author": "author_2"}
+{"seed_id": "BigCodeBench/803", "verdict": "reject", "note": "test case with 'A,B,C\\n' only has header but still have stdout. In the prompt should state a clear rule for this edge case", "author": "author_2"}
+{"seed_id": "BigCodeBench/806", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/807", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/813", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/827", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/829", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/846", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/849", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/863", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/864", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/865", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/870", "verdict": "reject", "note": "Need to make clear statement for the boolen value", "author": "author_2"}
+{"seed_id": "BigCodeBench/871", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/872", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/874", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/882", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/886", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/900", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/901", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/902", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/918", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/921", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/922", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/926", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/927", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/929", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/935", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/938", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/940", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/969", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/985", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1030", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1046", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1049", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1068", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1076", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1077", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1080", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1082", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1089", "verdict": "reject", "note": "inconsistenct between example test and test 1", "author": "author_2"}
+{"seed_id": "BigCodeBench/1094", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1095", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1096", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1100", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1109", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1138", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/26", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/29", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/219", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/219", "verdict": "reject", "note": "inconsistency between example test case and test case 1", "author": "author_2"}
+{"seed_id": "BigCodeBench/221", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/223", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/228", "verdict": "reject", "note": "The prompt does not specify how to handle the NaN ", "author": "author_2"}
+{"seed_id": "BigCodeBench/292", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/361", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/458", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/718", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/845", "verdict": "reject", "note": "inconsistency between example test and test cas 1", "author": "author_2"}
+{"seed_id": "BigCodeBench/879", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/889", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/571", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/3", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/10", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/11", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/70", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/84", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/67", "verdict": "reject", "note": "whether file name should contain space (the last test has space in the stdin and stdout)", "author": "author_2"}
+{"seed_id": "BigCodeBench/126", "verdict": "reject", "note": "inconsistency between example test and test case 1", "author": "author_2"}
+{"seed_id": "BigCodeBench/140", "verdict": "reject", "note": "inconsistency between example test and test case 1 (should specify the decimal)", "author": "author_2"}
+{"seed_id": "BigCodeBench/141", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/150", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/151", "verdict": "reject", "note": "prompt should specify if max-min is 0, what should we do", "author": "author_2"}
+{"seed_id": "BigCodeBench/152", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/171", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/173", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/190", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/216", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/243", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/245", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/290", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/308", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/309", "verdict": "reject", "note": "inconsistency between example test and test cas 1", "author": "author_2"}
+{"seed_id": "BigCodeBench/311", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/321", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/351", "verdict": "reject", "note": "whether we should contain comma in the name (example Product with, spaces)", "author": "author_2"}
+{"seed_id": "BigCodeBench/353", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/386", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/423", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/426", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/431", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/440", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/509", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/573", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/625", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/627", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/638", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/646", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/680", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/688", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/690", "verdict": "reject", "note": "test inconsistenct (example test and test cas 1)", "author": "author_2"}
+{"seed_id": "BigCodeBench/772", "verdict": "reject", "note": "inconsistency in example test and test case1 ", "author": "author_2"}
+{"seed_id": "BigCodeBench/776", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/784", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/789", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/793", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/802", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/811", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/815", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/835", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/837", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/840", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/850", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/856", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/869", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/899", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/925", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/945", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/948", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1003", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1031", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1057", "verdict": "reject", "note": "prompt should specify how to treat whitespace in the stirng", "author": "author_2"}
+{"seed_id": "BigCodeBench/1088", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/723", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/723", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/723", "verdict": "keep", "note": "", "author": "author_2"}

@@ -96,3 +96,99 @@
 {"seed_id": "BigCodeBench/1126", "verdict": "keep", "note": "", "author": "author_1"}
 {"seed_id": "BigCodeBench/1128", "verdict": "reject", "note": "", "author": "author_1"}
 {"seed_id": "BigCodeBench/1131", "verdict": "reject", "note": "", "author": "author_1"}
+{"seed_id": "BigCodeBench/4", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/7", "verdict": "update", "note": "", "author": "author_2", "prompt": "Write a program that reads sales records from standard input and prints the name of the best-selling product.\n\nInput format:\n- The first line is a header line (its content can be ignored).\n- Each subsequent line contains a product record with exactly two comma-separated fields: the product name (a string, which may contain spaces but not commas and escape sequence) and the quantity sold (an integer), e.g. \"Product B,200\".\n- Input ends at end-of-file.\n\nBehavior:\n- For each product name, sum the quantities from all of its rows to get its total quantity sold.\n- Determine the product with the largest total quantity. If several products tie for the largest total, choose whichever of them was the first to reach that maximum total quantity while scanning the rows in the order they appear in the input.\n- Print that product's name exactly as it appears in the input, on a single line, with no extra text.\n- If there are no data rows after the header, or if any quantity field cannot be parsed as an integer, print exactly the single word \"Error\" and nothing else.\n\nExample:\nInput:\n```\nproduct,quantity\nProduct B,200\nProduct A,100\n```\nOutput:\n```\nProduct B\n```"}
+{"seed_id": "BigCodeBench/25", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/30", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/96", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/97", "verdict": "reject", "note": "First test case and example test are inconsistent", "author": "author_2"}
+{"seed_id": "BigCodeBench/145", "verdict": "reject", "note": "I do not know about IP address (cannot judge)", "author": "author_2"}
+{"seed_id": "BigCodeBench/172", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/178", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/202", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/206", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/254", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/265", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/270", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/295", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/297", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/327", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/329", "verdict": "update", "note": "Prompt doesn't say what happens when '(' has no matching ')' later in the text (tested by the \"unclosed text continues\" case); gold takes the rest of the string as one token.", "author": "author_2", "prompt": "Write a program that reads two things from standard input:\n1. The first line contains a file name (a plain string, with no path separators).\n2. All remaining lines contain the literal text of a JSON object. The JSON object's values are all strings (the object itself has no nested structures).\n\nBuild a single text string by taking the JSON object's string values, in the order they appear in the object, and joining them with a single space.\n\nFrom that combined text, produce a list of tokens according to these rules, scanning the text left to right:\n- Whenever you encounter an opening parenthesis '(', treat everything from that '(' up to and including the very next ')' as one single token (this token includes both parentheses and everything in between).\n- If an opening parenthesis '(' has no closing ')' anywhere later in the text, its token instead consists of that '(' together with all remaining characters through the end of the text.\n- Any character that is a letter, digit, or underscore that is NOT inside such a parenthesized span is its own individual token.\n- All other characters (spaces, punctuation, etc.) that are not inside a parenthesized span and are not letters/digits/underscore are ignored and produce no token.\n\nCollect the tokens in the order they occur in the combined text.\n\nFinally, print a JSON object (using standard JSON formatting with double quotes) that has exactly one key equal to the file name read from the first input line, whose value is the list of tokens (as JSON strings) in the order collected. Print nothing else.\n\nExample:\nInput:\n```\nsample_data.json\n{\"content\": \"This is a (sample) text with some (matches) and characters.\"}\n```\nOutput:\n```\n{\"sample_data.json\": [\"T\", \"h\", \"i\", \"s\", \"i\", \"s\", \"a\", \"(sample)\", \"t\", \"e\", \"x\", \"t\", \"w\", \"i\", \"t\", \"h\", \"s\", \"o\", \"m\", \"e\", \"(matches)\", \"a\", \"n\", \"d\", \"c\", \"h\", \"a\", \"r\", \"a\", \"c\", \"t\", \"e\", \"r\", \"s\"]}\n```"}
+{"seed_id": "BigCodeBench/339", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/358", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/363", "verdict": "update", "note": "Prompt says to print the pair using the input token's number, but for input \"007\" the gold output prints \"7\" (canonical int, no leading zeros) — prompt doesn't state this normalization.", "author": "author_2", "prompt": "Standard input contains zero or more whitespace-separated tokens on a single line, each token meant to represent a number for which you must compute the factorial.\n\nFirst validate the input: every token must be a string that represents a non-negative integer (only digits, optionally preceded by nothing else — no minus sign, no decimal point, no letters). If any token fails this check (for example it is negative, non-numeric, or a decimal), print exactly:\n\nValueError\n\nand nothing else, then stop.\n\n\nIf all tokens are valid non-negative integers, convert each token to its integer value and compute its factorial. Then print the results as one line containing, for each distinct integer value (keeping the order in which it first appears in the input), the pair \"number:factorial\" separated by a single space between pairs, where \"number\" is the canonical decimal form of the integer (i.e. without any leading zeros — for example the token \"003\" is printed as \"3\"). If the input line is empty (no tokens), print an empty line.\n\n\nExample:\nInput:\n5 6 7\n\nOutput:\n5:120 6:720 7:5040"}
+{"seed_id": "BigCodeBench/398", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/412", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/433", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/464", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/466", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/505", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/544", "verdict": "reject", "note": "the input example is different from test case 1", "author": "author_2"}
+{"seed_id": "BigCodeBench/565", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/566", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/569", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/629", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/631", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/644", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/666", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/667", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/668", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/669", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/670", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/672", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/682", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/685", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/711", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/711", "verdict": "reject", "note": "Prompt says values are 'numbers or strings' only, but test case 10 has booleans and null ({\"k1\": true, \"k2\": false, \"k3\": null}), and gold expects Python-style 'True'/'False' text and an empty field for null -- a solver following the stated input contract wouldn't know how to handle or format these.", "author": "author_2"}
+{"seed_id": "BigCodeBench/713", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/717", "verdict": "reject", "note": "test 8 has same section, there is no statement how to deal with it in the prompt", "author": "author_2"}
+{"seed_id": "BigCodeBench/721", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/724", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/728", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/730", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/733", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/741", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/747", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/761", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/765", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/766", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/769", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/775", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/778", "verdict": "reject", "note": "The prompt is comfusing, whether empty array should be valid or invalid?", "author": "author_2"}
+{"seed_id": "BigCodeBench/795", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/800", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/818", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/821", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/824", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/830", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/841", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/854", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/867", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/873", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/893", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/911", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/912", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/928", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/931", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/932", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/934", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/937", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/957", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/972", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/990", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/992", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1009", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1021", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1027", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1090", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1093", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1097", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1098", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1099", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1108", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1110", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1111", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1113", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1126", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1128", "verdict": "keep", "note": "", "author": "author_2"}
+{"seed_id": "BigCodeBench/1131", "verdict": "keep", "note": "", "author": "author_2"}
