@@ -838,6 +838,15 @@ wheels = [
 ]
 
 [[package]]
+name = "flashinfer-jit-cache"
+version = "0.6.16.post3+cu129"
+source = { registry = "https://flashinfer.ai/whl/cu129" }
+wheels = [
+    { url = "https://github.com/flashinfer-ai/flashinfer/releases/download/v0.6.16.post3/flashinfer_jit_cache-0.6.16.post3+cu129-cp39-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:2e7d27d6c82e5d6200c704799d83704185ad228d576c5aee06b6d528d09616c1" },
+    { url = "https://github.com/flashinfer-ai/flashinfer/releases/download/v0.6.16.post3/flashinfer_jit_cache-0.6.16.post3+cu129-cp39-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:bfccb6a2a1db86763bded97f4f898e329ae5767d556a1f51b131a2fa3174a48e" },
+]
+
+[[package]]
 name = "flashinfer-python"
 version = "0.6.16.post3"
 source = { registry = "https://pypi.org/simple" }
@@ -3356,6 +3365,7 @@ dependencies = [
 [package.optional-dependencies]
 hpc = [
     { name = "accelerate", marker = "sys_platform == 'linux'" },
+    { name = "flashinfer-jit-cache", marker = "sys_platform == 'linux'" },
     { name = "torch", marker = "sys_platform == 'linux'" },
     { name = "torchaudio", marker = "sys_platform == 'linux'" },
     { name = "torchcodec", marker = "sys_platform == 'linux'" },
@@ -3372,6 +3382,7 @@ requires-dist = [
     { name = "anthropic" },
     { name = "beautifulsoup4" },
     { name = "datasets", specifier = ">=4.7.0" },
+    { name = "flashinfer-jit-cache", marker = "sys_platform == 'linux' and extra == 'hpc'", specifier = "==0.6.16.post3", index = "https://flashinfer.ai/whl/cu129" },
     { name = "huggingface-hub" },
     { name = "jupyter" },
     { name = "libreusebench", editable = "benchmark" },

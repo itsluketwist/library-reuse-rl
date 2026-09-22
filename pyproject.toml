@@ -69,13 +69,17 @@ dependencies = [
 # - trl 1.13.0 is tested against vllm >=0.19.1,<=0.28.0, so we take the newest: vllm 0.28.0
 # - vllm pins torch, torchvision and torchaudio exactly, so those three follow from it
 # - torchcodec (a vllm dependency) is listed only so it can come from the pytorch index too
+# - flashinfer-jit-cache holds vllm's flashinfer kernels (eg. token sampling) precompiled -
+#   without it flashinfer compiles them on first use, which needs a cuda compiler (nvcc) the
+#   nodes don't have. its version must equal the flashinfer-python version vllm pins.
 # - transformers and accelerate are pinned to the versions uv resolved for the above
 # isambard's gpu driver (565) supports cuda <=12.7 and cannot run cuda 13, which is what
-# pypi's default torch, torchcodec and vllm builds now use - so they come from their cuda
-# 12.9 indexes below instead (12.9 runs on the 12.7 driver via cuda's minor-version
-# compatibility).
+# pypi's default torch, torchcodec and vllm builds now use - so they (and flashinfer's
+# kernels) come from their cuda 12.9 indexes below instead (12.9 runs on the 12.7 driver
+# via cuda's minor-version compatibility).
 hpc = [
     "accelerate==1.15.0 ; sys_platform == 'linux'",
+    "flashinfer-jit-cache==0.6.16.post3 ; sys_platform == 'linux'",
     "torch==2.13.0 ; sys_platform == 'linux'",
     "torchaudio==2.11.0 ; sys_platform == 'linux'",
     "torchcodec==0.16.0 ; sys_platform == 'linux'",
@@ -98,6 +102,7 @@ run_scoring = "src.run_scoring:main"
 # index and picking up stale versions mirrored there (eg. requests, numpy), which dragged trl
 # down to an ancient release that predates GRPOConfig.
 [tool.uv.sources]
+flashinfer-jit-cache = { index = "flashinfer-cu129" }
 torch = { index = "pytorch-cu129" }
 torchvision = { index = "pytorch-cu129" }
 torchaudio = { index = "pytorch-cu129" }
@@ -153,6 +158,11 @@ required-environments = ["sys_platform == 'linux' and platform_machine == 'aarch
 # nvidia-cudnn-frontend (a vllm dependency) pulls in cuda 13 libraries from 1.29.0 onwards,
 # which isambard's driver can't run - hold it at the releases vllm 0.28.0 was built alongside
 constraint-dependencies = ["nvidia-cudnn-frontend<1.29.0"]
+
+[[tool.uv.index]]
+name = "flashinfer-cu129"
+url = "https://flashinfer.ai/whl/cu129"
+explicit = true
 
 [[tool.uv.index]]
 name = "pytorch-cu129"
