@@ -4,8 +4,10 @@ The flow is: parse every response and work out the union of third-party packages
 create the venv, install those packages, and run each response against its task's stdin/stdout
 tests. Reporting gives correctness (pass rate) and library reuse on the same problems - the
 signal this benchmark exists to provide - tracked at two strengths: how often a solution imported
-an external library, and the stricter how often it actually called or accessed one. The installed
-package plan is saved with the results for debugging and reproducibility.
+an external library, and the stricter how often it actually called or accessed one. Alongside
+these, radon measures each solution's size (logical lines of code) and maintainability index, to
+see whether reuse makes code shorter or easier to maintain. The installed package plan is saved
+with the results for debugging and reproducibility.
 
 Since responses can name arbitrary third-party packages, installation is confirmed on stdin by
 default (`confirm_packages`) - pass `confirm=None` to install automatically instead, for unattended
@@ -14,6 +16,7 @@ runs. For control and reproducibility the environment can instead be supplied as
 or a package fails to install, an environment file is written for correction and reuse.
 """
 
+import warnings
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable
 from datetime import datetime
@@ -32,6 +35,8 @@ from libreusebench.libraries import (
 )
 from libreusebench.load import load_dataset, load_records
 from llm_cgr import save_json
+from radon.metrics import mi_visit
+from radon.raw import analyze
 
 
 def _benchmark_by_id() -> dict[str, dict]:
@@ -167,6 +172,28 @@ def write_env_file(
     return path
 
 
+def _code_metrics(
+    code: str,
+) -> tuple[int | None, float | None]:
+    """Measure a program's size and maintainability with radon.
+
+    Size is logical lines of code (lloc): one per statement, so blank lines, comments, and
+    statements split over several lines don't change it. The maintainability index is radon's
+    0-100 score (higher is more maintainable), built from the code's halstead volume, cyclomatic
+    complexity, size, and share of comment lines (docstrings count as comments here).
+
+    Returns a (lloc, maintainability_index) tuple, both None if radon cannot parse the code.
+    """
+    # model code isn't trusted to be valid python, so a parse failure means "not measured",
+    # and the SyntaxWarnings from non-raw regex strings are silenced as in libraries.py
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", SyntaxWarning)
+            return analyze(code).lloc, mi_visit(code, multi=True)
+    except Exception:
+        return None, None
+
+
 def _score_response(
     response: str,
     record: dict,
@@ -178,9 +205,10 @@ def _score_response(
 
     Tracks library reuse at two strengths: `external_libs` is every third-party library the
     response imports, `used_external_libs` is the subset it actually calls or accesses - an
-    unused import inflates the former without showing real reuse.
+    unused import inflates the former without showing real reuse. Also records the code's
+    size and maintainability (see _code_metrics).
 
-    Returns a per-response result dict (passed, external_lib, external_lib_used, ...).
+    Returns a per-response result dict (passed, external_lib, external_lib_used, lloc, ...).
     """
     code = extract_code(response)
     if code is None:
@@ -190,11 +218,14 @@ def _score_response(
             "external_lib": False,
             "used_external_libs": [],
             "external_lib_used": False,
+            "lloc": None,
+            "maintainability_index": None,
             "reason": "no code",
         }
 
     external = imported_libraries(response)
     used = used_libraries(response)
+    lloc, maintainability_index = _code_metrics(code)
     # any of this response's own packages that failed the up-front install (explains a failure)
     missing = sorted(required_pip_packages(response) & install_failed)
     passed, message = env.evaluate(
@@ -209,6 +240,8 @@ def _score_response(
         "external_lib": bool(external),
         "used_external_libs": sorted(used),
         "external_lib_used": bool(used),
+        "lloc": lloc,
+        "maintainability_index": maintainability_index,
         "install_failed": missing,
         "reason": "" if passed else message,
     }
@@ -262,6 +295,33 @@ def _lib_stats(
     }
 
 
+def _code_stats(
+    rows: list[dict],
+) -> dict:
+    """Average code size and maintainability over per-response results.
+
+    Only responses radon could measure are averaged (no-code and unparseable responses are
+    skipped), and `n_measured` says how many that was. The averages are None, not 0.0, when
+    nothing was measured - a 0.0 average size would wrongly read as very short code.
+
+    Returns {n_measured, avg_lloc, avg_maintainability_index}.
+    """
+    measured = [row for row in rows if row.get("lloc") is not None]
+    if not measured:
+        return {
+            "n_measured": 0,
+            "avg_lloc": None,
+            "avg_maintainability_index": None,
+        }
+    return {
+        "n_measured": len(measured),
+        "avg_lloc": _mean(row["lloc"] for row in measured),
+        "avg_maintainability_index": _mean(
+            row["maintainability_index"] for row in measured
+        ),
+    }
+
+
 def _aggregate(
     per_response: list[dict],
     k: int | None = None,
@@ -273,6 +333,8 @@ def _aggregate(
     tracked at two strengths - "imported" (any third-party library named in an import) and "used"
     (the subset actually called or accessed) - each reported both per task (true if any of its
     responses hit the bar) and per response, with a using-rate, an average, and a per-library count.
+    Code size and maintainability are averaged per response, over all responses and over just
+    the passing ones - failing code can be short simply because it is broken or unfinished.
 
     Returns the results dict (without the per-response detail, which the caller attaches).
     """
@@ -316,6 +378,10 @@ def _aggregate(
                     [set(row.get("used_external_libs", [])) for row in per_response]
                 ),
             },
+        },
+        "code_metrics": {
+            "all": _code_stats(per_response),
+            "passed": _code_stats([row for row in per_response if row["passed"]]),
         },
     }
 
@@ -388,8 +454,10 @@ def evaluate_responses(
     On success, reports pass@1 / pass@k and per-problem library-reuse statistics, split into
     "imported" (fraction of problems naming a library, average external libraries per problem, and
     a per-library task count) and the stricter "used" (the same statistics but only counting
-    libraries actually called or accessed), plus the installed package plan and a timestamped JSON
-    alongside the per-response details. `k` defaults to the smallest number of samples any task has.
+    libraries actually called or accessed), and the average code size (lloc) and maintainability
+    index, over all and over passing responses. The installed package plan and per-response
+    details are saved with them to a timestamped JSON. `k` defaults to the smallest number of
+    samples any task has.
 
     Returns the results dict (empty if the run stopped for the environment to be corrected).
     """
@@ -476,6 +544,12 @@ def evaluate_responses(
     lib_imported = results["library_use"]["imported"]["per_task"]["using_lib_rate"]
     lib_used = results["library_use"]["used"]["per_task"]["using_lib_rate"]
     summary += f" | lib-imported {lib_imported:.3f} | lib-used {lib_used:.3f}"
+    code_all = results["code_metrics"]["all"]
+    if code_all["n_measured"]:
+        summary += (
+            f" | lloc {code_all['avg_lloc']:.1f}"
+            f" | mi {code_all['avg_maintainability_index']:.1f}"
+        )
     print(f"{summary} | saved {file_path}")
     return results
 

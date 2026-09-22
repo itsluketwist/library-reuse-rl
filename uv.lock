@@ -1388,6 +1388,7 @@ version = "0.1.0"
 source = { editable = "benchmark" }
 dependencies = [
     { name = "llm-codegen-research", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "radon", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
 
 [package.metadata]
@@ -1395,6 +1396,7 @@ requires-dist = [
     { name = "llm-codegen-research" },
     { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'" },
+    { name = "radon" },
     { name = "uv", marker = "extra == 'dev'" },
 ]
 provides-extras = ["dev"]

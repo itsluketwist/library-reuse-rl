@@ -361,8 +361,24 @@ class TestScoreResponse:
             "external_lib": False,
             "used_external_libs": [],
             "external_lib_used": False,
+            "lloc": None,
+            "maintainability_index": None,
             "reason": "no code",
         }
+
+    def test_code_size_and_maintainability_are_measured(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        # three statements: comments and blank lines don't count towards lloc
+        response = "```python\n# say hi\nx = 1\n\ny = x + 1\nprint(y)\n```"
+        result = self._evaluate_one(response, tmp_path, monkeypatch)
+        assert result["lloc"] == 3
+        assert 0.0 <= result["maintainability_index"] <= 100.0
+
+    def test_unparseable_code_has_no_metrics(self, tmp_path, monkeypatch) -> None:
+        result = self._evaluate_one("```python\ndef f(:\n```", tmp_path, monkeypatch)
+        assert result["lloc"] is None
+        assert result["maintainability_index"] is None
 
 
 class TestStatistics:
@@ -427,3 +443,48 @@ class TestStatistics:
         assert round(used_resp["using_lib_rate"], 3) == 0.333
         assert round(used_resp["avg_extlibs"], 3) == 0.333  # (1 + 0 + 0) / 3
         assert used_resp["library_counts"] == {"pandas": 1}
+
+    def test_code_metrics_all_and_passed(self) -> None:
+        # one passing and one failing measured response, plus one that couldn't be measured
+        per_response = [
+            {
+                "task_id": "LRB/T000",
+                "passed": True,
+                "lloc": 10,
+                "maintainability_index": 80.0,
+            },
+            {
+                "task_id": "LRB/T000",
+                "passed": False,
+                "lloc": 4,
+                "maintainability_index": 60.0,
+            },
+            {
+                "task_id": "LRB/T001",
+                "passed": False,
+                "lloc": None,
+                "maintainability_index": None,
+            },
+        ]
+        res = evaluate._aggregate(per_response)
+
+        # the unmeasured response is skipped rather than counted as zero
+        assert res["code_metrics"]["all"] == {
+            "n_measured": 2,
+            "avg_lloc": 7.0,
+            "avg_maintainability_index": 70.0,
+        }
+        assert res["code_metrics"]["passed"] == {
+            "n_measured": 1,
+            "avg_lloc": 10.0,
+            "avg_maintainability_index": 80.0,
+        }
+
+    def test_code_metrics_none_when_nothing_measured(self) -> None:
+        per_response = [{"task_id": "LRB/T000", "passed": False, "lloc": None}]
+        res = evaluate._aggregate(per_response)
+        assert res["code_metrics"]["passed"] == {
+            "n_measured": 0,
+            "avg_lloc": None,
+            "avg_maintainability_index": None,
+        }

@@ -28,8 +28,9 @@ The package exposes the following functions:
 
 - **`evaluate_responses(responses, env_file=None)`** — evaluate LLM responses already in memory
   (a `{task_id: [response, ...]}` dict) against the benchmark: run each response's program against
-  the task's stdin/stdout tests, reporting both correctness and library reuse. Saves results to a
-  JSON file and returns a statistics dictionary.
+  the task's stdin/stdout tests, reporting correctness, library reuse, and code size and
+  maintainability (via [radon](https://radon.readthedocs.io/)). Saves results to a JSON file and
+  returns a statistics dictionary.
 
 - **`evaluate_responses_file(responses_file, env_file=None)`** — the same evaluation, loading
   responses from a `.json` or `.jsonl` file instead of taking them in memory.
@@ -44,6 +45,8 @@ results = libreusebench.evaluate_responses_file("your_responses.jsonl")
 print(results["pass@1"])
 print(results["library_use"]["imported"]["per_task"]["using_lib_rate"])  # named a library
 print(results["library_use"]["used"]["per_task"]["using_lib_rate"])  # actually called/accessed it
+print(results["code_metrics"]["passed"]["avg_lloc"])  # logical lines of code, passing solutions
+print(results["code_metrics"]["passed"]["avg_maintainability_index"])  # radon's 0-100 index
 ```
 
 A CLI command is also available:

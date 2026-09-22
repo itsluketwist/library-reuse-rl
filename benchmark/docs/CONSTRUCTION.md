@@ -171,8 +171,9 @@ responses are keyed by `task_id` (`{task_id, response}` or `{task_id, responses:
 import name to its pip distribution (`sklearn` → `scikit-learn`, via `IMPORT_TO_PIP`). It then asks
 for confirmation before it **creates the venv, installs the packages, and runs** each response
 against its task's tests (`--unsafe-installs` skips the interactive checkpoint and installs
-automatically), aggregating **pass@1 / pass@k** and overall **per-problem library-reuse
-statistics**. Point `--env-dir` at an isolated location. The saved result records the environment
+automatically), aggregating **pass@1 / pass@k**, overall **per-problem library-reuse
+statistics**, and radon's average **logical lines of code** and **maintainability index** (over all
+responses, and over passing ones only). Point `--env-dir` at an isolated location. The saved result records the environment
 directory, requested packages, originating import names, and the resolved version of every
 installed distribution.
 

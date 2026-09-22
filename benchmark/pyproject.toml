@@ -27,6 +27,8 @@ classifiers = [
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "llm-codegen-research",
+    # code size (logical lines) and maintainability index of each response's code
+    "radon",
 ]
 
 [project.urls]
