@@ -11,10 +11,10 @@ Usage: python benchmark/pipeline/01_fetch_bcb.py
 """
 
 import ast
-from typing import Any, cast
+from typing import Any
 
 from build import BCB_VERSION, analyse_libraries, artefact_path
-from datasets import Dataset, load_dataset
+from datasets import load_dataset
 
 from src.utils.io import save_jsonl
 
@@ -48,12 +48,7 @@ def _parse_libs(
 
 def main() -> None:
     """Download BigCodeBench, analyse each solution's libraries, and write the two split files."""
-    # load_dataset's static type is a union of dataset kinds; requesting a single split
-    # always gives a plain Dataset, so narrow the type for the checker
-    dataset = cast(
-        Dataset,
-        load_dataset("bigcode/bigcodebench", split=BCB_VERSION),
-    )
+    dataset = load_dataset("bigcode/bigcodebench", split=BCB_VERSION)
     print(f"loaded BigCodeBench {BCB_VERSION}: {len(dataset)} problems")
 
     rows = []

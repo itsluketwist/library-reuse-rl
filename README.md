@@ -30,22 +30,22 @@ git clone https://github.com/itsluketwist/library-reuse-rl
 cd library-reuse-rl
 ```
 
-Install the project. The GPU training/inference stack (torch, vLLM, unsloth, flash-attn, ...) only
-builds on linux/CUDA, so it lives in an optional, linux-marked `hpc` extra - the core install (data
+Install the project. The GPU training/inference stack (torch, vLLM, TRL, transformers, ...) only
+runs on linux/CUDA, so it lives in an optional, linux-marked `hpc` extra - the core install (data
 handling, code analysis, the `benchmark` pipeline, tooling) works anywhere.
 
-For **Isambard**, first collect an environment report; this needs no project installation:
+On **Isambard** (Arm GH200 nodes), install inside a GPU allocation and check the stack works.
+The `hpc` pins use CUDA 12.9 builds of torch and vLLM, because the nodes' driver can't run the
+CUDA 13 builds that PyPI now defaults to - see the comments in `pyproject.toml`:
 
 ```shell
-bash scripts/discover_environment.sh environment-report-login.txt
+uv sync --locked --extra hpc
+python scripts/check_gpu_stack.py                               # cuda, triton, training step, vllm
+torchrun --nproc-per-node=4 scripts/check_gpu_stack.py --nccl   # in a 4-gpu allocation
 ```
 
-Run it again inside a GPU allocation, writing `environment-report-gpu.txt`. See the
-[preparation and experiment notes](docs/isambard.md) for what to check next. Package
-versions will be selected from those reports; the existing `hpc` extra is not yet a
-validated Arm/GH200 installation recipe. Training and evaluation will continue to use
-`scripts/submit_grpo.sh` and `scripts/submit_eval.sh`, with their cluster settings updated
-after discovery.
+`scripts/discover_environment.sh` reports a node's hardware, driver, modules and Slurm limits,
+without needing the project installed.
 
 Locally (core only - for the `benchmark` pipeline, `dataset/` build, and tests; the GPU stack is
 linux-marked, so it is skipped automatically):

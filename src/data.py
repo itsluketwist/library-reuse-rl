@@ -2,7 +2,6 @@
 
 import logging
 from pathlib import Path
-from typing import cast
 
 import datasets
 from datasets import Dataset, DatasetDict
@@ -89,12 +88,11 @@ def load_train_dataset(
     for split in ("train", "val"):
         split_file = dataset_dir / f"{split}.jsonl"
         logger.info(f"Loading {split} split from {split_file}")
-        # load_dataset's static type is a union of dataset kinds; a local json load
-        # always gives a DatasetDict with one "train" split, so narrow for the checker
-        split_dataset = cast(
-            Dataset,
-            datasets.load_dataset("json", data_files=str(split_file))["train"],
-        )
+        # a local json load gives a DatasetDict with a single "train" split
+        split_dataset = datasets.load_dataset(
+            "json",
+            data_files=str(split_file),
+        )["train"]
 
         n = split_n[split]
         if n is not None:
@@ -138,12 +136,11 @@ def load_eval_dataset(
     Returns the dataset with its raw "prompt" column replaced by a chat-messages
     list, and "inputs"/"expected_outputs" columns present at the top level.
     """
-    # load_dataset's static type is a union of dataset kinds; a local json load always
-    # gives a DatasetDict with one "train" split, so narrow for the checker
-    dataset = cast(
-        Dataset,
-        datasets.load_dataset("json", data_files=str(dataset_file))["train"],
-    )
+    # a local json load gives a DatasetDict with a single "train" split
+    dataset = datasets.load_dataset(
+        "json",
+        data_files=str(dataset_file),
+    )["train"]
 
     # add idx before any truncation so it matches the original file's row number
     dataset = dataset.add_column("idx", list(range(len(dataset))))

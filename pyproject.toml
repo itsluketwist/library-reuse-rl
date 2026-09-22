@@ -33,7 +33,9 @@ dependencies = [
     # the standalone LibReuseBench benchmark package (in benchmark/), installed editable so
     # the build pipeline and eval can import it; see [tool.uv.sources] below
     "libreusebench",
-    "datasets>=3.4.1,!=4.0.*,!=4.1.0,<4.4.0",
+    # trl (in the [hpc] extra) needs >=4.7.0 - setting it here too keeps local dev on the
+    # same version as the HPC, instead of uv locking a different one for each platform
+    "datasets>=4.7.0",
     "huggingface_hub",
     "Jupyter",
     "llm-codegen-research",
@@ -62,23 +64,22 @@ dependencies = [
 # GPU training + inference stack - install on the HPC with `uv sync --locked --extra hpc`.
 # every entry is marked linux-only, so on other platforms it resolves to nothing and a plain
 # `uv sync` (or even `--extra hpc`) installs just the core above.
+#
+# the versions follow a chain, starting from trl (the GRPO trainer):
+# - trl 1.13.0 is tested against vllm >=0.19.1,<=0.28.0, so we take the newest: vllm 0.28.0
+# - vllm pins torch, torchvision and torchaudio exactly, so those three follow from it
+# - transformers and accelerate are pinned to the versions uv resolved for the above
+# isambard's gpu driver (565) supports cuda <=12.7 and cannot run cuda 13, which is what
+# pypi's default torch and vllm builds now use - so both come from their cuda 12.9 indexes
+# below instead (12.9 runs on the 12.7 driver via cuda's minor-version compatibility).
 hpc = [
-    # unsloth pins trl and transformers to specific ranges it's tested against (see
-    # https://github.com/unslothai/unsloth/blob/main/pyproject.toml) - these ranges are
-    # copied from there so uv can only resolve versions unsloth actually supports.
-    # after the first `uv lock --upgrade` on the target box, re-pin these (and vllm/
-    # flash-attn below) to the exact resolved versions, matching how the rest of this
-    # file's dependencies are pinned.
-    "accelerate>=0.34.1 ; sys_platform == 'linux'",
-    "flash-attn==2.8.3.post1 ; sys_platform == 'linux'",
-    "peft>=0.18.0,!=0.11.0 ; sys_platform == 'linux'",
-    "torch==2.8.0 ; sys_platform == 'linux'",
-    "torchaudio ; sys_platform == 'linux'",
-    "torchvision ; sys_platform == 'linux'",
-    "transformers==4.57.6 ; sys_platform == 'linux'",
-    "trl>=0.18.2,!=0.19.0,<=0.24.0 ; sys_platform == 'linux'",
-    "unsloth>=2026.7.2 ; sys_platform == 'linux'",
-    "vllm==0.11.0 ; sys_platform == 'linux'",
+    "accelerate==1.15.0 ; sys_platform == 'linux'",
+    "torch==2.13.0 ; sys_platform == 'linux'",
+    "torchaudio==2.11.0 ; sys_platform == 'linux'",
+    "torchvision==0.28.0 ; sys_platform == 'linux'",
+    "transformers==5.17.0 ; sys_platform == 'linux'",
+    "trl==1.13.0 ; sys_platform == 'linux'",
+    "vllm==0.28.0 ; sys_platform == 'linux'",
     "wandb ; sys_platform == 'linux'",
 ]
 
@@ -87,16 +88,17 @@ run_grpo = "src.run_grpo:main"
 run_eval = "src.run_eval:main"
 run_scoring = "src.run_scoring:main"
 
-# torch/vllm need cuda wheels that only exist on the pytorch index, not pypi.org. marking
-# the index "explicit" scopes it to just the packages named in [tool.uv.sources] below, so
-# uv never considers it for anything else - this is what used to fail (see the git history
-# of requirements_fixed.txt): pip/uv resolving *every* package against the pytorch index and
-# picking up stale versions mirrored there (eg. requests, numpy), which dragged trl down to
-# an ancient release that predates GRPOConfig.
+# torch and vllm need their cuda 12.9 builds (see the [hpc] extra above), which live on their
+# own indexes rather than pypi.org. marking an index "explicit" scopes it to just the packages
+# named here, so uv never considers it for anything else - this is what used to fail (see the
+# git history of requirements_fixed.txt): pip/uv resolving *every* package against the pytorch
+# index and picking up stale versions mirrored there (eg. requests, numpy), which dragged trl
+# down to an ancient release that predates GRPOConfig.
 [tool.uv.sources]
-torch = { index = "pytorch-cu126" }
-torchvision = { index = "pytorch-cu126" }
-torchaudio = { index = "pytorch-cu126" }
+torch = { index = "pytorch-cu129" }
+torchvision = { index = "pytorch-cu129" }
+torchaudio = { index = "pytorch-cu129" }
+vllm = { index = "vllm-cu129" }
 # the benchmark package lives in this repo under benchmark/ - install it editable
 libreusebench = { path = "benchmark", editable = true }
 
@@ -116,6 +118,7 @@ extra-paths = ["benchmark", "benchmark/pipeline", "fireworks", "fireworks/rft/ev
 # vllm), which only installs on linux - ignore just the missing imports when checking locally
 [[tool.ty.overrides]]
 include = [
+    "scripts/check_gpu_stack.py",
     "src/eval/evaluate.py",
     "src/eval/generate_vllm.py",
     "src/grpo/config.py",
@@ -137,12 +140,24 @@ include = ["fireworks/rft/evaluator/tests/pytest/library_reuse/test_library_reus
 unresolved-import = "ignore"
 
 [tool.uv]
-no-build-isolation-package = ["flash-attn"]
 # lock for both the HPC (linux) and local dev (macos); the hpc extra is linux-marked, so it
 # resolves to nothing on macos and a single `uv sync` works on either platform
 environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
+# isambard is arm (aarch64): make `uv lock` fail, naming the package, if any wheel-only
+# package has no arm build - rather than finding out halfway through an install on the node
+required-environments = ["sys_platform == 'linux' and platform_machine == 'aarch64'"]
+# nvidia-cudnn-frontend (a vllm dependency) pulls in cuda 13 libraries from 1.29.0 onwards,
+# which isambard's driver can't run - hold it at the releases vllm 0.28.0 was built alongside
+constraint-dependencies = ["nvidia-cudnn-frontend<1.29.0"]
 
 [[tool.uv.index]]
-name = "pytorch-cu126"
-url = "https://download.pytorch.org/whl/cu126"
+name = "pytorch-cu129"
+url = "https://download.pytorch.org/whl/cu129"
+explicit = true
+
+# vllm's own index of its cuda 12.9 builds - the url contains the vllm version, so update it
+# together with the vllm pin in the [hpc] extra
+[[tool.uv.index]]
+name = "vllm-cu129"
+url = "https://wheels.vllm.ai/0.28.0/cu129"
 explicit = true
