@@ -68,14 +68,17 @@ dependencies = [
 # the versions follow a chain, starting from trl (the GRPO trainer):
 # - trl 1.13.0 is tested against vllm >=0.19.1,<=0.28.0, so we take the newest: vllm 0.28.0
 # - vllm pins torch, torchvision and torchaudio exactly, so those three follow from it
+# - torchcodec (a vllm dependency) is listed only so it can come from the pytorch index too
 # - transformers and accelerate are pinned to the versions uv resolved for the above
 # isambard's gpu driver (565) supports cuda <=12.7 and cannot run cuda 13, which is what
-# pypi's default torch and vllm builds now use - so both come from their cuda 12.9 indexes
-# below instead (12.9 runs on the 12.7 driver via cuda's minor-version compatibility).
+# pypi's default torch, torchcodec and vllm builds now use - so they come from their cuda
+# 12.9 indexes below instead (12.9 runs on the 12.7 driver via cuda's minor-version
+# compatibility).
 hpc = [
     "accelerate==1.15.0 ; sys_platform == 'linux'",
     "torch==2.13.0 ; sys_platform == 'linux'",
     "torchaudio==2.11.0 ; sys_platform == 'linux'",
+    "torchcodec==0.16.0 ; sys_platform == 'linux'",
     "torchvision==0.28.0 ; sys_platform == 'linux'",
     "transformers==5.17.0 ; sys_platform == 'linux'",
     "trl==1.13.0 ; sys_platform == 'linux'",
@@ -98,6 +101,7 @@ run_scoring = "src.run_scoring:main"
 torch = { index = "pytorch-cu129" }
 torchvision = { index = "pytorch-cu129" }
 torchaudio = { index = "pytorch-cu129" }
+torchcodec = { index = "pytorch-cu129" }
 vllm = { index = "vllm-cu129" }
 # the benchmark package lives in this repo under benchmark/ - install it editable
 libreusebench = { path = "benchmark", editable = true }
