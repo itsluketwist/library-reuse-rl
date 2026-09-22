@@ -21,6 +21,11 @@ qwen3-8b:
   base: "Qwen/Qwen3-8B"
   path:
 
+# candidate only; select after the isambard compatibility pilot.
+qwen3.5-9b:
+  base: "Qwen/Qwen3.5-9B"
+  path:
+
 qwen3-14b:
   base: "Qwen/Qwen3-14B"
   path:

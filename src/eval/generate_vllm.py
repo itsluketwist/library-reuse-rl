@@ -37,12 +37,30 @@ def generate_vllm_responses(
     Returns a list aligned with `prompts`, each element a list of that prompt's
     (response, stop_reason) samples (length `n_samples`).
     """
+    records = generate_vllm_records(llm, prompts, decoding_settings, lora_request)
+    return [
+        [(sample["content"], sample["finish_reason"]) for sample in samples]
+        for samples in records
+    ]
+
+
+def generate_vllm_records(
+    llm: LLM,
+    prompts: list[list[dict]],
+    decoding_settings: dict[str, Any],
+    lora_request: LoRARequest | None = None,
+) -> list[list[dict[str, Any]]]:
+    """Generate responses with token counts for durable, independently scored output.
+
+    Returns generation records grouped by prompt and sample.
+    """
     sampling_params = SamplingParams(
         temperature=decoding_settings["temperature"],
         top_p=decoding_settings["top_p"],
         top_k=decoding_settings.get("top_k", 0),
         max_tokens=decoding_settings["max_new_tokens"],
         n=decoding_settings.get("n_samples", 1),
+        seed=decoding_settings.get("seed"),
     )
 
     outputs = llm.chat(
@@ -57,7 +75,14 @@ def generate_vllm_responses(
 
     return [
         [
-            (sample.text, map_stop_reason(sample.finish_reason))
+            {
+                "content": sample.text,
+                "finish_reason": map_stop_reason(sample.finish_reason),
+                "usage": {
+                    "prompt_tokens": len(output.prompt_token_ids or []),
+                    "completion_tokens": len(sample.token_ids),
+                },
+            }
             for sample in output.outputs
         ]
         for output in outputs

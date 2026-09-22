@@ -99,6 +99,8 @@ class LibraryReward:
     ) -> None:
         self.weights = weights
         self.eos_token_id = eos_token_id
+        # older trainer versions use this function-like name when logging rewards.
+        self.__name__ = type(self).__name__
 
     def __call__(
         self,

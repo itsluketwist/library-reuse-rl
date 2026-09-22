@@ -201,6 +201,9 @@ unsloth_compiled_cache/
 grpo_trainer_lora_model*/
 config/models.yaml.lock
 
+# local cluster discovery reports.
+/environment-report*.txt
+
 # generated Fireworks datasets, generations, and remote launch records
 /fireworks/rft/data/
 /fireworks/rft/runs/

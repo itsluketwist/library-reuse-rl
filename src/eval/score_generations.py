@@ -120,9 +120,13 @@ def score_generations(
     )
 
     for result in results:
-        # multi-sample evaluators record which sample they scored as sample_idx; the
-        # rest (score_dataset's single-sample path) only ever score the first
-        sample_offset = result.get("sample_idx", 0)
+        # libreusebench uses idx for the sample; other multi-sample scorers use sample_idx.
+        # single-sample scorers may use idx for a dataset row, so only use it here for lrb.
+        sample_offset = (
+            result.get("idx", 0)
+            if evaluator == "libreusebench"
+            else result.get("sample_idx", 0)
+        )
         sample_index = sample_indices[sample_offset]
         generation = by_sample[sample_index][str(result["task_id"])]
         result["sample_index"] = sample_index

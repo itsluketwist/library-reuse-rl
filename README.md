@@ -34,13 +34,18 @@ Install the project. The GPU training/inference stack (torch, vLLM, unsloth, fla
 builds on linux/CUDA, so it lives in an optional, linux-marked `hpc` extra - the core install (data
 handling, code analysis, the `benchmark` pipeline, tooling) works anywhere.
 
-On the HPC (full training + evaluation stack):
+For **Isambard**, first collect an environment report; this needs no project installation:
 
 ```shell
-module load cuda/12.2.1-gcc-13.2.0
-uv sync --locked --extra hpc
-source .venv/bin/activate
+bash scripts/discover_environment.sh environment-report-login.txt
 ```
+
+Run it again inside a GPU allocation, writing `environment-report-gpu.txt`. See the
+[preparation and experiment notes](docs/isambard.md) for what to check next. Package
+versions will be selected from those reports; the existing `hpc` extra is not yet a
+validated Arm/GH200 installation recipe. Training and evaluation will continue to use
+`scripts/submit_grpo.sh` and `scripts/submit_eval.sh`, with their cluster settings updated
+after discovery.
 
 Locally (core only - for the `benchmark` pipeline, `dataset/` build, and tests; the GPU stack is
 linux-marked, so it is skipped automatically):

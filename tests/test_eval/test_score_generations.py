@@ -195,3 +195,39 @@ def test_score_generations_preserves_multi_sample_task_grouping(
     assert result["analysis"]["n_total"] == 2
     assert result["analysis"]["library_use_per_task"]["using_lib_rate"] == 1.0
     assert [row["sample_index"] for row in result["results"]] == [0, 1]
+
+
+def test_libreusebench_provenance_uses_its_sample_idx_field(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """LibReuseBench's idx is a sample index, and each sample keeps its own token usage."""
+    from src.eval import score_generations as scoring_module
+
+    dataset = tmp_path / "dataset.jsonl"
+    generations = tmp_path / "generations.jsonl"
+    _write_jsonl(dataset, [{"task_id": "one", "prompt": "Write code."}])
+    _write_jsonl(
+        generations,
+        [
+            {
+                "task_id": "one",
+                "sample_index": index,
+                "content": "print(1)",
+                "usage": {"completion_tokens": 10 + index},
+            }
+            for index in range(5)
+        ],
+    )
+
+    def score(**kwargs: Any) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        return {}, [{"task_id": "one", "idx": index} for index in range(5)]
+
+    monkeypatch.setattr(scoring_module, "score_dataset", score)
+    result = score_generations(
+        dataset, generations, tmp_path / "result.json", "libreusebench"
+    )
+    assert [row["sample_index"] for row in result["results"]] == list(range(5))
+    assert [
+        row["generation"]["usage"]["completion_tokens"] for row in result["results"]
+    ] == list(range(10, 15))

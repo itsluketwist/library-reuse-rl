@@ -4,10 +4,7 @@ import uuid
 from argparse import ArgumentParser
 from pathlib import Path
 
-import unsloth  # noqa: F401, E402
-
 from src.grpo.rewards import load_reward_profile
-from src.grpo.train_model import train_model_with_grpo
 from src.prompts import PromptStyle
 from src.utils.config import load_yaml_config, register_model
 from src.utils.log import log, log_header
@@ -175,6 +172,9 @@ def run_grpo(
 
     if run_id is None:
         run_id = f"{model}-{uuid.uuid4().hex[:4]}"
+
+    # defer the legacy gpu backend so help and configuration imports work on a cpu host.
+    from src.grpo.train_model import train_model_with_grpo
 
     model_settings = load_yaml_config(config_file=model_config, key=model)
     reward_weights = load_reward_profile(
