@@ -37,6 +37,9 @@ collect_report() {
 
     printf '\n=== system and storage ===\n'
     run uname -a
+    # query the running system; old python versions can report their build's libc symbols.
+    run getconf GNU_LIBC_VERSION
+    run ldd --version
     run lscpu
     run free -h
     run df -h .
@@ -70,7 +73,6 @@ import sys
 print("Executable:", sys.executable)
 print("Python:", sys.version)
 print("Architecture:", platform.machine())
-print("libc:", platform.libc_ver())
 try:
     from importlib import metadata
 except ImportError:
@@ -98,6 +100,8 @@ PY
     run sinfo -o '%P %l %G %c %m'
     run scontrol show partition
     run sacctmgr -nP show assoc "user=$(id -un)" format=Account,Partition,QOS,GrpTRESMins,MaxWall
+    # a partition can say unlimited while its qos still imposes a wall-time limit.
+    run sacctmgr -nP show qos format=Name,MaxWall
 
     printf '\nReport saved to %s\n' "$report"
     echo "Missing GPU tools on a login node do not describe the compute-node environment."
