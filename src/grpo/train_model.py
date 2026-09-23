@@ -206,44 +206,52 @@ def train_model_with_grpo(
     metrics_dir = Path(metrics_dir)
     metrics_dir.mkdir(parents=True, exist_ok=True)
     recipe = load_full_yaml(recipe_config)
-    # allow_extra_keys since the shared recipe also carries eval-only keys trl ignores
-    (training_args,) = TrlParser((GRPOConfig,)).parse_dict(
-        recipe, allow_extra_keys=True
-    )
-    # ...which also means a misspelled or renamed setting would be dropped without a word,
-    # so check every key is one something reads before the run starts
+    # the recipe is parsed with allow_extra_keys below, since it also carries eval-only
+    # keys trl ignores - which also means a misspelled or renamed setting would be
+    # dropped without a word, so check every key is one something reads first
     check_config_keys(
         config=recipe,
-        known={field.name for field in fields(training_args)} | _EVAL_ONLY_RECIPE_KEYS,
+        known={field.name for field in fields(GRPOConfig)} | _EVAL_ONLY_RECIPE_KEYS,
         source=recipe_config,
     )
+
+    # settings that replace the recipe's for this run. they are merged in before parsing,
+    # not set on the parsed config afterwards, because trl derives other settings from
+    # them while parsing (e.g. its rollout batch size from gradient_accumulation_steps)
+    overrides: dict = {
+        "output_dir": str(output_dir),
+        "seed": seed,
+        "library_prompt_style": library_prompt_style,
+    }
 
     # rollouts sample with one of the eval decoding profiles (see config/training.yaml)
     rollout_decoding = recipe["eval_decoding_profiles"][
         recipe["rollout_decoding_profile"]
     ]
-    training_args.temperature = rollout_decoding["temperature"]
-    training_args.top_p = rollout_decoding["top_p"]
-    training_args.top_k = rollout_decoding["top_k"]
-    training_args.max_completion_length = rollout_decoding["max_new_tokens"]
+    overrides["temperature"] = rollout_decoding["temperature"]
+    overrides["top_p"] = rollout_decoding["top_p"]
+    overrides["top_k"] = rollout_decoding["top_k"]
+    overrides["max_completion_length"] = rollout_decoding["max_new_tokens"]
 
-    training_args.output_dir = str(output_dir)
-    training_args.seed = seed
-    training_args.library_prompt_style = library_prompt_style
     if epochs is not None:
-        training_args.num_train_epochs = epochs
+        overrides["num_train_epochs"] = epochs
     if max_steps is not None:
-        training_args.max_steps = max_steps
+        overrides["max_steps"] = max_steps
 
     if debug:
         # a debug run is only a couple of steps: log every step, cap rollout length, and
         # shrink the optimizer step so a handful of prompts still make whole steps
-        training_args.logging_steps = 1
-        training_args.eval_steps = 1
-        training_args.max_completion_length = DEBUG_MAX_COMPLETION_LENGTH
-        training_args.gradient_accumulation_steps = DEBUG_GRADIENT_ACCUMULATION_STEPS
+        overrides["logging_steps"] = 1
+        overrides["eval_steps"] = 1
+        overrides["max_completion_length"] = DEBUG_MAX_COMPLETION_LENGTH
+        overrides["gradient_accumulation_steps"] = DEBUG_GRADIENT_ACCUMULATION_STEPS
         if epochs is None:
-            training_args.num_train_epochs = DEBUG_EPOCHS
+            overrides["num_train_epochs"] = DEBUG_EPOCHS
+
+    (training_args,) = TrlParser((GRPOConfig,)).parse_dict(
+        {**recipe, **overrides},
+        allow_extra_keys=True,
+    )
 
     set_seed(training_args.seed)
 
@@ -366,7 +374,8 @@ def train_model_with_grpo(
         )
     # the trainer loads the model and the reference model (beta > 0), so this shows what
     # is left for optimizer states and activations before training starts
-    log_gpu_memory("after trainer init")
+    if is_main_process:
+        log_gpu_memory("after trainer init")
 
     ###############
     # Training loop
