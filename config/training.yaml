@@ -66,6 +66,9 @@ eval_decoding_profiles:
 model_init_kwargs:
   dtype: float32
   attn_implementation: sdpa  # no arm flash-attn wheels; torch's sdpa uses a flash kernel anyway
+  # load onto the cpu and let fsdp place each gpu's shard. trl otherwise defaults to "auto" under
+  # fsdp, which spreads every process's copy of the model across all four gpus
+  device_map: null
 bf16: true  # train in mixed bf16 precision
 
 sync_ref_model: false  # keep the kl penalty pointed at the original model throughout
