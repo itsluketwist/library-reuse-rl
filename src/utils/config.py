@@ -2,6 +2,7 @@
 
 import fcntl
 import os
+from collections.abc import Callable
 from typing import Any
 
 import yaml
@@ -133,6 +134,51 @@ def register_model(
     what make the model recognisable later. Uses an exclusive file lock so concurrent
     slurm jobs cannot corrupt the file.
     """
+
+    def add_entry(config: dict[str, Any]) -> None:
+        config[model_key] = {
+            "base": base,
+            "path": path,
+            "properties": properties,
+        }
+
+    _update_model_registry(config_file=config_file, update=add_entry)
+
+
+def unregister_models(
+    prefixes: list[str],
+    config_file: str,
+) -> list[str]:
+    """
+    Remove every trained model whose key starts with one of `prefixes` from the model
+    registry (config/models.yaml), e.g. the entries debug runs leave behind.
+
+    Only trained entries (those with a weights path) are removed, so a base model whose
+    name happens to match a prefix is never touched.
+
+    Returns the keys that were removed.
+    """
+    removed: list[str] = []
+
+    def remove_entries(config: dict[str, Any]) -> None:
+        for model_key in list(config):
+            is_trained = bool((config[model_key] or {}).get("path"))
+            if is_trained and model_key.startswith(tuple(prefixes)):
+                del config[model_key]
+                removed.append(model_key)
+
+    _update_model_registry(config_file=config_file, update=remove_entries)
+    return removed
+
+
+def _update_model_registry(
+    config_file: str,
+    update: Callable[[dict[str, Any]], None],
+) -> None:
+    """
+    Apply `update` to the model registry and write it back, holding an exclusive file
+    lock throughout so concurrent slurm jobs cannot corrupt the file.
+    """
     # separate lock file, so we hold the lock without truncating the yaml itself
     lock_path = config_file + ".lock"
 
@@ -141,12 +187,7 @@ def register_model(
         try:
             # load existing config inside the lock so we see all prior writes
             config = _load_yaml(config_file=config_file)
-
-            config[model_key] = {
-                "base": base,
-                "path": path,
-                "properties": properties,
-            }
+            update(config)
 
             # write to a temp file then rename, so readers never see a half-written file
             tmp_path = config_file + ".tmp"

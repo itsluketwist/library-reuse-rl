@@ -287,7 +287,7 @@ def run_grpo(
 
     # a --max-steps run stops before the first epoch ends, so there is nothing to register
     if not checkpoints:
-        log("No epoch checkpoints were saved - nothing to register.")
+        log("No epoch finished, so no checkpoint to register.")
         return
 
     # the run id is non-descriptive, so record the knobs to recognise the model later

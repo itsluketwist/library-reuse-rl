@@ -120,7 +120,8 @@ job (eval checks the checkpoint smoke trains):
 ```shell
 bash scripts/submit_debug.sh smoke   # 4 gpus, ~10 minutes - training end to end, small model
 bash scripts/submit_debug.sh eval    # 1 gpu, ~10 minutes - the evaluation path
-bash scripts/submit_debug.sh scale   # 4 gpus, ~1 hour - memory and timings at 8b
+bash scripts/submit_debug.sh scale   # 4 gpus, ~30 minutes - memory and timings at 8b
+bash scripts/submit_debug.sh clean   # no job - deletes the checks' checkpoints and results
 ```
 
 There are two eval launchers, each with its own configuration block at the top (models,
@@ -225,7 +226,7 @@ existing component names.
 3. Reference the new name in a `config/rewards.yaml` profile.
 
 Each weighted component is given to the trainer as its own reward function (see
-`build_reward_functions`), so training and validation logs carry each component's rate -
+`build_reward_functions`), so the training logs carry each component's rate -
 e.g. `rewards/external_lib_used/mean` is the fraction of completions that reused a
 library. The total reward is unchanged: the trainer multiplies each by its weight and sums
 them.

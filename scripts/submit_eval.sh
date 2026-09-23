@@ -43,6 +43,7 @@ fi
 # that file. product_choice is gitignored and must have been built locally.
 datasets=(
     "library_usage"
+    "library_usage_val"
     "libreusebench_test"
     "libreusebench_control"
 )

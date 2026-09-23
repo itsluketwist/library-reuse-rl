@@ -23,6 +23,11 @@ product_choice:
 library_usage:
   path: "data/train/library_usage/test.jsonl"
   evaluator: library_usage
+# the validation split, scored for every epoch's checkpoint to choose which epoch to report
+# - so that choice never looks at the test split above
+library_usage_val:
+  path: "data/train/library_usage/val.jsonl"
+  evaluator: library_usage
 
 # LibReuseBench: library-agnostic stdin/stdout problems with executable test cases
 libreusebench_test:

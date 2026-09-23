@@ -53,8 +53,31 @@ class TestEpochCheckpoints:
 
         assert epoch_checkpoints(tmp_path) == {1: first}
 
+    def test_ignores_a_checkpoint_saved_partway_through_an_epoch(
+        self, tmp_path
+    ) -> None:
+        """A --max-steps run saves at its last step, which is no epoch's end."""
+        first = _checkpoint(tmp_path, step=28, epoch=1.0)
+        _checkpoint(tmp_path, step=31, epoch=1.107)
+
+        assert epoch_checkpoints(tmp_path) == {1: first}
+
+    def test_a_stop_before_the_first_epoch_ends_registers_nothing(
+        self, tmp_path
+    ) -> None:
+        """Three steps of a 28-step epoch is epoch 0.107, which is not "epoch 0"."""
+        _checkpoint(tmp_path, step=3, epoch=0.1071)
+
+        assert epoch_checkpoints(tmp_path) == {}
+
+    def test_tolerates_float_rounding_at_an_epoch_end(self, tmp_path) -> None:
+        """The recorded epoch can land just off the whole number."""
+        first = _checkpoint(tmp_path, step=28, epoch=0.9999999)
+
+        assert epoch_checkpoints(tmp_path) == {1: first}
+
     def test_no_checkpoints_is_not_an_error(self, tmp_path) -> None:
-        """A run stopped by --max-steps saves nothing, and just registers nothing."""
+        """A run that saved no checkpoints just registers nothing."""
         assert epoch_checkpoints(tmp_path) == {}
 
 

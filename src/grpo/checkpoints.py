@@ -39,7 +39,8 @@ def epoch_checkpoints(output_dir: str | Path) -> dict[int, Path]:
 
     Reads the epoch recorded inside each checkpoint's trainer_state.json instead of
     assuming checkpoints line up with epochs, so a run that was requeued and resumed
-    still maps correctly.
+    still maps correctly. A checkpoint saved partway through an epoch (the trainer saves
+    one when --max-steps stops a run early) belongs to no epoch, so is skipped.
 
     Returns each epoch number mapped to its checkpoint directory, in epoch order.
     """
@@ -49,9 +50,13 @@ def epoch_checkpoints(output_dir: str | Path) -> dict[int, Path]:
         if not state_file.exists():
             continue
         epoch = load_json(state_file).get("epoch")
-        if epoch is not None:
-            # epoch is a float that lands on a whole number at an epoch-end save
-            found[round(epoch)] = checkpoint
+        if epoch is None:
+            continue
+        # epoch is a float that lands on a whole number at an epoch-end save (within
+        # float rounding - one step is ~1/28 of an epoch, far larger than the tolerance)
+        whole_epoch = round(epoch)
+        if whole_epoch >= 1 and abs(epoch - whole_epoch) < 1e-3:
+            found[whole_epoch] = checkpoint
     return dict(sorted(found.items()))
 
 

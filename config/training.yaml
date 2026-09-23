@@ -12,8 +12,10 @@ num_train_epochs: 5
 num_generations: 8  # rollouts sampled per prompt - the group grpo scores against each other
 num_iterations: 1  # grpo's mu: optimizer passes that reuse each rollout batch before resampling
 
-per_device_train_batch_size: 2  # completions per backward micro-batch - the main training-memory lever
-gradient_accumulation_steps: 32  # micro-batches summed per optimizer step; 2 x 4 gpus x 32 = 256 completions (32 prompts)
+# one completion per forward/backward pass: at 8b two left the gpus almost full (see the
+# scale test). the step still sums the same 256 completions, so the update is unchanged
+per_device_train_batch_size: 1  # completions per backward micro-batch - the main training-memory lever
+gradient_accumulation_steps: 64  # micro-batches summed per optimizer step; 1 x 4 gpus x 64 = 256 completions (32 prompts)
 
 beta: 0.01  # strength of the kl penalty holding the policy near the reference model
 learning_rate: 1.0e-06
@@ -24,13 +26,10 @@ rollout_decoding_profile: default  # which eval_decoding_profiles entry rollouts
 # evaluation
 # ==============================================================================
 
-eval_strategy: "epoch"  # score the validation split at the end of every epoch
-eval_on_start: true  # validate once before training, as the baseline for the curve
-num_generations_eval: 5  # completions per validation prompt, matching n_samples in scripts/submit_eval.sh
-# validation completions generated per gpu at once (and forward-pass chunk size): 5 x 4
-# gpus = 20, i.e. 4 prompts per generation call. must be a multiple of 5 (see above);
-# larger chunks of 8192-token sequences risk running out of gpu memory
-per_device_eval_batch_size: 5
+# no validation during training. each epoch's checkpoint is scored on the validation split
+# afterwards, by the same eval jobs that score the test sets (library_usage_val in
+# config/eval_datasets.yaml) - far faster there, where vllm batches every prompt at once
+eval_strategy: "no"
 
 # named decoding profiles, shared by training rollouts (see rollout_decoding_profile
 # above) and run_eval.py (--decoding-profile/--decoding-config). how many completions

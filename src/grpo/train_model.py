@@ -48,8 +48,9 @@ DEBUG_VAL_SAMPLES = 4
 # long enough for qwen3's reasoning to finish, so debug rollouts actually earn rewards
 DEBUG_MAX_COMPLETION_LENGTH = 2048
 DEBUG_EPOCHS = 2
-# 2 completions per gpu x 2 = a whole step from very few prompts (see config/training.yaml)
-DEBUG_GRADIENT_ACCUMULATION_STEPS = 2
+# 1 completion per gpu x 4 gpus x 4 = 16 completions (2 prompts) per step, so a handful
+# of prompts still make whole steps (see config/training.yaml)
+DEBUG_GRADIENT_ACCUMULATION_STEPS = 4
 
 # recipe keys this file (and src/run_eval.py) read directly rather than trl - every other
 # key must name a real training setting, see check_config_keys below
@@ -412,9 +413,10 @@ def train_model_with_grpo(
     ##########
     # Evaluate
     ##########
-    # validation runs at the end of every epoch, so the last round already scored the
-    # final model - it is reused rather than generating the whole split again. a run cut
-    # short by --max-steps has no such round, so its "final" is left empty
+    # the recipe turns in-training validation off (the eval jobs score each epoch's
+    # checkpoint instead), so this only writes anything if a recipe re-enables it. with
+    # eval_strategy "epoch", the last round already scored the final model and is reused
+    # rather than generating the whole split again
     eval_step_history = _periodic_eval_history(trainer.state.log_history)
     if eval_step_history:
         final_metrics = eval_step_history.get(str(trainer.state.global_step))
