@@ -170,6 +170,25 @@ def is_main_process() -> bool:
     return int(os.environ.get("RANK", "0")) == 0
 
 
+def generate_run_id(model: str) -> str:
+    """
+    Generate a fresh run id, shared by every process accelerate launched.
+
+    Each process drawing its own random id would give every gpu its own output folder,
+    so rank zero draws it and sends it to the others.
+
+    Returns the run id, as "{model}-{4 random hex characters}".
+    """
+    from accelerate import PartialState
+    from accelerate.utils import broadcast_object_list
+
+    # joins the process group the trainer later reuses (does nothing on one process)
+    PartialState()
+    run_id = [f"{model}-{uuid.uuid4().hex[:4]}"]
+    broadcast_object_list(run_id, from_process=0)
+    return run_id[0]
+
+
 def run_grpo(
     model: str | None,
     dataset: str,
@@ -208,7 +227,7 @@ def run_grpo(
         model = DEBUG_MODEL_KEY
 
     if run_id is None:
-        run_id = f"{model}-{uuid.uuid4().hex[:4]}"
+        run_id = generate_run_id(model=model)
 
     # defer the legacy gpu backend so help and configuration imports work on a cpu host.
     from src.grpo.train_model import train_model_with_grpo
@@ -229,11 +248,13 @@ def run_grpo(
     # the large epoch checkpoints go under output_root (project storage on the HPC, see
     # trained_model_path)
     output_path = trained_model_path(run_id=run_id, output_root=output_root)
-    log(f"Checkpoint output path: {output_path}")
 
     # small training metrics stay in the repo, separate from the large checkpoints
     metrics_path = Path("output") / "grpo" / run_id
-    log(f"Metrics path: {metrics_path}")
+
+    if is_main_process():
+        log(f"Checkpoint output path: {output_path}")
+        log(f"Metrics path: {metrics_path}")
 
     checkpoints = train_model_with_grpo(
         model_name_or_path=model_settings["base"],

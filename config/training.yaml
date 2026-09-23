@@ -73,7 +73,12 @@ sync_ref_model: false  # keep the kl penalty pointed at the original model throu
 use_vllm: true  # generate rollouts with vllm (fast batched inference)
 vllm_mode: colocate  # an engine inside each training process, no gpu set aside for a server
 vllm_enable_sleep_mode: true  # release the engine's gpu memory while the training step runs
-vllm_gpu_memory_utilization: 0.45  # share of each gpu the engine may take while awake
+vllm_gpu_memory_utilization: 0.45  # share of each gpu the engine may take while awake - unused while the kv cache size below is set
+# a fixed kv cache skips vllm's startup memory profiling, which aborts if the training
+# process frees gpu memory mid-profile (see _fix_vllm_kv_cache_size in train_model.py).
+# 24 GiB is roughly what the 0.45 share leaves for the cache at 8b (43 GiB minus 16 GiB
+# of bf16 weights and a few GiB of activations), ~170k tokens of qwen3-8b cache.
+vllm_kv_cache_memory_gib: 24
 vllm_max_model_length: 12288  # prompt + completion ceiling; sizes the kv cache, so keep it tight
 chat_template_kwargs:
   enable_thinking: true  # rollouts use the model's reasoning mode, as eval does

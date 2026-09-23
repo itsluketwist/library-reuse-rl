@@ -18,6 +18,7 @@ import logging
 import os
 import sys
 from dataclasses import fields
+from functools import partial
 from pathlib import Path
 
 import datasets
@@ -144,6 +145,25 @@ def _periodic_eval_history(log_history: list[dict]) -> dict[str, dict]:
         for entry in log_history
         if any(key.startswith("eval_") for key in entry)
     }
+
+
+def _fix_vllm_kv_cache_size(kv_cache_memory_gib: float) -> None:
+    """
+    Make trl's colocated vllm engine use a fixed-size kv cache.
+
+    At startup vllm measures the gpu's free memory, runs a dummy forward pass, and
+    asserts free memory did not go up in between. In colocate mode the training model
+    shares the process, and gpu memory it frees mid-profile (e.g. fsdp's weight
+    broadcast buffers) trips that assertion (vllm issue #56830, unfixed in 0.28).
+    Giving vllm a fixed cache size skips the check. trl exposes no setting for this, so
+    the engine class trl builds is swapped for one with the size filled in.
+    """
+    from trl.generation import vllm_generation
+
+    vllm_generation.LLM = partial(
+        vllm_generation.LLM,
+        kv_cache_memory_bytes=int(kv_cache_memory_gib * 1024**3),
+    )
 
 
 def train_model_with_grpo(
@@ -320,6 +340,9 @@ def train_model_with_grpo(
     #############################
     # Initialize the GRPO trainer
     #############################
+    if training_args.use_vllm and training_args.vllm_kv_cache_memory_gib is not None:
+        _fix_vllm_kv_cache_size(training_args.vllm_kv_cache_memory_gib)
+
     trainer = GRPOTrainer(
         model=model_name_or_path,
         reward_funcs=reward_funcs,

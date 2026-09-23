@@ -37,6 +37,17 @@ class GRPOConfig(trl.GRPOConfig):
             ),
         },
     )
+    vllm_kv_cache_memory_gib: Optional[float] = field(
+        default=None,
+        metadata={
+            "help": (
+                "Fixed size of the colocated vllm engine's kv cache, in GiB. When set, "
+                "vllm skips its startup memory profiling (and so ignores "
+                "vllm_gpu_memory_utilization) - see _fix_vllm_kv_cache_size in "
+                "src/grpo/train_model.py for why."
+            ),
+        },
+    )
     chat_template: Optional[str] = field(
         default=None, metadata={"help": "The chat template to use."}
     )
