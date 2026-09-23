@@ -48,7 +48,7 @@ case "$mode" in
         # run id, so repeats overwrite the same registry entries that eval then loads
         gpus=4
         time_limit="01:00:00"
-        command="accelerate launch --config_file $accelerate_config --num_processes 4 \
+        command="\$HOST_MEMBIND accelerate launch --config_file $accelerate_config --num_processes 4 \
     --module src.run_grpo --debug --model qwen3-debug -d $dataset \
     --reward-profile $reward_profile --library-prompt-style $prompt_style \
     -s $seed --run-id qwen3-debug-smoke --output-root $OUTPUT_BASE"
@@ -59,7 +59,7 @@ case "$mode" in
         # before the first epoch ends, so it registers nothing.
         gpus=4
         time_limit="02:00:00"
-        command="accelerate launch --config_file $accelerate_config --num_processes 4 \
+        command="\$HOST_MEMBIND accelerate launch --config_file $accelerate_config --num_processes 4 \
     --module src.run_grpo --model qwen3-8b --max-steps 3 -d $dataset \
     --reward-profile $reward_profile --library-prompt-style $prompt_style \
     -s $seed --run-id qwen3-8b-scale --output-root $OUTPUT_BASE"

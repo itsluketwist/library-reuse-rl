@@ -123,8 +123,9 @@ source ./scripts/setup_job.sh
 # requeue on the time-limit warning signal - training resumes from its last epoch checkpoint
 trap 'echo "time limit approaching - requeuing \$SLURM_JOB_ID"; scontrol requeue \$SLURM_JOB_ID; exit 0' USR1
 
-# --module runs src.run_grpo as "python -m" would; the flags after it are the script's
-accelerate launch --config_file $accelerate_config --num_processes ${GPUS} \
+# --module runs src.run_grpo as "python -m" would; the flags after it are the script's.
+# \$HOST_MEMBIND (see setup_job.sh) stops cpu-side memory spilling into the gpus
+\$HOST_MEMBIND accelerate launch --config_file $accelerate_config --num_processes ${GPUS} \
     --module src.run_grpo \
     --model $model \
     -d $training_dataset \

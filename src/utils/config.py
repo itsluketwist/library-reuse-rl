@@ -155,5 +155,3 @@ def register_model(
             os.replace(src=tmp_path, dst=config_file)
         finally:
             fcntl.flock(lock_file, fcntl.LOCK_UN)
-
-    print(f"registered model '{model_key}' in {config_file}")

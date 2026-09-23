@@ -73,6 +73,20 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 # unique port per job, so co-located jobs don't race for the same vllm port
 export MASTER_PORT=$((20000 + ${SLURM_JOB_ID:-$$} % 10000))
 
+# on isambard's gh200 nodes each gpu's memory is also visible to linux as a numa node, so
+# ordinary cpu-side memory (e.g. model weights being loaded) can silently fill a gpu. the
+# training launch is prefixed with $HOST_MEMBIND, which keeps cpu-side memory on the
+# numa nodes that have cpus (their own lpddr memory) - gpu allocations are unaffected.
+HOST_MEMBIND=""
+if command -v numactl &> /dev/null; then
+    cpu_numa_nodes=$(numactl --hardware | awk '/^node [0-9]+ cpus: [0-9]/ {print $2}' | paste -sd, -)
+    if [ -n "$cpu_numa_nodes" ]; then
+        HOST_MEMBIND="numactl --membind=${cpu_numa_nodes}"
+    fi
+fi
+export HOST_MEMBIND
+echo "Host memory binding: ${HOST_MEMBIND:-none (numactl unavailable)}"
+
 # api-provider eval jobs run without a gpu, so skip the gpu report there rather than
 # failing the job on a command that cannot exist.
 if command -v nvidia-smi &> /dev/null; then
