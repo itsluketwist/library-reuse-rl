@@ -1,7 +1,7 @@
 """Generate responses from local model weights, using vllm for batched offline inference.
 
-Used for models evaluated from their own weights (the default "vllm" provider in
-config/models.yaml), whether a released base model or one of a training run's epoch
+Used for models evaluated from their own weights (the default "vllm" provider in the
+model registry), whether a released base model or one of a training run's epoch
 checkpoints. The hosted-API counterpart is src/eval/generate_api.py.
 """
 

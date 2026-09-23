@@ -199,7 +199,10 @@ output/grpo/*debug*/
 output/eval/*debug*/
 unsloth_compiled_cache/
 grpo_trainer_lora_model*/
-config/models.yaml.lock
+config/*.lock
+config/*.tmp
+# debug runs' registry entries - thrown away by `bash scripts/submit_debug.sh clean`
+config/debug_models.yaml
 docs/
 
 # local cluster discovery reports.

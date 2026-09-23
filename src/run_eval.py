@@ -8,7 +8,7 @@ from typing import Any, Literal, get_args
 from src.eval import evaluate_model
 from src.eval.generate_api import DEFAULT_MAX_TOKENS_PARAM, ApiSettings
 from src.prompts import PromptStyle, library_prompt_suffix
-from src.utils.config import load_full_yaml, load_yaml_config
+from src.utils.config import load_full_yaml, load_model_settings, load_yaml_config
 from src.utils.log import log, log_header, silence_library_warnings
 
 
@@ -70,8 +70,9 @@ parser.add_argument(
     type=str,
     default=None,
     help=(
-        "Model key from models.yaml - a base model, or a trained model registered by "
-        "training. Not required if --debug is set."
+        "Model key - a base model from config/models.yaml, or a trained model "
+        "registered by training (config/trained_models.yaml, or "
+        "config/debug_models.yaml for debug runs). Not required if --debug is set."
     ),
 )
 
@@ -84,14 +85,6 @@ parser.add_argument(
         "Comma-separated dataset names from eval_datasets.yaml. "
         "Defaults to every dataset in that file."
     ),
-)
-
-parser.add_argument(
-    "-mc",
-    "--model-config",
-    type=str,
-    default="config/models.yaml",
-    help="Path to model config file.",
 )
 
 parser.add_argument(
@@ -228,7 +221,6 @@ def apply_environment_root(
 def run_eval(
     model: str | None,
     datasets: list[str] | None = None,
-    model_config: str = "config/models.yaml",
     decoding_profile: str = "greedy",
     decoding_config: str = "config/training.yaml",
     eval_datasets_config: str = "config/eval_datasets.yaml",
@@ -241,13 +233,14 @@ def run_eval(
     Run evaluation of an untrained, pretrained, or trained model against one or more
     datasets.
 
-    `model` is a key from `model_config` (see config/models.yaml), holding released base
-    models (blank "path") and each epoch of a training run (registered once training
-    produces them), so the post-training eval jobs can point at a fresh checkpoint by
-    name, as well as API-served models ("provider: api" - DeepSeek, OpenAI, ...). A local
-    model is loaded from the entry's "path" when it has one, and from its "base"
-    otherwise. API models have no local weights and skip vllm entirely (see
-    evaluate_model).
+    `model` is a key in the model registry (see load_model_settings): released base
+    models (blank "path") and API-served models ("provider: api" - DeepSeek, OpenAI,
+    ...) in config/models.yaml, and each epoch of a training run in
+    config/trained_models.yaml (config/debug_models.yaml for debug runs), registered once
+    training produces them so the post-training eval jobs can point at a fresh
+    checkpoint by name. A local model is loaded from the entry's "path" when it has one,
+    and from its "base" otherwise. API models have no local weights and skip vllm
+    entirely (see evaluate_model).
 
     `datasets` is a list of names looked up in `eval_datasets_config` (see
     config/eval_datasets.yaml); if not given, every dataset in that file is run.
@@ -278,7 +271,7 @@ def run_eval(
             raise ValueError("--model is required unless --debug is set.")
         model = DEBUG_MODEL_KEY
 
-    model_settings = load_yaml_config(config_file=model_config, key=model)
+    model_settings = load_model_settings(model_key=model)
     # a trained entry's registered weights (a training checkpoint), else the base model
     base = model_settings["base"]
     weights_path = model_settings["path"] or None
@@ -389,7 +382,6 @@ def main() -> None:
     run_eval(
         model=args.model,
         datasets=datasets,
-        model_config=args.model_config,
         decoding_profile=args.decoding_profile,
         decoding_config=args.decoding_config,
         eval_datasets_config=args.eval_datasets_config,

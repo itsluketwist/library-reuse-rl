@@ -100,7 +100,7 @@ for model in "${models[@]}"; do
         IFS="|" read -r training_dataset reward_profile library_prompt_style <<< "$training_job"
         dataset_name=$(basename "$training_dataset")
 
-        # prefix the epoch checkpoints are registered under (config/models.yaml), fixed
+        # prefix the epoch checkpoints are registered under (config/trained_models.yaml), fixed
         # here so the dependent eval jobs below can name them before training finishes
         run_id="${model}-$(uuidgen | tr '[:upper:]' '[:lower:]' | cut -c1-4)"
 

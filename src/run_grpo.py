@@ -7,7 +7,12 @@ from pathlib import Path
 
 from src.grpo.rewards import load_reward_profile
 from src.prompts import PromptStyle
-from src.utils.config import load_yaml_config, register_model
+from src.utils.config import (
+    DEBUG_MODELS_FILE,
+    TRAINED_MODELS_FILE,
+    load_model_settings,
+    register_model,
+)
 from src.utils.log import log, log_header, silence_library_warnings
 
 
@@ -26,7 +31,7 @@ parser.add_argument(
     "--model",
     type=str,
     default=None,
-    help="Model key from models.yaml. Not required if --debug is set.",
+    help="Model key from config/models.yaml. Not required if --debug is set.",
 )
 
 parser.add_argument(
@@ -35,7 +40,8 @@ parser.add_argument(
     default=None,
     help=(
         "Prefix for the registry keys this run's epoch checkpoints are registered under, "
-        "as '{run-id}-epoch{n}' (see config/models.yaml). Auto-generated if not given; "
+        "as '{run-id}-epoch{n}' (in config/trained_models.yaml, or "
+        "config/debug_models.yaml for a --debug run). Auto-generated if not given; "
         "submit_grpo.sh passes one so the dependent eval jobs can name the models "
         "before training has finished."
     ),
@@ -47,14 +53,6 @@ parser.add_argument(
     type=str,
     required=True,
     help="Path to the dataset directory, containing train/val/test.jsonl files.",
-)
-
-parser.add_argument(
-    "-mc",
-    "--model-config",
-    type=str,
-    default="config/models.yaml",
-    help="Path to model config file.",
 )
 
 parser.add_argument(
@@ -195,7 +193,6 @@ def generate_run_id(model: str) -> str:
 def run_grpo(
     model: str | None,
     dataset: str,
-    model_config: str = "config/models.yaml",
     reward_profile: str = "full",
     rewards_config: str = "config/rewards.yaml",
     seed: int = DEFAULT_SEED,
@@ -220,9 +217,10 @@ def run_grpo(
 
     Resolves the model and reward profile, runs training (see train_model_with_grpo),
     which saves one checkpoint per epoch under trained_model_path, then registers each
-    epoch in `model_config` as "{run_id}-epoch{n}" (run_id generated if not given) so eval
-    can look any epoch up by name, recording its base, weights path, and the training
-    knobs (`properties`). Debug runs are only registered when given a `run_id`.
+    epoch as "{run_id}-epoch{n}" (run_id generated if not given) so eval can look any
+    epoch up by name, recording its base, weights path, and the training knobs
+    (`properties`). Real runs register in TRAINED_MODELS_FILE; debug runs in
+    DEBUG_MODELS_FILE, and only when given a `run_id`.
     """
     if model is None:
         if not debug:
@@ -232,13 +230,14 @@ def run_grpo(
     # debug runs are only registered under a run id chosen on purpose (e.g. the smoke
     # test's fixed one), so throwaway runs don't pile up in the registry
     register_run = not debug or run_id is not None
+    registry_file = DEBUG_MODELS_FILE if debug else TRAINED_MODELS_FILE
     if run_id is None:
         run_id = generate_run_id(model=model)
 
     # defer the legacy gpu backend so help and configuration imports work on a cpu host.
     from src.grpo.train_model import train_model_with_grpo
 
-    model_settings = load_yaml_config(config_file=model_config, key=model)
+    model_settings = load_model_settings(model_key=model)
     reward_weights = load_reward_profile(
         profile=reward_profile, config_file=rewards_config
     )
@@ -282,7 +281,9 @@ def run_grpo(
         return
 
     if not register_run:
-        log(f"Debug run - not registered in {model_config}. Checkpoints: {checkpoints}")
+        log(
+            f"Debug run without a --run-id - not registered. Checkpoints: {checkpoints}"
+        )
         return
 
     # a --max-steps run stops before the first epoch ends, so there is nothing to register
@@ -306,9 +307,9 @@ def run_grpo(
             base=model_settings["base"],
             path=str(checkpoint),
             properties=properties,
-            config_file=model_config,
+            config_file=registry_file,
         )
-        log(f"Registered trained model '{model_key}' ({checkpoint}) in {model_config}")
+        log(f"Registered trained model '{model_key}' ({checkpoint}) in {registry_file}")
 
 
 def main() -> None:
@@ -334,7 +335,6 @@ def main() -> None:
     run_grpo(
         model=args.model,
         dataset=args.dataset,
-        model_config=args.model_config,
         reward_profile=args.reward_profile,
         rewards_config=args.rewards_config,
         seed=args.seed,

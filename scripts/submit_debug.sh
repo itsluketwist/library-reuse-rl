@@ -78,14 +78,16 @@ case "$mode" in
         ;;
     clean)
         # deletes what the debug runs leave behind: checkpoints on project storage, their
-        # metrics and eval results under output/, and their config/models.yaml entries.
-        # every debug run is named after qwen3-debug or qwen3-8b-scale, which real runs
-        # never are. runs here on the login node rather than as a job, and asks first.
+        # metrics and eval results under output/, and their registry file (debug runs
+        # register in config/debug_models.yaml, never alongside real runs). every debug
+        # run is named after qwen3-debug or qwen3-8b-scale, which real runs never are.
+        # runs here on the login node rather than as a job, and asks first.
         shopt -s nullglob
         candidates=(
             "$OUTPUT_BASE"/qwen3-debug-* "$OUTPUT_BASE"/qwen3-8b-scale
             output/grpo/qwen3-debug-* output/grpo/qwen3-8b-scale
             output/eval/qwen3-debug output/eval/qwen3-debug-* output/eval/qwen3-8b-scale-*
+            config/debug_models.yaml config/debug_models.yaml.lock
         )
         leftovers=()
         for path in "${candidates[@]}"; do
@@ -101,7 +103,6 @@ case "$mode" in
         else
             echo "  (no files)"
         fi
-        echo "  + any qwen3-debug-* / qwen3-8b-scale-* entries in config/models.yaml"
         echo "  (logs/debug/ is kept)"
         echo
 
@@ -114,14 +115,6 @@ case "$mode" in
         if [ ${#leftovers[@]} -gt 0 ]; then
             rm -rf "${leftovers[@]}"
         fi
-        .venv/bin/python -c "
-from src.utils.config import unregister_models
-removed = unregister_models(
-    prefixes=['qwen3-debug-', 'qwen3-8b-scale-'],
-    config_file='config/models.yaml',
-)
-print('Removed from config/models.yaml:', ', '.join(removed) or '(none)')
-"
         echo "Done."
         exit 0
         ;;

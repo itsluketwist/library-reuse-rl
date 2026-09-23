@@ -222,6 +222,8 @@ def train_model_with_grpo(
     # them while parsing (e.g. its rollout batch size from gradient_accumulation_steps)
     overrides: dict = {
         "output_dir": str(output_dir),
+        # the wandb run name - the run id the checkpoint folder and registry entries share
+        "run_name": Path(output_dir).name,
         "seed": seed,
         "library_prompt_style": library_prompt_style,
     }

@@ -3,7 +3,7 @@
 import pytest
 import yaml
 
-from src.utils.config import check_config_keys, register_model, unregister_models
+from src.utils.config import check_config_keys, load_model_settings, register_model
 
 
 class TestCheckConfigKeys:
@@ -27,49 +27,68 @@ class TestCheckConfigKeys:
             )
 
 
-class TestUnregisterModels:
-    """unregister_models removes the trained entries debug runs leave behind."""
+class TestModelRegistry:
+    """The registry is split across base, trained and debug files, read as one."""
 
     @staticmethod
-    def _registry(tmp_path) -> str:
-        """A registry holding a base model plus two debug runs and one real run."""
-        config_file = str(tmp_path / "models.yaml")
-        with open(config_file, "w") as f:
+    def _registry_files(tmp_path) -> tuple[str, str, str]:
+        """A hand-written base file, plus trained and debug files no run has made yet."""
+        base_file = str(tmp_path / "models.yaml")
+        with open(base_file, "w") as f:
             yaml.safe_dump(
-                {"qwen3-debug": {"base": "Qwen/Qwen3-0.6B", "path": None}}, f
+                {"qwen3-8b": {"base": "Qwen/Qwen3-8B", "path": None}},
+                f,
             )
-        for model_key in (
-            "qwen3-debug-smoke-epoch1",
-            "qwen3-8b-scale-epoch0",
-            "qwen3-8b-a1b2-epoch1",
-        ):
-            register_model(
-                model_key=model_key,
-                base="Qwen/Qwen3-8B",
-                path=f"/checkpoints/{model_key}",
-                properties={},
-                config_file=config_file,
-            )
-        return config_file
-
-    def test_removes_only_matching_trained_entries(self, tmp_path) -> None:
-        config_file = self._registry(tmp_path)
-
-        removed = unregister_models(
-            prefixes=["qwen3-debug-", "qwen3-8b-scale-"],
-            config_file=config_file,
+        return (
+            base_file,
+            str(tmp_path / "trained_models.yaml"),
+            str(tmp_path / "debug_models.yaml"),
         )
 
-        assert removed == ["qwen3-debug-smoke-epoch1", "qwen3-8b-scale-epoch0"]
-        with open(config_file) as f:
-            remaining = yaml.safe_load(f)
-        # the base model and the real run are untouched
-        assert set(remaining) == {"qwen3-debug", "qwen3-8b-a1b2-epoch1"}
+    def test_register_model_creates_a_missing_registry_file(self, tmp_path) -> None:
+        """The first run to register creates the trained (or debug) file."""
+        _, trained_file, _ = self._registry_files(tmp_path)
 
-    def test_never_removes_a_base_model(self, tmp_path) -> None:
-        """A base model has no weights path, even if its name matches a prefix."""
-        config_file = self._registry(tmp_path)
+        register_model(
+            model_key="qwen3-8b-a1b2-epoch1",
+            base="Qwen/Qwen3-8B",
+            path="/checkpoints/qwen3-8b-a1b2/checkpoint-28",
+            properties={"epoch": 1},
+            config_file=trained_file,
+        )
 
-        removed = unregister_models(prefixes=["qwen3-debug"], config_file=config_file)
+        with open(trained_file) as f:
+            entry = yaml.safe_load(f)["qwen3-8b-a1b2-epoch1"]
+        assert entry["path"] == "/checkpoints/qwen3-8b-a1b2/checkpoint-28"
 
-        assert "qwen3-debug" not in removed
+    def test_looks_up_base_and_trained_models_alike(self, tmp_path) -> None:
+        """Eval names a base model or a trained epoch the same way."""
+        registry_files = self._registry_files(tmp_path)
+        register_model(
+            model_key="qwen3-8b-a1b2-epoch1",
+            base="Qwen/Qwen3-8B",
+            path="/checkpoints/qwen3-8b-a1b2/checkpoint-28",
+            properties={},
+            config_file=registry_files[1],
+        )
+
+        base = load_model_settings("qwen3-8b", registry_files=registry_files)
+        trained = load_model_settings(
+            "qwen3-8b-a1b2-epoch1",
+            registry_files=registry_files,
+        )
+
+        assert base["path"] is None
+        assert trained["base"] == "Qwen/Qwen3-8B"
+
+    def test_missing_registry_files_are_skipped(self, tmp_path) -> None:
+        """Before any run, only the base file exists - lookups still work."""
+        registry_files = self._registry_files(tmp_path)
+
+        assert load_model_settings("qwen3-8b", registry_files=registry_files)
+
+    def test_an_unknown_model_raises(self, tmp_path) -> None:
+        registry_files = self._registry_files(tmp_path)
+
+        with pytest.raises(KeyError, match="qwen3-typo"):
+            load_model_settings("qwen3-typo", registry_files=registry_files)

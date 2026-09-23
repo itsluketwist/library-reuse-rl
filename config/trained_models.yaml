@@ -1,0 +1,6 @@
+# trained models - one entry per epoch checkpoint of each training run, keyed
+# "{run_id}-epoch{n}". written by register_model (src/utils/config.py), which rewrites
+# this whole file on every registration, so hand edits to comments will not survive.
+# "path" points at the checkpoint, and "properties" records the knobs the run was
+# launched with, since the run-id key is non-descriptive. base models, and the format
+# every entry shares, are described in config/models.yaml

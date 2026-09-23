@@ -1,8 +1,10 @@
-# model registry - base models we start from, plus any models trained from them.
-# "path" is blank for base models, and filled in (by register_model) once a model
-# has actually been trained, pointing at that run's lora adapter. trained entries also
-# carry a "properties" block recording the knobs the run was launched with, since the
-# run-id key is non-descriptive - see src/utils/config.py and src/run_grpo.py
+# model registry - the base models we start from. written by hand: code never rewrites
+# this file. models trained from these are registered separately, by training runs, in
+# config/trained_models.yaml (and debug runs in config/debug_models.yaml, which is
+# git-ignored) - eval looks a model key up in all three (see src/utils/config.py).
+#
+# every entry has a "base" (the huggingface model id) and a "path", which is blank here
+# and, for a trained model, points at its checkpoint.
 #
 # entries default to "provider: vllm" (local weights). "provider: api" entries are served
 # over an OpenAI-compatible api instead, and carry "api_key_env" (the .env variable holding

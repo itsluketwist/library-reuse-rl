@@ -2,7 +2,6 @@
 
 import fcntl
 import os
-from collections.abc import Callable
 from typing import Any
 
 import yaml
@@ -74,24 +73,56 @@ def check_config_keys(
         )
 
 
-# re-added at the top of the registry each rewrite, since yaml.dump drops comments - so
-# anything worth keeping about the file's format has to live here, not in the yaml itself
-_MODEL_REGISTRY_HEADER = """\
-# model registry - base models we start from, plus any models trained from them.
-# "path" is blank for base models, and filled in (by register_model) once a model
-# has actually been trained, pointing at that run's lora adapter. trained entries also
-# carry a "properties" block recording the knobs the run was launched with, since the
-# run-id key is non-descriptive - see src/utils/config.py and src/run_grpo.py
-#
-# entries default to "provider: vllm" (local weights). "provider: api" entries are served
-# over an OpenAI-compatible api instead, and carry "api_key_env" (the .env variable holding
-# the key) plus optional "base_url", "extra_params" and "max_tokens_param" - see the README
-# and src/eval/generate_api.py"""
+# the model registry is split so each file has a single owner, and a model is looked up
+# in all three (see load_model_settings):
+# - models.yaml holds the base and api-served models, written by hand - code never
+#   rewrites it, so its comments and formatting survive
+# - trained_models.yaml holds every epoch of every real training run, written by
+#   register_model
+# - debug_models.yaml holds the same for debug runs. it is git-ignored, and
+#   `bash scripts/submit_debug.sh clean` simply deletes it
+BASE_MODELS_FILE = "config/models.yaml"
+TRAINED_MODELS_FILE = "config/trained_models.yaml"
+DEBUG_MODELS_FILE = "config/debug_models.yaml"
+MODEL_REGISTRY_FILES = (BASE_MODELS_FILE, TRAINED_MODELS_FILE, DEBUG_MODELS_FILE)
+
+
+def load_model_settings(
+    model_key: str,
+    registry_files: tuple[str, ...] = MODEL_REGISTRY_FILES,
+) -> dict[str, Any]:
+    """
+    Look a model up across the model registry files (base, trained and debug models).
+
+    A registry file that does not exist yet - no run has registered anything - is
+    skipped.
+
+    Returns the model's registry entry.
+    Raises KeyError if no registry file holds `model_key`.
+    """
+    for config_file in registry_files:
+        if not os.path.exists(config_file):
+            continue
+        config = _load_yaml(config_file=config_file)
+        if model_key in config:
+            return config[model_key]
+    raise KeyError(f"model '{model_key}' not found in any of {list(registry_files)}")
+
+
+# re-added at the top of a trained-model registry each rewrite, since yaml.dump drops
+# comments - so anything worth keeping about the file has to live here, not in the yaml
+_TRAINED_REGISTRY_HEADER = """\
+# trained models - one entry per epoch checkpoint of each training run, keyed
+# "{run_id}-epoch{n}". written by register_model (src/utils/config.py), which rewrites
+# this whole file on every registration, so hand edits to comments will not survive.
+# "path" points at the checkpoint, and "properties" records the knobs the run was
+# launched with, since the run-id key is non-descriptive. base models, and the format
+# every entry shares, are described in config/models.yaml"""
 
 
 class _RegistryDumper(yaml.SafeDumper):
     """yaml dumper that writes None as a blank value (e.g. `path:`) rather than `null`,
-    matching the hand-written base-model entries in the registry."""
+    matching the hand-written base-model entries in config/models.yaml."""
 
 
 _RegistryDumper.add_representer(
@@ -101,8 +132,9 @@ _RegistryDumper.add_representer(
 
 
 def _dump_model_registry(config: dict[str, Any]) -> str:
-    """Serialise the model registry: the header comment, then one entry per model with a
-    blank line between them (yaml.dump alone drops comments and packs entries together).
+    """Serialise a trained-model registry: the header comment, then one entry per model
+    with a blank line between them (yaml.dump alone drops comments and packs entries
+    together).
 
     Returns the file contents as a string.
     """
@@ -115,7 +147,7 @@ def _dump_model_registry(config: dict[str, Any]) -> str:
         )
         for model_key, entry in config.items()
     ]
-    return _MODEL_REGISTRY_HEADER + "\n\n" + "\n".join(entries)
+    return _TRAINED_REGISTRY_HEADER + "\n\n" + "\n".join(entries)
 
 
 def register_model(
@@ -123,61 +155,17 @@ def register_model(
     base: str,
     path: str,
     properties: dict[str, Any],
-    config_file: str,
+    config_file: str = TRAINED_MODELS_FILE,
 ) -> None:
     """
-    Add a trained model entry to the model registry (config/models.yaml).
+    Add a trained model entry to a trained-model registry: TRAINED_MODELS_FILE for real
+    runs, DEBUG_MODELS_FILE for debug runs. The file is created if it does not exist.
 
     Creates or overwrites the entry for `model_key`, recording the `base` it was trained
-    from, the adapter `path`, and the training `properties` (the knobs the run was
+    from, the checkpoint `path`, and the training `properties` (the knobs the run was
     launched with) - stored because `model_key` is a non-descriptive run id, so they are
     what make the model recognisable later. Uses an exclusive file lock so concurrent
     slurm jobs cannot corrupt the file.
-    """
-
-    def add_entry(config: dict[str, Any]) -> None:
-        config[model_key] = {
-            "base": base,
-            "path": path,
-            "properties": properties,
-        }
-
-    _update_model_registry(config_file=config_file, update=add_entry)
-
-
-def unregister_models(
-    prefixes: list[str],
-    config_file: str,
-) -> list[str]:
-    """
-    Remove every trained model whose key starts with one of `prefixes` from the model
-    registry (config/models.yaml), e.g. the entries debug runs leave behind.
-
-    Only trained entries (those with a weights path) are removed, so a base model whose
-    name happens to match a prefix is never touched.
-
-    Returns the keys that were removed.
-    """
-    removed: list[str] = []
-
-    def remove_entries(config: dict[str, Any]) -> None:
-        for model_key in list(config):
-            is_trained = bool((config[model_key] or {}).get("path"))
-            if is_trained and model_key.startswith(tuple(prefixes)):
-                del config[model_key]
-                removed.append(model_key)
-
-    _update_model_registry(config_file=config_file, update=remove_entries)
-    return removed
-
-
-def _update_model_registry(
-    config_file: str,
-    update: Callable[[dict[str, Any]], None],
-) -> None:
-    """
-    Apply `update` to the model registry and write it back, holding an exclusive file
-    lock throughout so concurrent slurm jobs cannot corrupt the file.
     """
     # separate lock file, so we hold the lock without truncating the yaml itself
     lock_path = config_file + ".lock"
@@ -185,9 +173,16 @@ def _update_model_registry(
     with open(file=lock_path, mode="a") as lock_file:
         fcntl.flock(lock_file, fcntl.LOCK_EX)  # block until we are the only writer
         try:
-            # load existing config inside the lock so we see all prior writes
-            config = _load_yaml(config_file=config_file)
-            update(config)
+            # load existing entries inside the lock so we see all prior writes
+            config = {}
+            if os.path.exists(config_file):
+                config = _load_yaml(config_file=config_file)
+
+            config[model_key] = {
+                "base": base,
+                "path": path,
+                "properties": properties,
+            }
 
             # write to a temp file then rename, so readers never see a half-written file
             tmp_path = config_file + ".tmp"

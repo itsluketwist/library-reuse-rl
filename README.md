@@ -103,8 +103,9 @@ vLLM engine colocated on the same GPUs generates the rollouts. Evaluation needs 
 GPU. Run either command with `--help` to see all options (base/decoding/reward
 configuration, which datasets to evaluate against, etc).
 
-Every epoch leaves a checkpoint, registered in `config/models.yaml` as
-`{run-id}-epoch{n}`, so each epoch can be evaluated and compared afterwards. Only the
+Every epoch leaves a checkpoint, registered in `config/trained_models.yaml` as
+`{run-id}-epoch{n}` (debug runs use the git-ignored `config/debug_models.yaml` instead),
+so each epoch can be evaluated and compared afterwards. Only the
 newest checkpoint keeps the optimizer state needed to resume, so a job stopped by the
 slurm time limit is requeued and picks up from the last epoch.
 
@@ -233,8 +234,9 @@ them.
 
 ## *structure*
 
-- [`config/`](config/) - YAML config: the model registry (base models, and each epoch of a
-  training run once `run_grpo` registers them), the training recipe and its sharding
+- [`config/`](config/) - YAML config: the model registry (hand-written base models in
+  `models.yaml`, and each epoch of a training run in `trained_models.yaml` once `run_grpo`
+  registers them), the training recipe and its sharding
   config, decoding profiles, and each eval dataset's path, scorer, and execution
   environment.
 - [`data/`](data/) - Built training/evaluation datasets and their construction pipelines;
