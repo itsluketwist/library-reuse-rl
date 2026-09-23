@@ -58,36 +58,28 @@ class LibraryUsageReward(CodeReward):
     list.
     """
 
-    def score(
+    def components(
         self,
         content: str,
         row: dict[str, Any],
-    ) -> float:
+    ) -> dict[str, bool]:
         """
-        Score one completion by its use of an external library.
+        Judge one completion by its use of an external library.
 
-        Returns a scalar reward.
+        Returns each component name mapped to whether the completion satisfies it.
         """
         parsed = self.parse(content, row)
 
-        reward = 0.0
-        reward = self.score_correct_format(reward, parsed)
-        reward = self.score_syntax(reward, parsed)
-
         # unlike executable tasks, every code example contributes reuse evidence.
         analysis = analyse_library_usage(parsed, row.get("local_modules"))
-        imported = bool(analysis.external_libs)
         used = analysis.used_external_libs
-
-        reward = self._add(reward, "external_lib_imported", imported)
-        reward = self._add(reward, "external_lib_used", bool(used))
-
         # bonus: the reused library is an appropriate one for this task's category
         useful = set(row.get("useful_libs") or [])
-        reward = self._add(
-            reward,
-            "appropriate_lib_used",
-            any(lib in useful for lib in used),
-        )
 
-        return reward
+        return {
+            "correct_format": self.has_correct_format(parsed),
+            "passes_syntax_check": self.has_valid_syntax(parsed),
+            "external_lib_imported": bool(analysis.external_libs),
+            "external_lib_used": bool(used),
+            "appropriate_lib_used": any(lib in useful for lib in used),
+        }

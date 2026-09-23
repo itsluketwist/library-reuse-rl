@@ -21,9 +21,27 @@ def test_every_decoding_profile_declares_its_thinking_mode() -> None:
     assert all(isinstance(p.get("enable_thinking"), bool) for p in profiles.values())
 
 
-def test_training_uses_one_epoch_and_eight_rollouts() -> None:
+def test_training_uses_five_epochs_and_eight_rollouts() -> None:
     """The main recipe retains the experiment's epoch and rollout counts."""
     training = load_full_yaml("config/training.yaml")
 
-    assert training["num_train_epochs"] == 1
+    assert training["num_train_epochs"] == 5
     assert training["num_generations"] == 8
+
+
+def test_training_saves_a_checkpoint_every_epoch() -> None:
+    """Each epoch is evaluated afterwards, so each epoch must leave a checkpoint."""
+    training = load_full_yaml("config/training.yaml")
+
+    assert training["save_strategy"] == "epoch"
+    assert training["save_total_limit"] is None
+
+
+def test_training_keeps_master_weights_in_fp32() -> None:
+    """At lr 1e-6 an update to a bf16 weight rounds to nothing, so full fine-tuning
+    must hold the weights in fp32 and only compute in bf16."""
+    training = load_full_yaml("config/training.yaml")
+
+    assert training["model_init_kwargs"]["dtype"] == "float32"
+    assert training["bf16"] is True
+    assert training["learning_rate"] <= 1.0e-05

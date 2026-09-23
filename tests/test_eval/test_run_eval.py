@@ -6,7 +6,7 @@ import pytest
 
 from src.eval import evaluate
 from src.eval.generate_api import DEFAULT_MAX_TOKENS_PARAM, ApiSettings
-from src.run_eval import build_api_settings, eval_results_path
+from src.run_eval import apply_environment_root, build_api_settings, eval_results_path
 
 
 class TestEvalResultsPath:
@@ -51,6 +51,50 @@ class TestEvalResultsPath:
         assert path.name == "libreusebench-greedy-libv1.json"
 
 
+class TestApplyEnvironmentRoot:
+    """apply_environment_root relocates the disposable execution venvs."""
+
+    def test_moves_datasets_that_build_an_environment(self) -> None:
+        """On the HPC these venvs belong on scratch, not in the repo."""
+        configs = {
+            "libreusebench_test": {
+                "path": "x.jsonl",
+                "evaluator": "libreusebench",
+                "environment_root": ".libreuseeval-venvs",
+            }
+        }
+
+        moved = apply_environment_root(configs, "/scratch/me/libreuseeval-venvs")
+
+        assert moved["libreusebench_test"]["environment_root"] == (
+            "/scratch/me/libreuseeval-venvs"
+        )
+        # the original config is not mutated, only copied
+        assert (
+            configs["libreusebench_test"]["environment_root"] == ".libreuseeval-venvs"
+        )
+
+    def test_leaves_datasets_that_never_build_one(self) -> None:
+        """library_usage is scored without executing anything, so it has no venv."""
+        configs = {"library_usage": {"path": "x.jsonl", "evaluator": "library_usage"}}
+
+        moved = apply_environment_root(configs, "/scratch/me/libreuseeval-venvs")
+
+        assert "environment_root" not in moved["library_usage"]
+
+    def test_unset_override_changes_nothing(self) -> None:
+        """Off the HPC the configured local default is used."""
+        configs = {
+            "libreusebench_test": {
+                "path": "x.jsonl",
+                "evaluator": "libreusebench",
+                "environment_root": ".libreuseeval-venvs",
+            }
+        }
+
+        assert apply_environment_root(configs, None) == configs
+
+
 class TestDebugEnvironment:
     """Debug runs reuse one venv instead of building a disposable one each time."""
 
@@ -70,7 +114,7 @@ class TestDebugEnvironment:
 
         evaluate.evaluate_model(
             base="deepseek-v4-flash",
-            adapter_path=None,
+            weights_path=None,
             dataset_configs={
                 "libreusebench": {
                     "path": "x.jsonl",
@@ -136,5 +180,5 @@ def test_registered_api_models_resolve() -> None:
     for key, entry in api_entries.items():
         api = build_api_settings(entry)
         assert api is not None, key
-        # adapters are meaningless for a hosted model, so "path" must stay blank
+        # a hosted model has no local weights, so "path" must stay blank
         assert not entry.get("path"), key

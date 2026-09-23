@@ -7,14 +7,13 @@
 
 # libraries_requirements_file: setup/requirements/v1.txt  # libraries listed in the system prompt, see src/prompts.py
 
-num_train_epochs: 1
+num_train_epochs: 5
 
 num_generations: 8  # rollouts sampled per prompt - the group grpo scores against each other
-generation_batch_size: 8  # completions generated per rollout phase; a multiple of num_generations (whole groups)
 num_iterations: 1  # grpo's mu: optimizer passes that reuse each rollout batch before resampling
 
-per_device_train_batch_size: 4  # completions per backward micro-batch - the main training-memory lever
-gradient_accumulation_steps: 16  # micro-batches summed per optimizer step; grows the effective batch, not peak memory
+per_device_train_batch_size: 2  # completions per backward micro-batch - the main training-memory lever
+gradient_accumulation_steps: 32  # micro-batches summed per optimizer step; 2 x 4 gpus x 32 = 256 completions (32 prompts)
 
 beta: 0.01  # strength of the kl penalty holding the policy near the reference model
 learning_rate: 1.0e-06
@@ -26,8 +25,9 @@ rollout_decoding_profile: default  # which eval_decoding_profiles entry rollouts
 # ==============================================================================
 
 eval_strategy: "steps"  # run held-out evaluation periodically during training
-eval_steps: 10
-per_device_eval_batch_size: 16  # must be divisible by num_generations
+eval_steps: 10  # ~3 validation points per epoch, at ~28 optimizer steps per epoch
+eval_on_start: true  # validate once before training, as the baseline for the curve
+per_device_eval_batch_size: 8  # 8 x 4 gpus = 32, divisible by num_generations
 
 # named decoding profiles, shared by training rollouts (see rollout_decoding_profile
 # above) and run_eval.py (--decoding-profile/--decoding-config). how many completions
@@ -60,33 +60,23 @@ eval_decoding_profiles:
 # settings - mechanism/plumbing flags that rarely change between runs
 # ==============================================================================
 
-dtype: bfloat16  # training model-load dtype only; run_eval leaves vllm at its auto default
-attn_implementation: flash_attention_2  # sdpa, flash_attention_2
+# how trl builds the model. weights are held in fp32 and computed on in bf16 (see bf16
+# below): at lr 1e-6, an update to a bf16 weight rounds away to nothing, so full
+# fine-tuning needs fp32 master weights.
+model_init_kwargs:
+  dtype: float32
+  attn_implementation: sdpa  # no arm flash-attn wheels; torch's sdpa uses a flash kernel anyway
 bf16: true  # train in mixed bf16 precision
 
-sync_ref_model: True  # periodically pull the reference model back toward the current policy
-ref_model_sync_steps: 64  # interval, in steps, between those reference-model resyncs
+sync_ref_model: false  # keep the kl penalty pointed at the original model throughout
 
 use_vllm: true  # generate rollouts with vllm (fast batched inference)
-vllm_mode: colocate  # single gpu, no separate vllm server (see scripts/submit_grpo.sh)
-
-# unsloth-only settings
-max_seq_length: 16384  # ceiling on prompt + completion length; sizes the vllm kv cache, so keep as tight as the data allows
-gpu_memory_utilization: 0.4  # share of gpu memory the colocated vllm engine reserves; the rest is left for training
-
-# lora (parameter-efficient) fine-tuning settings
-use_peft: true
-lora_r: 256  # adapter rank - trades capacity for memory/speed (~512 approximates full fine-tuning)
-lora_alpha: 256  # scaling factor, kept equal to lora_r (unsloth convention)
-lora_dropout: 0.0  # 0 lets unsloth use its faster fused lora kernel
-lora_target_modules:  # the attention and mlp projections adapters are attached to
-- q_proj
-- k_proj
-- v_proj
-- o_proj
-- gate_proj
-- up_proj
-- down_proj
+vllm_mode: colocate  # an engine inside each training process, no gpu set aside for a server
+vllm_enable_sleep_mode: true  # release the engine's gpu memory while the training step runs
+vllm_gpu_memory_utilization: 0.45  # share of each gpu the engine may take while awake
+vllm_max_model_length: 12288  # prompt + completion ceiling; sizes the kv cache, so keep it tight
+chat_template_kwargs:
+  enable_thinking: true  # rollouts use the model's reasoning mode, as eval does
 
 gradient_checkpointing: true  # recompute activations in the backward pass to save memory, at some compute cost
 gradient_checkpointing_kwargs:
@@ -99,16 +89,20 @@ max_grad_norm: 0.2  # gradient-clipping threshold - caps the update size for sta
 lr_scheduler_type: cosine_with_min_lr  # cosine decay that levels off at a floor instead of reaching zero
 lr_scheduler_kwargs:
   min_lr_rate: 0.1  # that floor, as a fraction of the peak learning rate
-warmup_ratio: 0.02  # ramp the lr up over the first fraction of training
+# ramp the lr up over the first fraction of training. transformers 5 merged warmup_ratio
+# into warmup_steps: a float below 1 is still a fraction, a whole number is a step count.
+warmup_steps: 0.02
 
 log_completions: false  # log sample rollout completions to wandb
 log_level: info
 logging_first_step: true
-logging_steps: 10
+logging_steps: 1  # only ~28 steps per epoch, and each takes minutes - log them all
 logging_strategy: steps
 report_to:
 - wandb
 
-save_strategy: "steps"  # so a run cancelled by the slurm time limit can resume from the last checkpoint
-save_steps: 50  # frequent enough to land a few checkpoints within one job's walltime
-save_total_limit: 1
+# one checkpoint per epoch: each is evaluated afterwards, and the newest also lets a run
+# cancelled by the slurm time limit resume (see PruneResumeStateCallback, which strips the
+# optimizer state from the older ones so five epochs don't cost hundreds of gigabytes)
+save_strategy: "epoch"
+save_total_limit: null  # keep every epoch

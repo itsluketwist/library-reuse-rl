@@ -4,30 +4,29 @@ echo
 echo ">>> Submitting eval jobs to slurm >>>"
 
 ###############################################################################
-#                         hardware constraints                                #
-#                                                                             #
-# use & for AND, | for OR (e.g., "a100&icelake" or "a100|h200")              #
+#                         cluster settings (isambard)                         #
 ###############################################################################
 
-GPU_CONSTRAINT="h200"            # e.g., h200, b200, a100, l40s — use | for OR
-CPU_MEMORY="96G"                 # cpu memory allocation
-
-# api-served models (config/models.yaml "provider: api" — DeepSeek, GPT, ...) make network
-# calls instead of running local inference, so they're submitted to this cpu partition
-# instead of the gpu one below, and skip the gpu directives entirely.
-CPU_PARTITION="cpu"
+ACCOUNT="brics.u6yb"
+PARTITION="workq"
+GPUS=1                           # evaluation generates with one vllm engine
+TIME="12:00:00"
 
 ###############################################################################
 #                          evaluation configuration                           #
 ###############################################################################
 
 # the models to evaluate, prefixed with their provider (matching config/models.yaml's
-# "provider" field - "vllm" for local weights, "api" for api-served models). api-provider
-# entries run on the cpu partition instead of the gpu one below - see partition selection.
+# "provider" field - "vllm" for local weights, whether a released model or one of a
+# training run's epoch checkpoints).
+#
+# api-served models are not submitted here: isambard has no cpu partition, and they only
+# need network access - run them with scripts/run_eval_local.sh instead.
+#
+# EVAL_MODELS overrides this list (a space-separated string), which is how
+# scripts/submit_grpo.sh queues its epoch checkpoints without duplicating the settings
+# below; EVAL_DEPENDENCY holds those jobs until training succeeds.
 models=(
-    ################################################
-    #### local vllm models (require a GPU node) ####
-    ################################################
     # "vllm:qwen3-debug"
     "vllm:qwen3-4b"
     "vllm:qwen3-8b"
@@ -35,17 +34,10 @@ models=(
     "vllm:qwen3-32b"
     "vllm:olmo3-7b"
     "vllm:ocr-7b"
-
-    ####################################################
-    #### api-served models (require network access) ####
-    ####################################################
-    "api:gpt-5.6-sol"
-    "api:gpt-5.6-terra"
-    "api:gpt-5.6-luna"
-    "api:deepseek-flash"
-    "api:glm-5.2"
-    "api:kimi-k3"
 )
+if [ -n "$EVAL_MODELS" ]; then
+    read -ra models <<< "$EVAL_MODELS"
+fi
 
 # eval dataset names (config/eval_datasets.yaml). leave empty to evaluate every dataset in
 # that file. product_choice is gitignored and must have been built locally.
@@ -142,16 +134,16 @@ for model_entry in "${models[@]}"; do
     echo "Submitting jobs for $model"
     mkdir -p "${log_dir}/eval-$model"
 
-    if [ "$provider" = "api" ]; then
-        partition="$CPU_PARTITION"
-        gpu_directives=""
-        echo "  Provider: api -> partition=$CPU_PARTITION (no GPU requested)"
-    elif [ "$provider" = "vllm" ]; then
-        partition="gpu"
-        gpu_directives=$'#SBATCH --gres=gpu\n#SBATCH --gpus=1\n#SBATCH --constraint='"${GPU_CONSTRAINT}"
-    else
-        echo "Unknown provider '$provider' for model entry '$model_entry' - expected 'vllm:<model>' or 'api:<model>'."
+    if [ "$provider" != "vllm" ]; then
+        echo "Unknown provider '$provider' for model entry '$model_entry' - expected 'vllm:<model>'."
+        echo "API-served models run with scripts/run_eval_local.sh, not on slurm."
         exit 1
+    fi
+
+    # held until the training job it depends on succeeds, when submit_grpo.sh sets it
+    dependency_directive=""
+    if [ -n "$EVAL_DEPENDENCY" ]; then
+        dependency_directive="#SBATCH --dependency=${EVAL_DEPENDENCY}"
     fi
 
     for decoding_profile in "${decoding_profiles[@]}"; do
@@ -162,9 +154,11 @@ for model_entry in "${models[@]}"; do
 #!/bin/bash -l
 #SBATCH --job-name=eval-${model}-${decoding_profile}-${prompt_style}
 #SBATCH --output=${log_dir}/eval-${model}/${decoding_profile}-${prompt_style}-%j.out
-#SBATCH --partition=${partition}
-#SBATCH --mem=${CPU_MEMORY}
-${gpu_directives}
+#SBATCH --account=${ACCOUNT}
+#SBATCH --partition=${PARTITION}
+#SBATCH --gpus=${GPUS}
+#SBATCH --time=${TIME}
+${dependency_directive}
 
 source ./scripts/setup_job.sh
 

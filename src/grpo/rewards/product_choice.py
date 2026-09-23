@@ -17,15 +17,15 @@ class ProductChoiceReward(LibraryReward):
     mentioned as an alternative, and a separate component for avoiding a DIY primary pick.
     """
 
-    def score(
+    def components(
         self,
         content: str,
         row: dict[str, Any],
-    ) -> float:
+    ) -> dict[str, bool]:
         """
-        Score one product-choice answer by which tool it picks.
+        Judge one product-choice answer by which tool it picks.
 
-        Returns a scalar reward.
+        Returns each component name mapped to whether the completion satisfies it.
         """
         parsed = parse_response(response=content, stop_reason=self._stop_reason(row))
 
@@ -36,17 +36,13 @@ class ProductChoiceReward(LibraryReward):
             diy_terms=row.get("diy_terms") or [],
         )
 
-        reward = 0.0
-        reward = self.score_correct_format(reward, parsed)
-        # full credit: the primary pick is an external library/service
-        reward = self._add(reward, "names_external_lib", pick.is_external)
-        # partial credit: an external tool appears, but only as an alternative
-        reward = self._add(
-            reward,
-            "mentions_external_lib",
-            not pick.is_external and bool(pick.mentioned_external),
-        )
-        # the primary pick is not a roll-your-own / custom answer
-        reward = self._add(reward, "avoids_diy", not pick.is_diy)
-
-        return reward
+        return {
+            "correct_format": self.has_correct_format(parsed),
+            # full credit: the primary pick is an external library/service
+            "names_external_lib": pick.is_external,
+            # partial credit: an external tool appears, but only as an alternative
+            "mentions_external_lib": not pick.is_external
+            and bool(pick.mentioned_external),
+            # the primary pick is not a roll-your-own / custom answer
+            "avoids_diy": not pick.is_diy,
+        }

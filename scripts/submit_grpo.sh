@@ -4,16 +4,17 @@ echo
 echo ">>> Submitting train jobs to slurm >>>"
 
 ###############################################################################
-#                         hardware constraints                                #
-#                                                                             #
-# use & for AND, | for OR (e.g., "a100&icelake" or "a100|h200")              #
+#                         cluster settings (isambard)                         #
 ###############################################################################
 
-GPU_CONSTRAINT="h200"            # e.g., h200, b200, a100, l40s — use | for OR
-CPU_MEMORY="96G"                 # cpu memory allocation
+ACCOUNT="brics.u6yb"
+PARTITION="workq"
+GPUS=4                           # one node's gpus; the model is sharded across them
+TIME="24:00:00"                  # the workq qos limit; the job requeues and resumes if hit
 
-# checkpoints are large - use scratch storage, not the repo's own filesystem
-OUTPUT_BASE="/scratch/users/$USER/library-reuse-rl"
+# checkpoints are large and must outlive the run, so they go to project storage rather
+# than $HOME (100GiB) or scratch (purged after 60 days of inactivity)
+OUTPUT_BASE="${PROJECTDIR:?PROJECTDIR is not set - are you on isambard?}/$USER/library-reuse-rl"
 
 ###############################################################################
 #                          rl training configuration                          #
@@ -22,7 +23,6 @@ OUTPUT_BASE="/scratch/users/$USER/library-reuse-rl"
 # the base models to train (see config/models.yaml)
 models=(
     # "qwen3-debug"
-    "qwen3-4b"
     "qwen3-8b"
 )
 
@@ -37,10 +37,18 @@ training_jobs=(
 # generate responses during rollout (see config/training.yaml)
 recipe_config="config/training.yaml"
 
+# accelerate config that shards the model across the job's gpus
+accelerate_config="config/accelerate_configs/fsdp2.yaml"
+
 # random seed for training
 seed=42
 
-# true = tiny smoke test instead of full training (see --debug in src/run_grpo.py)
+# every epoch leaves a checkpoint (see save_strategy in the recipe); each is evaluated by
+# a dependent job once training finishes. read from the recipe so the two cannot drift.
+epochs=$(awk '/^num_train_epochs:/ {print $2}' "$recipe_config")
+
+# true = tiny smoke test instead of full training (see --debug in src/run_grpo.py).
+# for the larger debug runs, use scripts/submit_debug.sh instead.
 debug=false
 
 ###############################################################################
@@ -79,7 +87,9 @@ done
 echo
 echo "Training ${#models[@]} models x ${#training_jobs[@]} dataset configurations"
 echo "  Recipe: $recipe_config"
+echo "  Sharding: $accelerate_config (${GPUS} gpus)"
 echo "  Seed: $seed"
+echo "  Checkpoints: $OUTPUT_BASE"
 echo
 
 for model in "${models[@]}"; do
@@ -90,7 +100,8 @@ for model in "${models[@]}"; do
         IFS="|" read -r training_dataset reward_profile library_prompt_style <<< "$training_job"
         dataset_name=$(basename "$training_dataset")
 
-        # registry key this run's trained model gets registered under (config/models.yaml)
+        # prefix the epoch checkpoints are registered under (config/models.yaml), fixed
+        # here so the dependent eval jobs below can name them before training finishes
         run_id="${model}-$(uuidgen | tr '[:upper:]' '[:lower:]' | cut -c1-4)"
 
         echo "  Submitting: $dataset_name [$reward_profile] [$library_prompt_style]"
@@ -99,22 +110,22 @@ for model in "${models[@]}"; do
 #!/bin/bash -l
 #SBATCH --job-name=train-${model}-${dataset_name}
 #SBATCH --output=logs/train-${model}/${dataset_name}-%j.out
-#SBATCH --partition=gpu
-#SBATCH --gres=gpu
-#SBATCH --gpus=1
-#SBATCH --mem=${CPU_MEMORY}
-#SBATCH --constraint=${GPU_CONSTRAINT}
-#SBATCH --time=2-00:00:00
+#SBATCH --account=${ACCOUNT}
+#SBATCH --partition=${PARTITION}
+#SBATCH --gpus=${GPUS}
+#SBATCH --time=${TIME}
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@120
 
 source ./scripts/setup_job.sh
 
-# requeue on the time-limit warning signal - training resumes from its last checkpoint
-trap 'echo "time limit approaching - requeuing $SLURM_JOB_ID"; scontrol requeue $SLURM_JOB_ID; exit 0' USR1
+# requeue on the time-limit warning signal - training resumes from its last epoch checkpoint
+trap 'echo "time limit approaching - requeuing \$SLURM_JOB_ID"; scontrol requeue \$SLURM_JOB_ID; exit 0' USR1
 
-run_grpo \
-    -m $model \
+# --module runs src.run_grpo as "python -m" would; the flags after it are the script's
+accelerate launch --config_file $accelerate_config --num_processes ${GPUS} \
+    --module src.run_grpo \
+    --model $model \
     -d $training_dataset \
     --recipe-config $recipe_config \
     -s $seed \
@@ -123,13 +134,27 @@ run_grpo \
     --run-id $run_id \
     --reward-profile $reward_profile \
     $debug_flag &
-wait $!
+wait \$!
 
 echo "RL training complete for model: $model, dataset: $dataset_name"
 EOF
 )
 
         echo "  Submitted train job $train_job_id"
+
+        # queue one single-gpu eval job per epoch checkpoint, held until training succeeds.
+        # submit_eval.sh owns the eval settings (datasets, samples, decoding, prompt style),
+        # so they are configured in one place only.
+        if [ "$debug" != true ]; then
+            eval_models=""
+            for epoch in $(seq 1 "$epochs"); do
+                eval_models="$eval_models vllm:${run_id}-epoch${epoch}"
+            done
+            echo "  Queueing eval jobs for $epochs epoch checkpoints (after $train_job_id)"
+            EVAL_MODELS="$eval_models" \
+                EVAL_DEPENDENCY="afterok:${train_job_id}" \
+                bash scripts/submit_eval.sh
+        fi
 
         # small delay between submissions to avoid scheduler overload
         sleep 0.5

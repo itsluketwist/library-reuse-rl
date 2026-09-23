@@ -7,6 +7,36 @@ from src.response.parser import ParsedResponse
 from src.response.pipeline import process_response
 
 
+def execution_components(
+    parsed: ParsedResponse,
+    passed: bool,
+) -> dict[str, bool]:
+    """
+    Judge the execution-specific components of the tested-implementation reward.
+
+    correct_format and passes_syntax_check are shared with the other rewards (see
+    LibraryReward.has_correct_format / CodeReward.has_valid_syntax) and judged by
+    TestedImplementationReward.components, not here.
+
+    Returns each component name mapped to whether the completion satisfies it.
+    """
+    # stdlib imports, excluding the io-boilerplate exception (see base.py)
+    internal_libs = [lib for lib in parsed.std_libs if lib != _IO_BOILERPLATE_LIB]
+
+    return {
+        # the code passed evaluation against the record's tests
+        "passed_tests": passed,
+        # imports a stdlib module (other than the io boilerplate exception)
+        "internal_lib_imported": bool(internal_libs),
+        # imports a third-party module
+        "external_lib_imported": bool(parsed.ext_libs),
+        # actually calls/uses an imported stdlib module
+        "internal_lib_used": any(lib in parsed.lib_usage for lib in internal_libs),
+        # actually calls/uses an imported third-party module
+        "external_lib_used": any(lib in parsed.lib_usage for lib in parsed.ext_libs),
+    }
+
+
 def compute_reward(
     parsed: ParsedResponse,
     passed: bool,
@@ -15,43 +45,13 @@ def compute_reward(
     """
     Compute the execution-specific part of the tested-implementation reward.
 
-    correct_format and passes_syntax_check are shared with the other rewards (see
-    CodeReward.score_syntax / LibraryReward.score_correct_format) and added by
-    TestedImplementationReward.score, not here.
-
     Returns a scalar reward.
     """
-    reward = 0.0
-
-    if weight := weights.get("passed_tests"):
-        # the code passed evaluation against the record's tests
-        if passed:
-            reward += weight
-
-    # stdlib imports, excluding the io-boilerplate exception (see base.py)
-    internal_libs = [lib for lib in parsed.std_libs if lib != _IO_BOILERPLATE_LIB]
-
-    if weight := weights.get("internal_lib_imported"):
-        # imports a stdlib module (other than the io boilerplate exception)
-        if internal_libs:
-            reward += weight
-
-    if weight := weights.get("external_lib_imported"):
-        # imports a third-party module
-        if parsed.ext_libs:
-            reward += weight
-
-    if weight := weights.get("internal_lib_used"):
-        # actually calls/uses an imported stdlib module
-        if any(lib in parsed.lib_usage for lib in internal_libs):
-            reward += weight
-
-    if weight := weights.get("external_lib_used"):
-        # actually calls/uses an imported third-party module
-        if any(lib in parsed.lib_usage for lib in parsed.ext_libs):
-            reward += weight
-
-    return reward
+    components = execution_components(parsed=parsed, passed=passed)
+    return sum(
+        (weights.get(component, 0.0) for component, ok in components.items() if ok),
+        0.0,
+    )
 
 
 class TestedImplementationReward(CodeReward):
@@ -66,15 +66,15 @@ class TestedImplementationReward(CodeReward):
     # the class name starts with "Test", so tell pytest it is not a test class
     __test__ = False
 
-    def score(
+    def components(
         self,
         content: str,
         row: dict[str, Any],
-    ) -> float:
+    ) -> dict[str, bool]:
         """
-        Score one completion by running its code against the row's tests.
+        Judge one completion by running its code against the row's tests.
 
-        Returns a scalar reward.
+        Returns each component name mapped to whether the completion satisfies it.
         """
         processed = process_response(
             response=content,
@@ -84,12 +84,8 @@ class TestedImplementationReward(CodeReward):
             },
             stop_reason=self._stop_reason(row),
         )
-        reward = 0.0
-        reward = self.score_correct_format(reward, processed)
-        reward = self.score_syntax(reward, processed)
-        reward += compute_reward(
-            parsed=processed,
-            passed=processed.passed,
-            weights=self.weights,
-        )
-        return reward
+        return {
+            "correct_format": self.has_correct_format(processed),
+            "passes_syntax_check": self.has_valid_syntax(processed),
+            **execution_components(parsed=processed, passed=processed.passed),
+        }

@@ -1,5 +1,6 @@
 """The command-line entry point and orchestration for RL training with GRPO."""
 
+import os
 import uuid
 from argparse import ArgumentParser
 from pathlib import Path
@@ -33,9 +34,10 @@ parser.add_argument(
     type=str,
     default=None,
     help=(
-        "Registry key this run's trained model is registered under (see "
-        "config/models.yaml). Auto-generated if not given; submit_grpo.sh passes one "
-        "so the dependent eval job can find the model without recomputing it."
+        "Prefix for the registry keys this run's epoch checkpoints are registered under, "
+        "as '{run-id}-epoch{n}' (see config/models.yaml). Auto-generated if not given; "
+        "submit_grpo.sh passes one so the dependent eval jobs can name the models "
+        "before training has finished."
     ),
 )
 
@@ -110,6 +112,26 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--epochs",
+    type=int,
+    default=None,
+    help=(
+        "Number of training epochs, overriding the recipe's num_train_epochs. Used by "
+        "the shorter debug runs (see scripts/submit_debug.sh)."
+    ),
+)
+
+parser.add_argument(
+    "--max-steps",
+    type=int,
+    default=None,
+    help=(
+        "Stop after this many optimizer steps, overriding the recipe's run length. Used "
+        "to measure step time and memory on a real model without training it."
+    ),
+)
+
+parser.add_argument(
     "--debug",
     action="store_true",
     help=(
@@ -125,16 +147,27 @@ def trained_model_path(
     output_root: str = "output",
 ) -> Path:
     """
-    Compute the directory a training run saves its adapter and checkpoints to, named by
-    `run_id` (the registry key the model is later looked up by) so the folder matches
-    the registry entry.
+    Compute the directory a training run saves its epoch checkpoints to, named by
+    `run_id` (the prefix of the registry keys the models are later looked up by) so the
+    folder matches the registry entries.
 
-    output_root defaults to "output", but submit_grpo.sh points it at scratch storage
+    output_root defaults to "output", but submit_grpo.sh points it at project storage
     since these files are large; small training metrics go elsewhere (see run_grpo).
 
     Returns the output directory path.
     """
     return Path(output_root) / run_id
+
+
+def is_main_process() -> bool:
+    """
+    Whether this is the first of the processes accelerate launched, one per gpu.
+
+    Logging and registry writes happen once per run, not once per gpu.
+
+    Returns True on rank zero, including when running without accelerate.
+    """
+    return int(os.environ.get("RANK", "0")) == 0
 
 
 def run_grpo(
@@ -149,21 +182,25 @@ def run_grpo(
     debug: bool = False,
     output_root: str = "output",
     run_id: str | None = None,
+    epochs: int | None = None,
+    max_steps: int | None = None,
 ) -> None:
     """
     Run GRPO RL training for the given model and dataset.
 
-    `dataset` is a directory of train/val/test.jsonl files (e.g. data/train/skywork); training
-    runs against train.jsonl and uses val.jsonl for periodic evaluation if the recipe
-    enables it. `seed` and `library_prompt_style` override the recipe's fields.
+    `dataset` is a directory of train/val/test.jsonl files (e.g. data/train/library_usage);
+    training runs against train.jsonl and uses val.jsonl for periodic evaluation if the
+    recipe enables it. `seed` and `library_prompt_style` override the recipe's fields, as
+    do `epochs`/`max_steps` when given.
 
     If `debug` is set, the dataset is truncated to a few samples (a quick end-to-end
     check) and `model` defaults to DEBUG_MODEL_KEY; otherwise `model` is required.
 
     Resolves the model and reward profile, runs training (see train_model_with_grpo),
-    saves the adapter under trained_model_path, then registers the trained model in
-    `model_config` under `run_id` (generated if not given) so eval can look it up by
-    name, recording its base, adapter path, and the training knobs (`properties`).
+    which saves one checkpoint per epoch under trained_model_path, then registers each
+    epoch in `model_config` as "{run_id}-epoch{n}" (run_id generated if not given) so eval
+    can look any epoch up by name, recording its base, weights path, and the training
+    knobs (`properties`).
     """
     if model is None:
         if not debug:
@@ -180,23 +217,25 @@ def run_grpo(
     reward_weights = load_reward_profile(
         profile=reward_profile, config_file=rewards_config
     )
-    log(f"Model path: {model_settings['base']}")
-    log(f"Dataset: {dataset}")
-    log(f"Reward profile '{reward_profile}': {reward_weights}")
-    log(f"Seed: {seed}")
-    log(f"Recipe: {recipe_config}")
-    log(f"Library prompt style: {library_prompt_style}")
-    log(f"Debug: {debug}")
+    if is_main_process():
+        log(f"Model path: {model_settings['base']}")
+        log(f"Dataset: {dataset}")
+        log(f"Reward profile '{reward_profile}': {reward_weights}")
+        log(f"Seed: {seed}")
+        log(f"Recipe: {recipe_config}")
+        log(f"Library prompt style: {library_prompt_style}")
+        log(f"Debug: {debug}")
 
-    # large adapter/checkpoints go under output_root (scratch storage, see trained_model_path)
+    # the large epoch checkpoints go under output_root (project storage on the HPC, see
+    # trained_model_path)
     output_path = trained_model_path(run_id=run_id, output_root=output_root)
-    log(f"Adapter output path: {output_path}")
+    log(f"Checkpoint output path: {output_path}")
 
-    # small training metrics stay in the repo, separate from the large scratch artifacts
+    # small training metrics stay in the repo, separate from the large checkpoints
     metrics_path = Path("output") / "grpo" / run_id
     log(f"Metrics path: {metrics_path}")
 
-    train_model_with_grpo(
+    checkpoints = train_model_with_grpo(
         model_name_or_path=model_settings["base"],
         dataset_dir=dataset,
         output_dir=output_path,
@@ -207,53 +246,63 @@ def run_grpo(
         recipe_config=recipe_config,
         library_prompt_style=library_prompt_style,
         debug=debug,
+        epochs=epochs,
+        max_steps=max_steps,
     )
+
+    # every process trained; only one of them writes to the shared registry
+    if not is_main_process():
+        return
 
     # debug runs are throwaway, so don't register them
     if debug:
-        eval_command = (
-            f"run_eval --debug --model {model} --adapter {output_path} "
-            f"--decoding-config {recipe_config} --prompt-style {library_prompt_style}"
-        )
-        log(
-            f"Debug run - not registered in {model_config}. Evaluate this adapter with:"
-        )
-        log(f"  {eval_command}")
+        log(f"Debug run - not registered in {model_config}. Checkpoints: {checkpoints}")
+        return
+
+    # a --max-steps run stops before the first epoch ends, so there is nothing to register
+    if not checkpoints:
+        log("No epoch checkpoints were saved - nothing to register.")
         return
 
     # the run id is non-descriptive, so record the knobs to recognise the model later
-    properties = {
-        "dataset": dataset,
-        "recipe": recipe_config,
-        "reward_profile": reward_profile,
-        "seed": seed,
-        "library_prompt_style": library_prompt_style,
-    }
-    register_model(
-        model_key=run_id,
-        base=model_settings["base"],
-        path=str(output_path),
-        properties=properties,
-        config_file=model_config,
-    )
-    log(f"Registered trained model '{run_id}' ({output_path}) in {model_config}")
+    for epoch, checkpoint in checkpoints.items():
+        properties = {
+            "dataset": dataset,
+            "recipe": recipe_config,
+            "reward_profile": reward_profile,
+            "seed": seed,
+            "library_prompt_style": library_prompt_style,
+            "epoch": epoch,
+        }
+        model_key = f"{run_id}-epoch{epoch}"
+        register_model(
+            model_key=model_key,
+            base=model_settings["base"],
+            path=str(checkpoint),
+            properties=properties,
+            config_file=model_config,
+        )
+        log(f"Registered trained model '{model_key}' ({checkpoint}) in {model_config}")
 
 
 def main() -> None:
     args = parser.parse_args()
 
-    # --- startup banner ---
-    log_header("RL TRAINING")
-    log(f"Model: {args.model}")
-    log(f"Dataset: {args.dataset}")
-    log(f"Recipe: {args.recipe_config}")
-    log(f"Reward: {args.rewards_config} [{args.reward_profile}]")
-    log(f"Seed: {args.seed}")
-    log(f"Library prompt style: {args.library_prompt_style}")
-    log(f"Debug: {args.debug}")
-    log(f"Output root: {args.output_root}")
-    log(f"Run id: {args.run_id or '(generated)'}")
-    log()
+    # --- startup banner (once per run, not once per gpu) ---
+    if is_main_process():
+        log_header("RL TRAINING")
+        log(f"Model: {args.model}")
+        log(f"Dataset: {args.dataset}")
+        log(f"Recipe: {args.recipe_config}")
+        log(f"Reward: {args.rewards_config} [{args.reward_profile}]")
+        log(f"Seed: {args.seed}")
+        log(f"Library prompt style: {args.library_prompt_style}")
+        log(f"Epochs: {args.epochs or '(recipe)'}")
+        log(f"Max steps: {args.max_steps or '(recipe)'}")
+        log(f"Debug: {args.debug}")
+        log(f"Output root: {args.output_root}")
+        log(f"Run id: {args.run_id or '(generated)'}")
+        log()
 
     run_grpo(
         model=args.model,
@@ -267,11 +316,14 @@ def main() -> None:
         run_id=args.run_id,
         debug=args.debug,
         output_root=args.output_root,
+        epochs=args.epochs,
+        max_steps=args.max_steps,
     )
 
     # --- summary ---
-    log_header("COMPLETE")
-    log("Done.")
+    if is_main_process():
+        log_header("COMPLETE")
+        log("Done.")
 
 
 if __name__ == "__main__":

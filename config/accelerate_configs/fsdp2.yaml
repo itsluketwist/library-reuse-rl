@@ -1,0 +1,39 @@
+# accelerate config for full-weight training across the 4 gpus of one isambard node.
+# FSDP2 shards the weights, gradients and optimizer state over the gpus - an 8b model's
+# fp32 master weights plus adam state are ~128GB, which no single 96GB gpu holds.
+#
+# used by scripts/submit_grpo.sh:
+#   accelerate launch --config_file config/accelerate_configs/fsdp2.yaml -m src.run_grpo ...
+
+compute_environment: LOCAL_MACHINE
+distributed_type: FSDP
+num_machines: 1
+num_processes: 4  # one process per gpu
+machine_rank: 0
+rdzv_backend: static
+same_network: true
+# weights are held in fp32 and computed on in bf16 (see model_init_kwargs in
+# config/training.yaml) - at lr 1e-6 a bf16 weight cannot represent the update
+mixed_precision: bf16
+downcast_bf16: 'no'
+main_training_function: main
+
+fsdp_config:
+  fsdp_version: 2
+  # shard parameters, gradients and optimizer state (FULL_SHARD); the alternatives keep
+  # whole copies per gpu, which does not fit
+  fsdp_reshard_after_forward: true
+  fsdp_auto_wrap_policy: TRANSFORMER_BASED_WRAP
+  # each transformer block is sharded as a unit, and gathered only while it is in use
+  fsdp_transformer_layer_cls_to_wrap: Qwen3DecoderLayer
+  # saves each checkpoint as one consolidated model.safetensors, which vllm can load
+  # directly at evaluation time - sharded checkpoints would need converting first
+  fsdp_state_dict_type: FULL_STATE_DICT
+  fsdp_cpu_ram_efficient_loading: true  # only rank 0 loads the weights, then shards them
+  fsdp_offload_params: false  # 96GB per gpu is enough without paying for cpu transfers
+  fsdp_activation_checkpointing: false  # the trainer does this via gradient_checkpointing
+
+tpu_env: []
+tpu_use_cluster: false
+tpu_use_sudo: false
+use_cpu: false

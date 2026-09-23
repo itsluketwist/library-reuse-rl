@@ -1,5 +1,6 @@
 """The command-line entry point and orchestration for evaluating untrained, pretrained, or trained models."""
 
+import os
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Literal, get_args
@@ -13,6 +14,10 @@ from src.utils.log import log, log_header
 
 # tiny model (see config/models.yaml) used to smoke-test --debug runs
 DEBUG_MODEL_KEY = "qwen3-debug"
+
+# environment variable overriding where a dataset's execution environments are built (see
+# environment_root in config/eval_datasets.yaml), so HPC jobs can put them on scratch
+ENVIRONMENT_ROOT_ENV_VAR = "EVAL_ENVIRONMENT_ROOT"
 
 # how a model entry is served. "provider" is absent on every local/trained entry, so it
 # defaults to "vllm"; "api" entries are called over an OpenAI-compatible endpoint instead
@@ -67,17 +72,6 @@ parser.add_argument(
     help=(
         "Model key from models.yaml - a base model, or a trained model registered by "
         "training. Not required if --debug is set."
-    ),
-)
-
-parser.add_argument(
-    "--adapter",
-    type=str,
-    default=None,
-    help=(
-        "Path to a trained lora adapter to apply on top of the model's base. Overrides "
-        "the adapter registered for --model. Leave unset to use the registered adapter, "
-        "or the base model alone if it has none."
     ),
 )
 
@@ -181,7 +175,6 @@ def eval_results_path(
     decoding_profile: str,
     libraries_requirements_file: str | None = None,
     prompt_style: PromptStyle = "lib",
-    adapter_override: str | None = None,
 ) -> Path:
     """
     Compute the output path an evaluation run saves its results to.
@@ -191,11 +184,8 @@ def eval_results_path(
     combination overwrites the previous result file at this same path - see the `update`
     flag on `run_eval`, which skips regenerating a result that already exists here unless
     told otherwise. A suffix ("-libv1"/"-usev1", else the style name) separates runs under
-    different system-prompt settings (see library_prompt_suffix).
-
-    `adapter_override` is the --adapter path when given: its directory name is appended
-    so trying an arbitrary adapter under a base-model key doesn't overwrite that model's
-    own results. Registered runs need no suffix, as their --model key is already unique.
+    different system-prompt settings (see library_prompt_suffix). Each epoch of a training
+    run is its own model key, so epochs never share a path.
 
     Returns the output file path.
     """
@@ -204,15 +194,35 @@ def eval_results_path(
     # back to the style name so those runs can't share one path and overwrite each other
     if not lib_suffix:
         lib_suffix = f"-{prompt_style}"
-    adapter_suffix = (
-        f"-adapter-{Path(adapter_override).name}" if adapter_override else ""
-    )
     return (
         Path("output")
         / "eval"
         / model
-        / f"{dataset}-{decoding_profile}{lib_suffix}{adapter_suffix}.json"
+        / f"{dataset}-{decoding_profile}{lib_suffix}.json"
     )
+
+
+def apply_environment_root(
+    dataset_configs: dict[str, dict[str, str]],
+    environment_root: str | None,
+) -> dict[str, dict[str, str]]:
+    """
+    Move each dataset's execution environments to `environment_root`, when one is set.
+
+    The environments are venvs built per run and thrown away, so on the HPC they belong on
+    scratch rather than inside the repo (see ENVIRONMENT_ROOT_ENV_VAR). Datasets that
+    never build one (no environment_root of their own) are left untouched.
+
+    Returns the dataset configs, with environment_root replaced where it applies.
+    """
+    if not environment_root:
+        return dataset_configs
+    return {
+        name: {**config, "environment_root": environment_root}
+        if config.get("environment_root")
+        else config
+        for name, config in dataset_configs.items()
+    }
 
 
 def run_eval(
@@ -223,7 +233,6 @@ def run_eval(
     decoding_config: str = "config/training.yaml",
     eval_datasets_config: str = "config/eval_datasets.yaml",
     prompt_style: PromptStyle = "lib",
-    adapter: str | None = None,
     debug: bool = False,
     update: bool = False,
     n_samples: int | None = None,
@@ -232,13 +241,13 @@ def run_eval(
     Run evaluation of an untrained, pretrained, or trained model against one or more
     datasets.
 
-    `model` is a key from `model_config` (see config/models.yaml), holding local base
-    models (blank "path") and trained models (registered once training produces one), so
-    the post-training eval job can point at a fresh model by name, as well as API-served
-    models ("provider: api" - DeepSeek, OpenAI, ...). For local models, eval loads the
-    entry's "base" and applies its adapter on top; `adapter` overrides which adapter is
-    applied (e.g. to try one on a base-model key); with neither set, the base model is
-    evaluated alone. API models have no adapter and skip vllm entirely (see evaluate_model).
+    `model` is a key from `model_config` (see config/models.yaml), holding released base
+    models (blank "path") and each epoch of a training run (registered once training
+    produces them), so the post-training eval jobs can point at a fresh checkpoint by
+    name, as well as API-served models ("provider: api" - DeepSeek, OpenAI, ...). A local
+    model is loaded from the entry's "path" when it has one, and from its "base"
+    otherwise. API models have no local weights and skip vllm entirely (see
+    evaluate_model).
 
     `datasets` is a list of names looked up in `eval_datasets_config` (see
     config/eval_datasets.yaml); if not given, every dataset in that file is run.
@@ -270,13 +279,13 @@ def run_eval(
         model = DEBUG_MODEL_KEY
 
     model_settings = load_yaml_config(config_file=model_config, key=model)
-    # --adapter override wins, else the entry's registered adapter, else base alone
+    # a trained entry's registered weights (a training checkpoint), else the base model
     base = model_settings["base"]
-    adapter_path = adapter or model_settings["path"] or None
+    weights_path = model_settings["path"] or None
     api = build_api_settings(model_settings)
     log(f"Base: {base}")
     log(f"Provider: {'api' if api is not None else 'vllm'}")
-    log(f"Adapter: {adapter_path or 'none'}")
+    log(f"Weights: {weights_path or 'base model'}")
     log(f"Prompt style: {prompt_style}")
     log(f"Debug: {debug}")
 
@@ -284,10 +293,7 @@ def run_eval(
     libraries_requirements_file = recipe.get("libraries_requirements_file")
     log(f"Libraries requirements file: {libraries_requirements_file or 'none'}")
     if api is None:
-        log("Model dtype: auto (vLLM default)")
-
-    # size vllm's adapter slot from the recipe's training rank (assumes same recipe)
-    max_lora_rank = recipe.get("lora_r")
+        log("Model dtype: bfloat16")
 
     decoding_settings = load_yaml_config(
         config_file=decoding_config,
@@ -317,6 +323,13 @@ def run_eval(
             raise FileNotFoundError(
                 f"Dataset '{name}' does not exist at {dataset_path}."
             )
+
+    # scripts/setup_job.sh points this at scratch on the HPC (see apply_environment_root)
+    environment_root = os.environ.get(ENVIRONMENT_ROOT_ENV_VAR)
+    if environment_root:
+        log(f"Execution environment root: {environment_root}")
+    dataset_configs = apply_environment_root(dataset_configs, environment_root)
+
     output_paths = {
         name: eval_results_path(
             model=model,
@@ -324,7 +337,6 @@ def run_eval(
             decoding_profile=decoding_profile,
             libraries_requirements_file=libraries_requirements_file,
             prompt_style=prompt_style,
-            adapter_override=adapter,
         )
         for name in dataset_names
     }
@@ -345,11 +357,10 @@ def run_eval(
 
     evaluate_model(
         base=base,
-        adapter_path=adapter_path,
+        weights_path=weights_path,
         dataset_configs={name: dataset_configs[name] for name in datasets_to_run},
         decoding_settings=decoding_settings,
         output_paths=datasets_to_run,
-        max_lora_rank=max_lora_rank,
         libraries_requirements_file=libraries_requirements_file,
         prompt_style=prompt_style,
         debug=debug,
@@ -364,7 +375,6 @@ def main() -> None:
     # --- startup banner ---
     log_header("EVALUATION")
     log(f"Model: {args.model}")
-    log(f"Adapter: {args.adapter or '(registered)'}")
     log(f"Datasets: {datasets or 'all'}")
     log(f"Decoding: {args.decoding_config} [{args.decoding_profile}]")
     log(
@@ -383,7 +393,6 @@ def main() -> None:
         decoding_config=args.decoding_config,
         eval_datasets_config=args.eval_datasets_config,
         prompt_style=args.prompt_style,
-        adapter=args.adapter,
         debug=args.debug,
         update=args.update,
         n_samples=args.n_samples,

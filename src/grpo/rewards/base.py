@@ -116,6 +116,21 @@ class LibraryReward:
         rows = rows_from_columns(columns, n=len(contents))
         return [self.score(content, row) for content, row in zip(contents, rows)]
 
+    def components(
+        self,
+        content: str,
+        row: dict[str, Any],
+    ) -> dict[str, bool]:
+        """
+        Judge a single completion against its dataset row, component by component.
+
+        Subclasses implement this rather than `score`, so each component can also be
+        logged on its own during training (see build_reward_functions).
+
+        Returns each component name mapped to whether this completion satisfies it.
+        """
+        raise NotImplementedError
+
     def score(
         self,
         content: str,
@@ -124,9 +139,12 @@ class LibraryReward:
         """
         Score a single completion against its dataset row.
 
-        Returns a scalar reward.
+        Returns the total weight of the components it satisfies.
         """
-        raise NotImplementedError
+        reward = 0.0
+        for component, satisfied in self.components(content, row).items():
+            reward = self._add(reward, component, satisfied)
+        return reward
 
     def _add(
         self,
@@ -158,20 +176,16 @@ class LibraryReward:
         """
         return stop_reason_from_tokens(row.get("completion_ids"), self.eos_token_id)
 
-    def score_correct_format(
-        self,
-        reward: float,
-        parsed: ParsedResponse,
-    ) -> float:
+    @staticmethod
+    def has_correct_format(parsed: ParsedResponse) -> bool:
         """
-        Add the correct_format component: shared by every reward, no code required.
+        Judge the correct_format component: shared by every reward, no code required.
 
-        Returns the updated reward.
+        Returns whether the response has both reasoning and an answer, and wasn't cut
+        off by the token limit.
         """
         has_shape = bool(parsed.reasoning.strip() and parsed.answer)
-        return self._add(
-            reward, "correct_format", has_shape and parsed.stop_reason != "length"
-        )
+        return has_shape and parsed.stop_reason != "length"
 
 
 class CodeReward(LibraryReward):
@@ -182,17 +196,14 @@ class CodeReward(LibraryReward):
     used to tell a genuine external library apart from the project's own modules.
     """
 
-    def score_syntax(
-        self,
-        reward: float,
-        parsed: ParsedResponse,
-    ) -> float:
+    @staticmethod
+    def has_valid_syntax(parsed: ParsedResponse) -> bool:
         """
-        Add the passes_syntax_check component: the selected code fragment is valid python.
+        Judge the passes_syntax_check component.
 
-        Returns the updated reward.
+        Returns whether the selected code fragment is valid python.
         """
-        return self._add(reward, "passes_syntax_check", bool(parsed.valid))
+        return bool(parsed.valid)
 
     def parse(
         self,

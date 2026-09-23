@@ -23,11 +23,10 @@ DEBUG_ENVIRONMENT_NAME = "debug"
 
 def evaluate_model(
     base: str,
-    adapter_path: str | None,
+    weights_path: str | None,
     dataset_configs: dict[str, dict[str, str]],
     decoding_settings: dict,
     output_paths: dict[str, Path],
-    max_lora_rank: int | None = None,
     libraries_requirements_file: str | None = None,
     prompt_style: PromptStyle = "lib",
     debug: bool = False,
@@ -38,11 +37,10 @@ def evaluate_model(
     them with the response pipeline, and save results.
 
     `api`, when given, serves `base` as a hosted chat model over an OpenAI-compatible API
-    (see src/eval/generate_api.py) and vllm is never imported; adapters aren't meaningful
-    for a hosted model, so `adapter_path` must be None. Otherwise `base` is loaded as
-    local weights via vllm, optionally with a trained lora adapter from `adapter_path`
-    applied on top for every generation (this is how a trained model is evaluated) -
-    `max_lora_rank` sizes vllm's adapter slot and should be at least the adapter's rank.
+    (see src/eval/generate_api.py) and vllm is never imported; a hosted model has no local
+    weights, so `weights_path` must be None. Otherwise the model is loaded by vllm from
+    `weights_path` when given - a training run's epoch checkpoint (see src/run_grpo.py) -
+    and from `base` otherwise, which is how an untrained model is evaluated.
 
     `dataset_configs` and `output_paths` are keyed by dataset name (see
     config/eval_datasets.yaml); every dataset config names its file and evaluator. The
@@ -60,10 +58,10 @@ def evaluate_model(
     end-to-end smoke test, and execution environments are reused between runs rather than
     rebuilt (see DEBUG_ENVIRONMENT_NAME).
     """
-    if api is not None and adapter_path is not None:
+    if api is not None and weights_path is not None:
         raise ValueError(
-            "API-served models do not support adapters - the model key's registered "
-            "path must be blank, and --adapter must not be set."
+            "API-served models have no local weights - the model key's registered "
+            "path must be blank."
         )
 
     system_prompt = build_system_prompt(libraries_requirements_file, style=prompt_style)
@@ -85,27 +83,20 @@ def evaluate_model(
         log("*** Using API provider (no local model load) ***")
         log(f"API base url: {api.base_url or '(default)'}")
         llm = None
-        lora_request = None
     else:
         # imported here, not at module scope, so API-only evaluation never needs vllm
         # (and therefore torch) installed at all
         from vllm import LLM
-        from vllm.lora.request import LoRARequest
 
         log("*** Loading model ***")
-        # leave dtype unset so vllm uses its `auto` default from the model checkpoint.
-        llm_kwargs = {"model": base, "enforce_eager": debug}
-
-        if adapter_path is not None:
-            llm = LLM(**llm_kwargs, enable_lora=True, max_lora_rank=max_lora_rank)
-            lora_request = LoRARequest(
-                lora_name="trained-adapter",
-                lora_int_id=1,
-                lora_path=adapter_path,
-            )
-        else:
-            llm = LLM(**llm_kwargs)
-            lora_request = None
+        # training checkpoints store fp32 weights, which vllm's "auto" dtype would serve
+        # as fp16 - the wrong range for these models. every model here is natively
+        # bf16, so ask for it explicitly and both cases are right.
+        llm = LLM(
+            model=weights_path or base,
+            dtype="bfloat16",
+            enforce_eager=debug,
+        )
 
     for name, dataset_config in dataset_configs.items():
         dataset_file = dataset_config["path"]
@@ -147,7 +138,6 @@ def evaluate_model(
                     llm=llm,
                     prompts=list(dataset["prompt"]),
                     decoding_settings=decoding_settings,
-                    lora_request=lora_request,
                 )
 
         # score the responses the way this dataset's task is verified (execution for the
@@ -166,7 +156,8 @@ def evaluate_model(
         output = {
             "metadata": {
                 "base": base,
-                "adapter": adapter_path,
+                # which checkpoint produced this, or None for an untrained model
+                "weights": weights_path,
                 "provider": "api" if api is not None else "vllm",
                 "dataset": name,
                 "dataset_file": dataset_file,

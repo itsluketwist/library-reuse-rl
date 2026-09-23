@@ -107,23 +107,31 @@ class TestLibraryRewardWiring:
             LibraryReward({})._stop_reason({"completion_ids": [1, 3]}) == "unknown"
         )  # no eos_token_id known
 
-    def test_score_correct_format_needs_reasoning_and_answer_only(self):
+    def test_correct_format_needs_reasoning_and_answer_only(self):
         """correct_format needs reasoning and an answer - no code required."""
         reward = LibraryReward({"correct_format": 0.1})
 
-        assert reward.score_correct_format(0.0, _parsed(reasoning="thinking")) == 0.1
-        assert reward.score_correct_format(0.0, _parsed(reasoning="")) == 0.0
-        assert reward.score_correct_format(0.0, _parsed(answer=None)) == 0.0
+        assert reward.has_correct_format(_parsed(reasoning="thinking")) is True
+        assert reward.has_correct_format(_parsed(reasoning="")) is False
+        assert reward.has_correct_format(_parsed(answer=None)) is False
 
-    def test_score_correct_format_rejects_truncated_completions(self):
+    def test_correct_format_rejects_truncated_completions(self):
         """A truncated completion never earns correct_format, even with full shape."""
         reward = LibraryReward({"correct_format": 0.1}, eos_token_id=2)
 
-        parsed = _parsed(stop_reason="length")
-        assert reward.score_correct_format(0.0, parsed) == 0.0
+        assert reward.has_correct_format(_parsed(stop_reason="length")) is False
+        assert reward.has_correct_format(_parsed(stop_reason="eos")) is True
 
-        parsed = _parsed(stop_reason="eos")
-        assert reward.score_correct_format(0.0, parsed) == 0.1
+    def test_score_sums_the_weights_of_satisfied_components(self):
+        """score weights whatever components() reports, ignoring unweighted ones."""
+
+        class _Fixed(LibraryReward):
+            def components(self, content, row):
+                return {"present": True, "absent": True, "unsatisfied": False}
+
+        reward = _Fixed({"present": 0.5, "unsatisfied": 1.0})
+
+        assert reward.score("content", {}) == pytest.approx(0.5)
 
 
 class TestCodeReward:
@@ -136,12 +144,12 @@ class TestCodeReward:
         assert CodeReward.external_libraries(parsed, ["app"]) == ["requests"]
         assert CodeReward.external_libraries(parsed, None) == ["requests", "app"]
 
-    def test_score_syntax_only_cares_about_validity(self):
+    def test_valid_syntax_only_cares_about_validity(self):
         """passes_syntax_check needs the selected code fragment to parse."""
         reward = CodeReward({"passes_syntax_check": 0.2})
 
-        assert reward.score_syntax(0.0, _parsed(valid=True)) == pytest.approx(0.2)
-        assert reward.score_syntax(0.0, _parsed(valid=False)) == pytest.approx(0.0)
+        assert reward.has_valid_syntax(_parsed(valid=True)) is True
+        assert reward.has_valid_syntax(_parsed(valid=False)) is False
 
 
 class TestLoadRewardProfile:

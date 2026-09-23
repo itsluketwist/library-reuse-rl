@@ -17,7 +17,7 @@ Research code studying whether reinforcement learning can teach LLMs to reuse ex
 libraries when writing code, instead of reimplementing functionality from scratch. Models
 are trained and evaluated on stdin/stdout coding problems, with a reward function that can
 optionally reward library imports/usage on top of plain correctness (see
-[`src/grpo/rewards.py`](src/grpo/rewards.py)).
+[`src/grpo/rewards/`](src/grpo/rewards/)).
 
 ## *installation*
 
@@ -46,6 +46,18 @@ torchrun --nproc-per-node=4 scripts/check_gpu_stack.py --nccl   # in a 4-gpu all
 
 `scripts/discover_environment.sh` reports a node's hardware, driver, modules and Slurm limits,
 without needing the project installed.
+
+Isambard's storage areas serve different purposes, and the jobs are wired up accordingly by
+[`scripts/setup_job.sh`](scripts/setup_job.sh):
+
+| Area | What goes there | Why |
+| --- | --- | --- |
+| `$HOME` (100 GiB) | The repo, `.venv`, `logs/`, and the small files under `output/` | Wanted in git, and small |
+| `$PROJECTDIR` | Model downloads (`HF_HOME`, set in `.env`) and training checkpoints | Hundreds of GB that must persist - `$HOME` is too small |
+| `$SCRATCHDIR` | Compile caches, wandb staging, the disposable evaluation venvs | Regenerable churn; scratch is purged after 60 days of inactivity |
+
+Jobs refuse to start if `HF_HOME` is unset or inside `$HOME`, since a single model cache
+would fill that quota.
 
 Locally (core only - for the `benchmark` pipeline, `dataset/` build, and tests; the GPU stack is
 linux-marked, so it is skipped automatically):
@@ -78,17 +90,38 @@ and `run_eval` console scripts (installed into the venv by `uv sync`, see
 [`src/run_grpo.py`](src/run_grpo.py) and [`src/run_eval.py`](src/run_eval.py)):
 
 ```shell
-run_grpo -m qwen3-8b -d data/train/library_usage -rp lu-v1
+accelerate launch --config_file config/accelerate_configs/fsdp2.yaml --num_processes 4 \
+    --module src.run_grpo --model qwen3-8b -d data/train/library_usage -rp lu-v1
 
 run_eval -m qwen3-8b
 ```
 
-Run either with `--help` to see all options (base/decoding/reward configuration, which
-datasets to evaluate against, etc).
+Training is **full-weight** GRPO: the model, its gradients and its optimizer state are
+sharded across the job's GPUs with FSDP2 (see
+[`config/accelerate_configs/fsdp2.yaml`](config/accelerate_configs/fsdp2.yaml)), while a
+vLLM engine colocated on the same GPUs generates the rollouts. Evaluation needs only one
+GPU. Run either command with `--help` to see all options (base/decoding/reward
+configuration, which datasets to evaluate against, etc).
+
+Every epoch leaves a checkpoint, registered in `config/models.yaml` as
+`{run-id}-epoch{n}`, so each epoch can be evaluated and compared afterwards. Only the
+newest checkpoint keeps the optimizer state needed to resume, so a job stopped by the
+slurm time limit is requeued and picks up from the last epoch.
 
 On a slurm cluster, use the submission scripts in [`scripts/`](scripts/) instead - edit the
-configuration block at the top of each, then run e.g. `bash scripts/submit_grpo.sh`. Submit
-evaluation separately after the trained run ids have been registered in `config/models.yaml`.
+configuration block at the top of each, then run e.g. `bash scripts/submit_grpo.sh`, which
+also queues one eval job per epoch checkpoint, held until training succeeds. Untrained
+base models are evaluated by running `bash scripts/submit_eval.sh` directly.
+
+Before a real run - or after changing the training code - work through the staged checks
+in [`scripts/submit_debug.sh`](scripts/submit_debug.sh), each of which submits one job:
+
+```shell
+bash scripts/submit_debug.sh smoke   # 4 gpus, minutes - wiring and the sharded launch
+bash scripts/submit_debug.sh pilot   # 1 gpu, ~1-2 hours - the whole pipeline, small model
+bash scripts/submit_debug.sh eval    # 1 gpu, ~10 minutes - the evaluation path
+bash scripts/submit_debug.sh scale   # 4 gpus, ~30 minutes - memory and step time at 8b
+```
 
 There are two eval launchers, each with its own configuration block at the top (models,
 datasets, decoding profiles, prompt styles, debug, update), so the two can be pointed at different
@@ -112,23 +145,26 @@ Models can be evaluated over an OpenAI-compatible API instead of local weights, 
 their `config/models.yaml` entry `provider: api` and an `api_key_env` naming the `.env`
 variable that holds the key (copy [`.env.example`](.env.example) to `.env` and fill it in).
 `base_url` selects the provider, and `max_tokens_param` covers models that reject the
-legacy `max_tokens` field. These runs never import vllm, and `submit_eval.sh` routes them
-to a CPU partition since they only need network access. Adapters do not apply to a hosted
-model. See [`src/eval/generate_api.py`](src/eval/generate_api.py).
+legacy `max_tokens` field. These runs never import vllm, and only need network access - so
+they are not submitted to slurm (Isambard has no CPU partition); run them with
+[`scripts/run_eval_local.sh`](scripts/run_eval_local.sh). A hosted model has no local
+weights, so its registry `path` stays blank. See
+[`src/eval/generate_api.py`](src/eval/generate_api.py).
 
 Pass `--debug` to either command to smoke-test the code end-to-end: it truncates the
 dataset(s) to a handful of samples, and defaults to the tiny `qwen3-debug` model (see
 [`config/models.yaml`](config/models.yaml)) if `-m`/`--model` isn't given.
 
 ```shell
-run_grpo -d data/train/skywork --debug
+run_grpo -d data/train/library_usage --debug
 
 run_eval --debug
 ```
 
 The same flag is available as the `debug` setting in
 [`scripts/submit_grpo.sh`](scripts/submit_grpo.sh) and
-[`scripts/submit_eval.sh`](scripts/submit_eval.sh).
+[`scripts/submit_eval.sh`](scripts/submit_eval.sh), and as the `smoke` and `eval` modes of
+[`scripts/submit_debug.sh`](scripts/submit_debug.sh).
 
 Set `libraries_requirements_file` in the recipe config
 ([`config/training.yaml`](config/training.yaml)) to a requirements file from
@@ -185,32 +221,42 @@ existing component names.
 **To add a new reward component**, in `src/grpo/rewards/`:
 
 1. Add its name to `REWARD_COMPONENTS` and the relevant task's supported-component set.
-2. Score it in the relevant reward class.
+2. Judge it in that reward class's `components()`.
 3. Reference the new name in a `config/rewards.yaml` profile.
+
+Each weighted component is given to the trainer as its own reward function (see
+`build_reward_functions`), so training and validation logs carry each component's rate -
+e.g. `rewards/external_lib_used/mean` is the fraction of completions that reused a
+library. The total reward is unchanged: the trainer multiplies each by its weight and sums
+them.
 
 ## *structure*
 
-- [`config/`](config/) - YAML config: the model registry (base models, and trained models
-  once `run_grpo` registers one), decoding profiles, and each eval dataset's path, scorer,
-  and execution environment.
+- [`config/`](config/) - YAML config: the model registry (base models, and each epoch of a
+  training run once `run_grpo` registers them), the training recipe and its sharding
+  config, decoding profiles, and each eval dataset's path, scorer, and execution
+  environment.
 - [`data/`](data/) - Built training/evaluation datasets and their construction pipelines;
   see [`data/README.md`](data/README.md).
 - [`notebooks/`](notebooks/) - One-off, numbered notebooks for exploratory work that doesn't
   belong in `src/`.
-- [`output/`](output/) - Trained model outputs, named and registered automatically by
-  `run_grpo` (see `trained_model_path` in [`src/run_grpo.py`](src/run_grpo.py)), and
-  evaluation results under `output/eval/{model}/`. Debug runs are gitignored; finished
-  results are committed as the experimental record.
+- [`output/`](output/) - Training metrics under `output/grpo/{run-id}/` and evaluation
+  results under `output/eval/{model}/`. The checkpoints themselves are far too large for
+  the repo and live under `--output-root` instead (project storage on the HPC, see
+  `trained_model_path` in [`src/run_grpo.py`](src/run_grpo.py)). Debug runs are
+  gitignored; finished results are committed as the experimental record.
 - [`scripts/`](scripts/) - Job launchers (`setup_job.sh`, `submit_grpo.sh`,
-  `submit_eval.sh` for slurm, `run_eval_local.sh` for the current node), and
-  `summarize_eval.py` for reading results back.
+  `submit_eval.sh` and `submit_debug.sh` for slurm, `run_eval_local.sh` for the current
+  node), `check_gpu_stack.py` for verifying an install, and `summarize_eval.py` for
+  reading results back.
 - [`setup/`](setup/) - Defines the isolated venv used to sandbox LLM-generated code during
   evaluation, kept separate from the project's own venv so we control exactly which
   libraries generated code can import (`setup_eval_venv.sh`, `requirements/`).
 - [`src/`](src/) - The main project code:
   - `run_grpo.py` - the RL training entry point: CLI parsing, dataset loading, output
     naming, and model registration.
-  - `grpo/` - the GRPO training loop itself (reward function, trainer setup).
+  - `grpo/` - the GRPO training loop itself (reward functions, trainer setup, and
+    `checkpoints.py` for reading and tidying the per-epoch checkpoints).
   - `run_eval.py` - the evaluation entry point: CLI parsing, dataset/output-path
     naming.
   - `run_scoring.py` - the entry point for scoring responses generated outside
@@ -218,7 +264,6 @@ existing component names.
   - `eval/` - the evaluation loop itself (model/tokenizer loading, generation,
     scoring each response, saving results), plus `score_generations.py`'s alignment
     of externally generated responses onto a dataset for the same scorers.
-  - `models.py` - model/tokenizer loading, shared by training and evaluation.
   - `prompts.py` - builds the system prompt from the available-libraries list.
   - `response/` - parses an LLM response into candidate code, sandboxes and runs it
     against a record's test cases, and computes a reward from the outcome.

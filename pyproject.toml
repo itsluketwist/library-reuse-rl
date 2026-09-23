@@ -132,7 +132,6 @@ include = [
     "src/eval/generate_vllm.py",
     "src/grpo/config.py",
     "src/grpo/train_model.py",
-    "src/models.py",
     "src/run_grpo.py",
     "src/utils/log.py",
 ]

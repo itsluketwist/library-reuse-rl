@@ -52,6 +52,27 @@ def load_full_yaml(config_file: str) -> dict[str, Any]:
     return _load_yaml(config_file=config_file)
 
 
+def check_config_keys(
+    config: dict[str, Any],
+    known: set[str],
+    source: str,
+) -> None:
+    """Check every key in `config` is a setting something actually reads.
+
+    Parsers that accept extra keys (TrlParser's allow_extra_keys) drop unrecognised ones
+    silently, so a renamed or misspelled setting would leave the run quietly using the
+    default instead - transformers 5, for instance, renamed warmup_ratio to warmup_steps.
+
+    Raises ValueError naming any key that is not in `known`.
+    """
+    unknown = sorted(set(config) - known)
+    if unknown:
+        raise ValueError(
+            f"{source} contains setting(s) nothing reads: {unknown}. They would be "
+            "ignored silently - remove them, or correct the name."
+        )
+
+
 # re-added at the top of the registry each rewrite, since yaml.dump drops comments - so
 # anything worth keeping about the file's format has to live here, not in the yaml itself
 _MODEL_REGISTRY_HEADER = """\

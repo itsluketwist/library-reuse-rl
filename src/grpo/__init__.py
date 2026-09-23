@@ -5,6 +5,7 @@ from typing import Any
 from src.grpo.rewards import (
     REWARD_COMPONENTS,
     build_reward,
+    build_reward_functions,
     compute_reward,
     infer_reward_kind,
     load_reward_profile,
@@ -15,6 +16,7 @@ __all__ = [
     "GRPOConfig",
     "REWARD_COMPONENTS",
     "build_reward",
+    "build_reward_functions",
     "compute_reward",
     "infer_reward_kind",
     "load_reward_profile",
