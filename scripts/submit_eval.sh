@@ -156,6 +156,7 @@ for model_entry in "${models[@]}"; do
 #SBATCH --output=${log_dir}/eval-${model}/${decoding_profile}-${prompt_style}-%j.out
 #SBATCH --account=${ACCOUNT}
 #SBATCH --partition=${PARTITION}
+#SBATCH --nodes=1
 #SBATCH --gpus=${GPUS}
 #SBATCH --time=${TIME}
 ${dependency_directive}

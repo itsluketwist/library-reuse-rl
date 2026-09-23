@@ -112,6 +112,7 @@ for model in "${models[@]}"; do
 #SBATCH --output=logs/train-${model}/${dataset_name}-%j.out
 #SBATCH --account=${ACCOUNT}
 #SBATCH --partition=${PARTITION}
+#SBATCH --nodes=1
 #SBATCH --gpus=${GPUS}
 #SBATCH --time=${TIME}
 #SBATCH --requeue

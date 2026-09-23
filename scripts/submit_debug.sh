@@ -110,6 +110,7 @@ job_id=$(sbatch --parsable <<EOF
 #SBATCH --output=logs/debug/${mode}-%j.out
 #SBATCH --account=${ACCOUNT}
 #SBATCH --partition=${PARTITION}
+#SBATCH --nodes=1
 #SBATCH --gpus=${gpus}
 #SBATCH --time=${time_limit}
 
