@@ -172,21 +172,24 @@ def is_main_process() -> bool:
 
 def generate_run_id(model: str) -> str:
     """
-    Generate a fresh run id, shared by every process accelerate launched.
+    Generate a run id for a run launched without --run-id.
 
-    Each process drawing its own random id would give every gpu its own output folder,
-    so rank zero draws it and sends it to the others.
+    Every process accelerate launched must agree on it, or each gpu would save to its own
+    folder, so a random id is only drawn on a single process. Across several processes
+    the slurm job id is used instead, since every process in the job sees the same one.
 
-    Returns the run id, as "{model}-{4 random hex characters}".
+    Returns the run id, as "{model}-{slurm job id}" or "{model}-{4 random hex characters}".
     """
-    from accelerate import PartialState
-    from accelerate.utils import broadcast_object_list
+    if int(os.environ.get("WORLD_SIZE", "1")) == 1:
+        return f"{model}-{uuid.uuid4().hex[:4]}"
 
-    # joins the process group the trainer later reuses (does nothing on one process)
-    PartialState()
-    run_id = [f"{model}-{uuid.uuid4().hex[:4]}"]
-    broadcast_object_list(run_id, from_process=0)
-    return run_id[0]
+    slurm_job_id = os.environ.get("SLURM_JOB_ID")
+    if slurm_job_id is None:
+        raise ValueError(
+            "Pass --run-id when launching several processes outside slurm, so every "
+            "process saves to the same folder."
+        )
+    return f"{model}-{slurm_job_id}"
 
 
 def run_grpo(

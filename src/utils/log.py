@@ -3,6 +3,16 @@
 import time
 from collections.abc import Generator
 from contextlib import contextmanager
+from datetime import datetime
+
+
+def timestamp() -> str:
+    """
+    The current local time, in the same format as python's logging lines.
+
+    Returns a string like '2026-09-23 09:59:42'.
+    """
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def log(message: str = "") -> None:
@@ -11,10 +21,10 @@ def log(message: str = "") -> None:
 
 
 def log_header(title: str) -> None:
-    """Print a clearly delimited section header."""
+    """Print a clearly delimited section header, stamped with the time it began."""
     log()
     log("=" * 60)
-    log(f"  {title}")
+    log(f"  {title}  [{timestamp()}]")
     log("=" * 60)
 
 
@@ -68,11 +78,22 @@ def log_gpu_memory(label: str) -> None:
 
 
 @contextmanager
-def log_timer(label: str) -> Generator[None, None, None]:
-    """Context manager that logs the wall-clock duration of a code block.
+def log_timer(
+    label: str,
+    enabled: bool = True,
+) -> Generator[None, None, None]:
+    """Context manager that logs when a code block starts and how long it took.
 
-    Logs a line like: ``    [TIMER] generation: 1h 4m 32s``
+    Logs lines like:
+    ``    [TIMER] generation: started at 2026-09-23 09:59:42``
+    ``    [TIMER] generation: 1h 4m 32s (finished at 2026-09-23 11:04:14)``
+
+    `enabled` lets multi-gpu runs log from one process only.
     """
+    if enabled:
+        log(f"    [TIMER] {label}: started at {timestamp()}")
     start = time.monotonic()
     yield
-    log(f"    [TIMER] {label}: {_fmt_duration(time.monotonic() - start)}")
+    if enabled:
+        duration = _fmt_duration(time.monotonic() - start)
+        log(f"    [TIMER] {label}: {duration} (finished at {timestamp()})")

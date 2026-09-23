@@ -136,7 +136,7 @@ accelerate launch --config_file $accelerate_config --num_processes ${GPUS} \
     $debug_flag &
 wait \$!
 
-echo "RL training complete for model: $model, dataset: $dataset_name"
+echo "RL training complete for model: $model, dataset: $dataset_name [\$(date '+%Y-%m-%d %H:%M:%S')]"
 EOF
 )
 

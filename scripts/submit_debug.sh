@@ -117,7 +117,7 @@ source ./scripts/setup_job.sh
 
 $command
 
-echo "Debug run complete: $mode"
+echo "Debug run complete: $mode [\$(date '+%Y-%m-%d %H:%M:%S')]"
 EOF
 )
 

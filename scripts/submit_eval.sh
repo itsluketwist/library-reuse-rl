@@ -171,7 +171,7 @@ run_eval \
     $debug_flag \
     $update_flag
 
-echo "Eval complete for model: $model, decoding: $decoding_profile, prompt style: $prompt_style"
+echo "Eval complete for model: $model, decoding: $decoding_profile, prompt style: $prompt_style [\$(date '+%Y-%m-%d %H:%M:%S')]"
 EOF
 
             # small delay between submissions to avoid scheduler overload

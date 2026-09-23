@@ -37,7 +37,7 @@ from src.grpo.wandb_logging import init_wandb_training
 from src.prompts import PromptStyle, build_system_prompt
 from src.utils.config import check_config_keys, load_full_yaml
 from src.utils.io import load_json, save_json
-from src.utils.log import log_gpu_memory
+from src.utils.log import log_gpu_memory, log_timer
 
 
 logger = logging.getLogger(__name__)
@@ -343,19 +343,27 @@ def train_model_with_grpo(
     if training_args.use_vllm and training_args.vllm_kv_cache_memory_gib is not None:
         _fix_vllm_kv_cache_size(training_args.vllm_kv_cache_memory_gib)
 
-    trainer = GRPOTrainer(
-        model=model_name_or_path,
-        reward_funcs=reward_funcs,
-        args=training_args,
-        train_dataset=dataset["train"],
-        eval_dataset=dataset["val"] if training_args.eval_strategy != "no" else None,
-        processing_class=tokenizer,
-        callbacks=[
-            SaveTrainerStateCallback(metrics_dir=metrics_dir),
-            PruneResumeStateCallback(),
-            LogGPUMemoryCallback(),
-        ],
-    )
+    # phase timings are logged from the first gpu's process only
+    is_main_process = training_args.process_index == 0
+
+    with log_timer(
+        "trainer init (model loading, vllm startup)", enabled=is_main_process
+    ):
+        trainer = GRPOTrainer(
+            model=model_name_or_path,
+            reward_funcs=reward_funcs,
+            args=training_args,
+            train_dataset=dataset["train"],
+            eval_dataset=dataset["val"]
+            if training_args.eval_strategy != "no"
+            else None,
+            processing_class=tokenizer,
+            callbacks=[
+                SaveTrainerStateCallback(metrics_dir=metrics_dir),
+                PruneResumeStateCallback(),
+                LogGPUMemoryCallback(),
+            ],
+        )
     # the trainer loads the model and the reference model (beta > 0), so this shows what
     # is left for optimizer states and activations before training starts
     log_gpu_memory("after trainer init")
@@ -369,7 +377,9 @@ def train_model_with_grpo(
         checkpoint = training_args.resume_from_checkpoint
     elif last_checkpoint is not None:
         checkpoint = last_checkpoint
-    train_result = trainer.train(resume_from_checkpoint=checkpoint)
+    # trl also logs each optimizer step's duration, as step_time in the per-step metrics
+    with log_timer("training", enabled=is_main_process):
+        train_result = trainer.train(resume_from_checkpoint=checkpoint)
     metrics = train_result.metrics
     metrics["train_samples"] = len(dataset["train"])
     trainer.log_metrics("train", metrics)
@@ -395,7 +405,8 @@ def train_model_with_grpo(
     ##########
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
-        final_metrics = trainer.evaluate()
+        with log_timer("final evaluation", enabled=is_main_process):
+            final_metrics = trainer.evaluate()
         final_metrics["eval_samples"] = len(dataset["val"])
         trainer.log_metrics("eval", final_metrics)
         if trainer.is_world_process_zero():
