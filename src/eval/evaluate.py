@@ -14,8 +14,9 @@ from src.utils.log import log, log_header, log_timer
 # sample count used by --debug mode (src/run_eval.py) for a quick end-to-end check
 DEBUG_EVAL_SAMPLES = 4
 
-# generation length cap for --debug runs
-DEBUG_MAX_NEW_TOKENS = 512
+# generation length cap for --debug runs - long enough for qwen3's reasoning to finish,
+# so debug responses actually contain code to score
+DEBUG_MAX_NEW_TOKENS = 2048
 
 # name of the venv --debug runs reuse, under a dataset's environment_root
 DEBUG_ENVIRONMENT_NAME = "debug"

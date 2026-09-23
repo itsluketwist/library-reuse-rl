@@ -45,7 +45,8 @@ logger = logging.getLogger(__name__)
 # constants used to configure src/run_grpo.py --debug mode
 DEBUG_TRAIN_SAMPLES = 16
 DEBUG_VAL_SAMPLES = 4
-DEBUG_MAX_COMPLETION_LENGTH = 512
+# long enough for qwen3's reasoning to finish, so debug rollouts actually earn rewards
+DEBUG_MAX_COMPLETION_LENGTH = 2048
 DEBUG_EPOCHS = 2
 # 2 completions per gpu x 2 = a whole step from very few prompts (see config/training.yaml)
 DEBUG_GRADIENT_ACCUMULATION_STEPS = 2

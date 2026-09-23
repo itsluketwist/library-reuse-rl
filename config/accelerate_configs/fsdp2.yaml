@@ -29,7 +29,11 @@ fsdp_config:
   # saves each checkpoint as one consolidated model.safetensors, which vllm can load
   # directly at evaluation time - sharded checkpoints would need converting first
   fsdp_state_dict_type: FULL_STATE_DICT
-  fsdp_cpu_ram_efficient_loading: true  # only rank 0 loads the weights, then shards them
+  # every gpu's process loads the full weights itself. the memory-saving alternative
+  # (true) loads real weights on rank 0 only and zeros elsewhere, relying on a broadcast
+  # that accelerate does for the policy but trl skips for the reference model - leaving
+  # the kl penalty pointed at a model three-quarters zeros. costs cpu ram at load time.
+  fsdp_cpu_ram_efficient_loading: false
   fsdp_offload_params: false  # 96GB per gpu is enough without paying for cpu transfers
   fsdp_activation_checkpointing: false  # the trainer does this via gradient_checkpointing
 
