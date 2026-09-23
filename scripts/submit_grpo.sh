@@ -142,7 +142,8 @@ echo "RL training complete for model: $model, dataset: $dataset_name [\$(date '+
 EOF
 )
 
-        echo "  Submitted train job $train_job_id"
+        echo "  Submitted train job $train_job_id (run id: $run_id) - follow it with:"
+        echo "    tail -f logs/train-${model}/${dataset_name}-${train_job_id}.out"
 
         # queue one single-gpu eval job per epoch checkpoint, held until training succeeds.
         # submit_eval.sh owns the eval settings (datasets, samples, decoding, prompt style),

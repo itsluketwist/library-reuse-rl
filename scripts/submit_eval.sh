@@ -151,7 +151,7 @@ for model_entry in "${models[@]}"; do
         for prompt_style in "${prompt_styles[@]}"; do
             echo "  Submitting: [$decoding_profile] [$prompt_style]"
 
-            sbatch <<EOF
+            eval_job_id=$(sbatch --parsable <<EOF
 #!/bin/bash -l
 #SBATCH --job-name=eval-${model}-${decoding_profile}-${prompt_style}
 #SBATCH --output=${log_dir}/eval-${model}/${decoding_profile}-${prompt_style}-%j.out
@@ -175,6 +175,9 @@ run_eval \
 
 echo "Eval complete for model: $model, decoding: $decoding_profile, prompt style: $prompt_style [\$(date '+%Y-%m-%d %H:%M:%S')]"
 EOF
+)
+            echo "    Submitted eval job $eval_job_id - follow it with:"
+            echo "      tail -f ${log_dir}/eval-${model}/${decoding_profile}-${prompt_style}-${eval_job_id}.out"
 
             # small delay between submissions to avoid scheduler overload
             sleep 0.5
