@@ -1,6 +1,7 @@
 """Parse LLM responses into reasoning, answer text, and analysed code blocks."""
 
 import re
+import warnings
 from dataclasses import dataclass, field
 
 from llm_cgr import CodeBlock, Markdown
@@ -229,26 +230,31 @@ def parse_response(
     Returns the complete parsed response.
     """
     reasoning, answer = strip_reasoning(response)
-    source_blocks = list(Markdown(text=answer).code_blocks)
-    selected_index = _test_code_block_index(source_blocks)
 
-    code_blocks = []
-    for index, block in enumerate(source_blocks):
-        logical_lines, maintainability_index = code_metrics(block.text)
-        code_blocks.append(
-            ParsedCodeBlock(
-                language=block.language,
-                text=block.text,
-                valid=block.valid,
-                error=block.error,
-                std_libs=block.std_libs,
-                ext_libs=block.ext_libs,
-                lib_usage=block.lib_usage,
-                logical_lines=logical_lines,
-                maintainability_index=maintainability_index,
-                selected_for_tests=index == selected_index,
+    # parsing model-written code makes python warn about its style mistakes (e.g. "\d"
+    # outside a raw string) - they don't affect validity, and would flood the logs
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", SyntaxWarning)
+        source_blocks = list(Markdown(text=answer).code_blocks)
+        selected_index = _test_code_block_index(source_blocks)
+
+        code_blocks = []
+        for index, block in enumerate(source_blocks):
+            logical_lines, maintainability_index = code_metrics(block.text)
+            code_blocks.append(
+                ParsedCodeBlock(
+                    language=block.language,
+                    text=block.text,
+                    valid=block.valid,
+                    error=block.error,
+                    std_libs=block.std_libs,
+                    ext_libs=block.ext_libs,
+                    lib_usage=block.lib_usage,
+                    logical_lines=logical_lines,
+                    maintainability_index=maintainability_index,
+                    selected_for_tests=index == selected_index,
+                )
             )
-        )
 
     return ParsedResponse(
         reasoning=reasoning,

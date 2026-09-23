@@ -24,10 +24,13 @@ rollout_decoding_profile: default  # which eval_decoding_profiles entry rollouts
 # evaluation
 # ==============================================================================
 
-eval_strategy: "steps"  # run held-out evaluation periodically during training
-eval_steps: 10  # ~3 validation points per epoch, at ~28 optimizer steps per epoch
+eval_strategy: "epoch"  # score the validation split at the end of every epoch
 eval_on_start: true  # validate once before training, as the baseline for the curve
-per_device_eval_batch_size: 8  # 8 x 4 gpus = 32, divisible by num_generations
+num_generations_eval: 5  # completions per validation prompt, matching n_samples in scripts/submit_eval.sh
+# validation completions generated per gpu at once (and forward-pass chunk size): 5 x 4
+# gpus = 20, i.e. 4 prompts per generation call. must be a multiple of 5 (see above);
+# larger chunks of 8192-token sequences risk running out of gpu memory
+per_device_eval_batch_size: 5
 
 # named decoding profiles, shared by training rollouts (see rollout_decoding_profile
 # above) and run_eval.py (--decoding-profile/--decoding-config). how many completions
@@ -83,6 +86,13 @@ vllm_gpu_memory_utilization: 0.45  # share of each gpu the engine may take while
 # of bf16 weights and a few GiB of activations), ~170k tokens of qwen3-8b cache.
 vllm_kv_cache_memory_gib: 24
 vllm_max_model_length: 12288  # prompt + completion ceiling; sizes the kv cache, so keep it tight
+# vllm and the trainer compute slightly different probabilities for the same tokens
+# (different kernels and precision), so each token's loss is reweighted by
+# p_trainer / p_vllm to correct for it. per-token weights capped at 3 ("truncated
+# importance sampling"); trl's default combines them per completion, which over thousands
+# of tokens swings far from 1 and throws most long rollouts away
+vllm_importance_sampling_mode: token_truncate
+vllm_importance_sampling_clip_max: 3.0
 chat_template_kwargs:
   enable_thinking: true  # rollouts use the model's reasoning mode, as eval does
 
@@ -103,6 +113,7 @@ warmup_steps: 0.02
 
 log_completions: false  # log sample rollout completions to wandb
 log_level: info
+log_level_replica: error  # the other gpus' processes only report errors, so each line appears once
 logging_first_step: true
 logging_steps: 1  # only ~28 steps per epoch, and each takes minutes - log them all
 logging_strategy: steps

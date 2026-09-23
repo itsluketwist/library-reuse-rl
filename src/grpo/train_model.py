@@ -112,7 +112,7 @@ class LogGPUMemoryCallback(TrainerCallback):
         **kwargs,
     ) -> None:
         if state.is_world_process_zero and state.global_step == 1:
-            log_gpu_memory("after first optimizer step")
+            log_gpu_memory("after first optimizer step", device=args.device.index)
 
 
 def _save_metrics_json(
@@ -243,7 +243,6 @@ def train_model_with_grpo(
         # a debug run is only a couple of steps: log every step, cap rollout length, and
         # shrink the optimizer step so a handful of prompts still make whole steps
         overrides["logging_steps"] = 1
-        overrides["eval_steps"] = 1
         overrides["max_completion_length"] = DEBUG_MAX_COMPLETION_LENGTH
         overrides["gradient_accumulation_steps"] = DEBUG_GRADIENT_ACCUMULATION_STEPS
         if epochs is None:
@@ -256,6 +255,10 @@ def train_model_with_grpo(
 
     set_seed(training_args.seed)
 
+    # logs, timings and progress bars come from the first gpu's process only - the others
+    # are identical copies, and printing them all makes the job log unreadable
+    is_main_process = training_args.process_index == 0
+
     ###############
     # Setup logging
     ###############
@@ -264,6 +267,7 @@ def train_model_with_grpo(
         datefmt="%Y-%m-%d %H:%M:%S",
         handlers=[logging.StreamHandler(sys.stdout)],
     )
+    # the other processes log at the recipe's log_level_replica (errors only)
     log_level = training_args.get_process_log_level()
     logger.setLevel(log_level)
     lib_log_level = max(log_level, logging.WARNING)
@@ -272,11 +276,12 @@ def train_model_with_grpo(
     transformers.utils.logging.set_verbosity(lib_log_level)
     transformers.utils.logging.enable_default_handler()
     transformers.utils.logging.enable_explicit_format()
+    if not is_main_process:
+        datasets.utils.logging.disable_progress_bar()
+        transformers.utils.logging.disable_progress_bar()
 
-    # Log on each process a small summary
-    logger.warning(
-        f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}"
-        + f" distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}"
+    logger.info(
+        f"Distributed training: {training_args.world_size} process(es), one per gpu"
     )
     logger.debug(f"Training parameters {training_args}")
 
@@ -352,9 +357,6 @@ def train_model_with_grpo(
     if training_args.use_vllm and training_args.vllm_kv_cache_memory_gib is not None:
         _fix_vllm_kv_cache_size(training_args.vllm_kv_cache_memory_gib)
 
-    # phase timings are logged from the first gpu's process only
-    is_main_process = training_args.process_index == 0
-
     with log_timer(
         "trainer init (model loading, vllm startup)", enabled=is_main_process
     ):
@@ -376,7 +378,7 @@ def train_model_with_grpo(
     # the trainer loads the model and the reference model (beta > 0), so this shows what
     # is left for optimizer states and activations before training starts
     if is_main_process:
-        log_gpu_memory("after trainer init")
+        log_gpu_memory("after trainer init", device=training_args.device.index)
 
     ###############
     # Training loop
@@ -407,18 +409,17 @@ def train_model_with_grpo(
         trainer.state.save_to_json(metrics_dir / "trainer_state.json")
         logger.info(f"Saved {len(checkpoints)} epoch checkpoint(s) to {output_dir}")
 
-    # captured before the final evaluate() below adds its own log_history entry
-    eval_step_history = _periodic_eval_history(trainer.state.log_history)
-
     ##########
     # Evaluate
     ##########
-    if training_args.do_eval:
-        logger.info("*** Evaluate ***")
-        with log_timer("final evaluation", enabled=is_main_process):
-            final_metrics = trainer.evaluate()
-        final_metrics["eval_samples"] = len(dataset["val"])
-        trainer.log_metrics("eval", final_metrics)
+    # validation runs at the end of every epoch, so the last round already scored the
+    # final model - it is reused rather than generating the whole split again. a run cut
+    # short by --max-steps has no such round, so its "final" is left empty
+    eval_step_history = _periodic_eval_history(trainer.state.log_history)
+    if eval_step_history:
+        final_metrics = eval_step_history.get(str(trainer.state.global_step))
+        if final_metrics is not None:
+            trainer.log_metrics("eval", final_metrics)
         if trainer.is_world_process_zero():
             # "final" first so it's the headline number when the json file is read
             eval_results = {"final": final_metrics, "steps": eval_step_history}

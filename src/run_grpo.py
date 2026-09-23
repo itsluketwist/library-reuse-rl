@@ -8,7 +8,7 @@ from pathlib import Path
 from src.grpo.rewards import load_reward_profile
 from src.prompts import PromptStyle
 from src.utils.config import load_yaml_config, register_model
-from src.utils.log import log, log_header
+from src.utils.log import log, log_header, silence_library_warnings
 
 
 # default seed, matching the convention in data/download_skywork.py
@@ -222,13 +222,16 @@ def run_grpo(
     which saves one checkpoint per epoch under trained_model_path, then registers each
     epoch in `model_config` as "{run_id}-epoch{n}" (run_id generated if not given) so eval
     can look any epoch up by name, recording its base, weights path, and the training
-    knobs (`properties`).
+    knobs (`properties`). Debug runs are only registered when given a `run_id`.
     """
     if model is None:
         if not debug:
             raise ValueError("--model is required unless --debug is set.")
         model = DEBUG_MODEL_KEY
 
+    # debug runs are only registered under a run id chosen on purpose (e.g. the smoke
+    # test's fixed one), so throwaway runs don't pile up in the registry
+    register_run = not debug or run_id is not None
     if run_id is None:
         run_id = generate_run_id(model=model)
 
@@ -278,8 +281,7 @@ def run_grpo(
     if not is_main_process():
         return
 
-    # debug runs are throwaway, so don't register them
-    if debug:
+    if not register_run:
         log(f"Debug run - not registered in {model_config}. Checkpoints: {checkpoints}")
         return
 
@@ -311,6 +313,7 @@ def run_grpo(
 
 def main() -> None:
     args = parser.parse_args()
+    silence_library_warnings()
 
     # --- startup banner (once per run, not once per gpu) ---
     if is_main_process():

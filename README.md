@@ -114,13 +114,13 @@ also queues one eval job per epoch checkpoint, held until training succeeds. Unt
 base models are evaluated by running `bash scripts/submit_eval.sh` directly.
 
 Before a real run - or after changing the training code - work through the staged checks
-in [`scripts/submit_debug.sh`](scripts/submit_debug.sh), each of which submits one job:
+in [`scripts/submit_debug.sh`](scripts/submit_debug.sh) in order, each of which submits one
+job (eval checks the checkpoint smoke trains):
 
 ```shell
-bash scripts/submit_debug.sh smoke   # 4 gpus, minutes - wiring and the sharded launch
-bash scripts/submit_debug.sh pilot   # 1 gpu, ~1-2 hours - the whole pipeline, small model
+bash scripts/submit_debug.sh smoke   # 4 gpus, ~10 minutes - training end to end, small model
 bash scripts/submit_debug.sh eval    # 1 gpu, ~10 minutes - the evaluation path
-bash scripts/submit_debug.sh scale   # 4 gpus, ~30 minutes - memory and step time at 8b
+bash scripts/submit_debug.sh scale   # 4 gpus, ~1 hour - memory and timings at 8b
 ```
 
 There are two eval launchers, each with its own configuration block at the top (models,

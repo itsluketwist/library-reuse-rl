@@ -9,7 +9,7 @@ from src.eval import evaluate_model
 from src.eval.generate_api import DEFAULT_MAX_TOKENS_PARAM, ApiSettings
 from src.prompts import PromptStyle, library_prompt_suffix
 from src.utils.config import load_full_yaml, load_yaml_config
-from src.utils.log import log, log_header
+from src.utils.log import log, log_header, silence_library_warnings
 
 
 # tiny model (see config/models.yaml) used to smoke-test --debug runs
@@ -370,6 +370,7 @@ def run_eval(
 
 def main() -> None:
     args = parser.parse_args()
+    silence_library_warnings()
     datasets = args.datasets.split(",") if args.datasets else None
 
     # --- startup banner ---
