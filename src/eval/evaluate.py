@@ -180,11 +180,10 @@ def evaluate_model(
             "analysis": analysis,
         }
 
-        # two files per dataset: the small analysis above (tracked in git), and beside it
-        # one line per response - its full text and its scores (see src/eval/scoring) -
-        # which runs to tens of mb, so is git-ignored. the code is not stored separately:
-        # parse_response (src/response/parser.py) re-extracts it from the text
-        # if needed
+        # two files per dataset, both committed as the experimental record: the analysis
+        # above, and beside it one line per response - its full text and its scores (see
+        # src/eval/scoring). the code is not stored separately: parse_response
+        # (src/response/parser.py) re-extracts it from the text if needed
         output_path = output_paths[name]
         save_json(output, output_path)
         generations_path = output_path.with_suffix(".generations.jsonl")

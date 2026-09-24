@@ -199,8 +199,6 @@ wandb/*
 output/qwen3-debug/
 output/baselines/qwen3-debug/
 output/*/qwen3-8b-scale/
-# every eval response in full (see src/eval/evaluate.py) - tens of mb per model
-output/**/*.generations.jsonl
 unsloth_compiled_cache/
 grpo_trainer_lora_model*/
 config/*.lock
