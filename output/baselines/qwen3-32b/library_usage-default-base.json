@@ -1,0 +1,102 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-32B",
+    "weights": null,
+    "provider": "vllm",
+    "dataset": "library_usage",
+    "dataset_file": "data/train/library_usage/test.jsonl",
+    "evaluator": "library_usage",
+    "python_executable": null,
+    "environment_root": null,
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 8192,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "library_usage",
+    "n_total": 540,
+    "n_valid_code": 473,
+    "n_external_lib_used": 132,
+    "n_appropriate_lib_used": 116,
+    "valid_code_rate": 0.8759259259259259,
+    "external_lib_rate": 0.25555555555555554,
+    "external_lib_used_rate": 0.24444444444444444,
+    "appropriate_lib_rate": 0.21481481481481482,
+    "library_use": {
+      "using_lib_rate": 0.24444444444444444,
+      "avg_extlibs": 0.34444444444444444,
+      "library_counts": {
+        "pandas": 50,
+        "numpy": 20,
+        "sklearn": 19,
+        "bs4": 17,
+        "barcode": 14,
+        "fastapi": 11,
+        "requests": 9,
+        "nltk": 8,
+        "markdown": 6,
+        "click": 6,
+        "pytz": 6,
+        "watchdog": 5,
+        "geopy": 4,
+        "pytoolbox": 2,
+        "models": 2,
+        "data_processing": 2,
+        "matplotlib": 2,
+        "tooltask": 1,
+        "transformations": 1,
+        "sqlalchemy": 1
+      },
+      "appropriate_lib_rate": 0.21481481481481482,
+      "appropriate_given_use_rate": 0.8787878787878788
+    },
+    "library_use_per_task": {
+      "using_lib_rate": 0.3888888888888889,
+      "avg_extlibs": 0.6296296296296297,
+      "library_counts": {
+        "pandas": 12,
+        "numpy": 9,
+        "sklearn": 8,
+        "bs4": 7,
+        "fastapi": 5,
+        "click": 4,
+        "requests": 3,
+        "nltk": 3,
+        "barcode": 3,
+        "markdown": 2,
+        "pytoolbox": 2,
+        "pytz": 2,
+        "tooltask": 1,
+        "data_processing": 1,
+        "transformations": 1,
+        "models": 1,
+        "matplotlib": 1,
+        "sqlalchemy": 1,
+        "geopy": 1,
+        "watchdog": 1
+      },
+      "appropriate_lib_rate": 0.3148148148148148,
+      "appropriate_given_use_rate": 0.8095238095238095
+    },
+    "external_lib_used_rate_by_phrasing_mode": {
+      "repo": 0.32222222222222224,
+      "script": 0.06666666666666667,
+      "simple": 0.34444444444444444
+    },
+    "appropriate_lib_rate_by_phrasing_mode": {
+      "repo": 0.24444444444444444,
+      "script": 0.06666666666666667,
+      "simple": 0.3333333333333333
+    }
+  }
+}

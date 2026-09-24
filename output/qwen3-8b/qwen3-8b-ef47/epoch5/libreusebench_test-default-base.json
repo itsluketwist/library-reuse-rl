@@ -1,0 +1,151 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-ef47/checkpoint-140",
+    "provider": "vllm",
+    "dataset": "libreusebench_test",
+    "dataset_file": "benchmark/libreusebench/data/test.jsonl",
+    "evaluator": "libreusebench",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 8192,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 895,
+    "n_tasks": 179,
+    "n_responses": 895,
+    "k": 5,
+    "pass@1": 0.5284916201117318,
+    "pass@k": 0.6536312849162011,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.05027932960893855,
+          "avg_extlibs": 0.061452513966480445,
+          "library_counts": {
+            "pytz": 3,
+            "scipy": 2,
+            "numpy": 2,
+            "dateutil": 2,
+            "bs4": 1,
+            "sklearn": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.035754189944134075,
+          "avg_extlibs": 0.03910614525139665,
+          "library_counts": {
+            "pytz": 8,
+            "scipy": 8,
+            "dateutil": 6,
+            "bs4": 5,
+            "sklearn": 5,
+            "numpy": 3
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.05027932960893855,
+          "avg_extlibs": 0.061452513966480445,
+          "library_counts": {
+            "pytz": 3,
+            "scipy": 2,
+            "numpy": 2,
+            "dateutil": 2,
+            "bs4": 1,
+            "sklearn": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.034636871508379886,
+          "avg_extlibs": 0.03798882681564246,
+          "library_counts": {
+            "pytz": 8,
+            "scipy": 7,
+            "dateutil": 6,
+            "bs4": 5,
+            "sklearn": 5,
+            "numpy": 3
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 669,
+        "avg_lloc": 22.566517189835576,
+        "avg_maintainability_index": 76.12585898697404
+      },
+      "passed": {
+        "n_measured": 473,
+        "avg_lloc": 21.84355179704017,
+        "avg_maintainability_index": 75.39930717440656
+      }
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-kpaixxny",
+      "source": "response_imports",
+      "installed_packages": [
+        "beautifulsoup4",
+        "numpy",
+        "python-dateutil",
+        "pytz",
+        "scikit-learn",
+        "scipy"
+      ],
+      "installed_package_versions": {
+        "beautifulsoup4": "4.15.0",
+        "cloudpickle": "3.1.2",
+        "joblib": "1.6.0",
+        "narwhals": "2.26.0",
+        "numpy": "2.5.3",
+        "pip": "25.0.1",
+        "python-dateutil": "2.9.0.post0",
+        "pytz": "2026.4",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "six": "1.17.0",
+        "soupsieve": "2.10",
+        "threadpoolctl": "3.7.0",
+        "typing-extensions": "4.16.0"
+      },
+      "package_imports": {
+        "beautifulsoup4": [
+          "beautifulsoup4",
+          "bs4"
+        ],
+        "numpy": [
+          "numpy"
+        ],
+        "python-dateutil": [
+          "dateutil",
+          "python-dateutil"
+        ],
+        "pytz": [
+          "pytz"
+        ],
+        "scikit-learn": [
+          "sklearn"
+        ],
+        "scipy": [
+          "scipy"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-lb4w979n/libreusebench_eval_2026-09-24T16:03:12.085929.json"
+  }
+}

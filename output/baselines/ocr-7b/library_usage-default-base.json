@@ -1,0 +1,94 @@
+{
+  "metadata": {
+    "base": "nvidia/OpenCodeReasoning-Nemotron-1.1-7B",
+    "weights": null,
+    "provider": "vllm",
+    "dataset": "library_usage",
+    "dataset_file": "data/train/library_usage/test.jsonl",
+    "evaluator": "library_usage",
+    "python_executable": null,
+    "environment_root": null,
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 8192,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "library_usage",
+    "n_total": 540,
+    "n_valid_code": 288,
+    "n_external_lib_used": 44,
+    "n_appropriate_lib_used": 31,
+    "valid_code_rate": 0.5333333333333333,
+    "external_lib_rate": 0.1,
+    "external_lib_used_rate": 0.08148148148148149,
+    "appropriate_lib_rate": 0.05740740740740741,
+    "library_use": {
+      "using_lib_rate": 0.08148148148148149,
+      "avg_extlibs": 0.1037037037037037,
+      "library_counts": {
+        "pandas": 10,
+        "numpy": 8,
+        "fastapi": 7,
+        "sklearn": 7,
+        "click": 3,
+        "markdown": 3,
+        "barcode": 3,
+        "bs4": 3,
+        "watchdog": 3,
+        "qrcode": 2,
+        "inotify": 2,
+        "boss": 1,
+        "zint": 1,
+        "pyzbar": 1,
+        "requests": 1,
+        "tasks": 1
+      },
+      "appropriate_lib_rate": 0.05740740740740741,
+      "appropriate_given_use_rate": 0.7045454545454546
+    },
+    "library_use_per_task": {
+      "using_lib_rate": 0.25,
+      "avg_extlibs": 0.3611111111111111,
+      "library_counts": {
+        "pandas": 7,
+        "numpy": 5,
+        "fastapi": 4,
+        "sklearn": 4,
+        "click": 3,
+        "markdown": 3,
+        "barcode": 2,
+        "watchdog": 2,
+        "qrcode": 2,
+        "boss": 1,
+        "zint": 1,
+        "bs4": 1,
+        "pyzbar": 1,
+        "requests": 1,
+        "inotify": 1,
+        "tasks": 1
+      },
+      "appropriate_lib_rate": 0.18518518518518517,
+      "appropriate_given_use_rate": 0.7407407407407407
+    },
+    "external_lib_used_rate_by_phrasing_mode": {
+      "repo": 0.13333333333333333,
+      "script": 0.022222222222222223,
+      "simple": 0.08888888888888889
+    },
+    "appropriate_lib_rate_by_phrasing_mode": {
+      "repo": 0.07777777777777778,
+      "script": 0.011111111111111112,
+      "simple": 0.08333333333333333
+    }
+  }
+}

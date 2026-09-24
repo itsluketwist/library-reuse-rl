@@ -4,3 +4,58 @@
 # "path" points at the checkpoint, and "properties" records the knobs the run was
 # launched with, since the run-id key is non-descriptive. base models, and the format
 # every entry shares, are described in config/models.yaml
+
+qwen3-8b-ef47-epoch1:
+  base: Qwen/Qwen3-8B
+  path: /projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-ef47/checkpoint-28
+  properties:
+    dataset: data/train/library_usage
+    recipe: config/training.yaml
+    reward_profile: lu-v1
+    seed: 42
+    library_prompt_style: base
+    epoch: 1
+
+qwen3-8b-ef47-epoch2:
+  base: Qwen/Qwen3-8B
+  path: /projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-ef47/checkpoint-56
+  properties:
+    dataset: data/train/library_usage
+    recipe: config/training.yaml
+    reward_profile: lu-v1
+    seed: 42
+    library_prompt_style: base
+    epoch: 2
+
+qwen3-8b-ef47-epoch3:
+  base: Qwen/Qwen3-8B
+  path: /projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-ef47/checkpoint-84
+  properties:
+    dataset: data/train/library_usage
+    recipe: config/training.yaml
+    reward_profile: lu-v1
+    seed: 42
+    library_prompt_style: base
+    epoch: 3
+
+qwen3-8b-ef47-epoch4:
+  base: Qwen/Qwen3-8B
+  path: /projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-ef47/checkpoint-112
+  properties:
+    dataset: data/train/library_usage
+    recipe: config/training.yaml
+    reward_profile: lu-v1
+    seed: 42
+    library_prompt_style: base
+    epoch: 4
+
+qwen3-8b-ef47-epoch5:
+  base: Qwen/Qwen3-8B
+  path: /projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-ef47/checkpoint-140
+  properties:
+    dataset: data/train/library_usage
+    recipe: config/training.yaml
+    reward_profile: lu-v1
+    seed: 42
+    library_prompt_style: base
+    epoch: 5

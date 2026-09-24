@@ -1,0 +1,169 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-ef47/checkpoint-112",
+    "provider": "vllm",
+    "dataset": "libreusebench_test",
+    "dataset_file": "benchmark/libreusebench/data/test.jsonl",
+    "evaluator": "libreusebench",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 8192,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 895,
+    "n_tasks": 179,
+    "n_responses": 895,
+    "k": 5,
+    "pass@1": 0.5307262569832403,
+    "pass@k": 0.6759776536312849,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.055865921787709494,
+          "avg_extlibs": 0.07262569832402235,
+          "library_counts": {
+            "pytz": 3,
+            "scipy": 2,
+            "numpy": 2,
+            "dateutil": 2,
+            "bs4": 1,
+            "cryptography": 1,
+            "pandas": 1,
+            "sklearn": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.03240223463687151,
+          "avg_extlibs": 0.035754189944134075,
+          "library_counts": {
+            "scipy": 8,
+            "bs4": 5,
+            "dateutil": 5,
+            "sklearn": 5,
+            "pytz": 4,
+            "numpy": 2,
+            "pandas": 2,
+            "cryptography": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.055865921787709494,
+          "avg_extlibs": 0.07262569832402235,
+          "library_counts": {
+            "pytz": 3,
+            "scipy": 2,
+            "numpy": 2,
+            "dateutil": 2,
+            "bs4": 1,
+            "cryptography": 1,
+            "pandas": 1,
+            "sklearn": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.03128491620111732,
+          "avg_extlibs": 0.034636871508379886,
+          "library_counts": {
+            "scipy": 7,
+            "bs4": 5,
+            "dateutil": 5,
+            "sklearn": 5,
+            "pytz": 4,
+            "numpy": 2,
+            "pandas": 2,
+            "cryptography": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 686,
+        "avg_lloc": 22.05247813411079,
+        "avg_maintainability_index": 76.01191359728661
+      },
+      "passed": {
+        "n_measured": 475,
+        "avg_lloc": 21.237894736842104,
+        "avg_maintainability_index": 75.43363433279873
+      }
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-a7edftk8",
+      "source": "response_imports",
+      "installed_packages": [
+        "beautifulsoup4",
+        "cryptography",
+        "numpy",
+        "pandas",
+        "python-dateutil",
+        "pytz",
+        "scikit-learn",
+        "scipy"
+      ],
+      "installed_package_versions": {
+        "beautifulsoup4": "4.15.0",
+        "cffi": "2.1.1",
+        "cloudpickle": "3.1.2",
+        "cryptography": "50.0.1",
+        "joblib": "1.6.0",
+        "narwhals": "2.26.0",
+        "numpy": "2.5.3",
+        "pandas": "3.0.6",
+        "pip": "25.0.1",
+        "pycparser": "3.0",
+        "python-dateutil": "2.9.0.post0",
+        "pytz": "2026.4",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "six": "1.17.0",
+        "soupsieve": "2.10",
+        "threadpoolctl": "3.7.0",
+        "typing-extensions": "4.16.0"
+      },
+      "package_imports": {
+        "beautifulsoup4": [
+          "bs4"
+        ],
+        "cryptography": [
+          "cryptography"
+        ],
+        "numpy": [
+          "numpy"
+        ],
+        "pandas": [
+          "pandas"
+        ],
+        "python-dateutil": [
+          "dateutil"
+        ],
+        "pytz": [
+          "pytz"
+        ],
+        "scikit-learn": [
+          "sklearn"
+        ],
+        "scipy": [
+          "scipy"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-i9xqf_mm/libreusebench_eval_2026-09-24T16:04:16.438341.json"
+  }
+}
