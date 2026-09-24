@@ -22,11 +22,6 @@ TIME="12:00:00"
 #
 # api-served models are not submitted here: isambard has no cpu partition, and they only
 # need network access - run them with scripts/run_eval_local.sh instead.
-#
-# EVAL_MODELS overrides this list (a space-separated string), which is how
-# scripts/submit_grpo.sh queues its epoch checkpoints without duplicating the settings
-# below; EVAL_DEPENDENCY holds those jobs until training succeeds, and EVAL_LOG_DIR puts
-# their logs in the training run's log directory.
 models=(
     # "vllm:qwen3-debug"
     "vllm:qwen3-4b"
@@ -36,9 +31,18 @@ models=(
     "vllm:olmo3-7b"
     "vllm:ocr-7b"
 )
-if [ -n "$EVAL_MODELS" ]; then
-    read -ra models <<< "$EVAL_MODELS"
-fi
+
+# training runs to evaluate, by run id (e.g. "qwen3-8b-ef47"). each is added to the models
+# above as every epoch checkpoint that run registered (config/trained_models.yaml, or
+# config/debug_models.yaml for a debug run), so a run's epochs needn't be listed one by one
+training_runs=(
+    # "qwen3-8b-ef47"
+)
+
+# EVAL_MODELS replaces both lists above (a space-separated string of models), which is how
+# scripts/submit_grpo.sh queues a run's epochs before training has registered them;
+# EVAL_DEPENDENCY holds those jobs until training succeeds, and EVAL_LOG_DIR puts their
+# logs in the training run's log directory.
 
 # eval dataset names (config/eval_datasets.yaml). leave empty to evaluate every dataset in
 # that file. product_choice is gitignored and must have been built locally.
@@ -104,6 +108,25 @@ fi
 n_samples_flag=""
 if [ -n "$n_samples" ]; then
     n_samples_flag="--n-samples $n_samples"
+fi
+
+# add each training run's registered epoch checkpoints to the models to evaluate, in epoch
+# order - unless EVAL_MODELS names the models outright (see above)
+if [ -n "$EVAL_MODELS" ]; then
+    read -ra models <<< "$EVAL_MODELS"
+else
+    for run_id in "${training_runs[@]}"; do
+        # registry keys start their line, as "{run_id}-epoch{n}:"
+        epoch_keys=$(cat config/trained_models.yaml config/debug_models.yaml 2>/dev/null \
+            | grep -oE "^${run_id}-epoch[0-9]+" | sort -V)
+        if [ -z "$epoch_keys" ]; then
+            echo "No registered epochs found for training run '$run_id' - check its id in config/trained_models.yaml."
+            exit 1
+        fi
+        for epoch_key in $epoch_keys; do
+            models+=("vllm:$epoch_key")
+        done
+    done
 fi
 
 # default to the tiny debug model if smoke-testing with no model set

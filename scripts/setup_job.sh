@@ -70,6 +70,10 @@ echo
 # reduce cuda allocator fragmentation (helps avoid oom on long sequences)
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
+# deepgemm (vllm's fp8 kernels) can't load here as the nodes have no cuda toolkit, and
+# vllm's startup check prints a long traceback about it. we run bf16 so never need it.
+export VLLM_USE_DEEP_GEMM=0
+
 # unique port per job, so co-located jobs don't race for the same vllm port
 export MASTER_PORT=$((20000 + ${SLURM_JOB_ID:-$$} % 10000))
 
