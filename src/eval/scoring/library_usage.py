@@ -1,6 +1,5 @@
 """Score library-usage eval responses: the imports (external reuse vs stdlib/local)."""
 
-import dataclasses
 from collections import Counter
 from typing import Any, Iterable
 
@@ -92,11 +91,11 @@ def score_library_usage(
                 "task_id": row.get("task_id"),
                 "sample_idx": sample_idx,
                 "stop_reason": stop_reason,
+                "response": response,
                 "category_id": row.get("category_id"),
                 "valid": any_block_valid,
-                "code_blocks": [
-                    dataclasses.asdict(block) for block in parsed.code_blocks
-                ],
+                # the code blocks themselves are not stored - parse_response(response)
+                # re-extracts them - only what was found in them
                 "n_code_blocks": usage.n_code_blocks,
                 "n_valid_code_blocks": usage.n_valid_code_blocks,
                 "all_code_blocks_valid": all_blocks_valid,

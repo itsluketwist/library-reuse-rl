@@ -1,6 +1,5 @@
 """Score tested-implementation eval responses: execute the code against its test cases."""
 
-import dataclasses
 from typing import Any, Iterable
 
 from src.eval.scoring.base import _average, _rate
@@ -33,26 +32,26 @@ def score_tested(
             stop_reason=stop_reason,
         )
         n_passed += processed.passed
-        processed_data = dataclasses.asdict(processed)
-        # candidate properties are derived from the marked block and therefore are not
-        # dataclass fields; retain the established flat result schema alongside blocks.
-        processed_data.update(
-            {
-                "code": processed.code,
-                "valid": processed.valid,
-                "error": processed.error,
-                "std_libs": processed.std_libs,
-                "ext_libs": processed.ext_libs,
-                "lib_usage": processed.lib_usage,
-                "logical_lines": processed.logical_lines,
-                "maintainability_index": processed.maintainability_index,
-            }
-        )
+        # the response in full plus its scores. the extracted code is not stored, as
+        # parse_response(response) re-extracts it; the properties below describe the block
+        # marked for tests
         results.append(
             {
                 "idx": row["idx"],
                 "task_id": row.get("task_id"),
-                **processed_data,
+                "stop_reason": processed.stop_reason,
+                "response": response,
+                "passed": processed.passed,
+                "output": processed.output,
+                "has_reasoning": bool(processed.reasoning),
+                "has_answer": bool(processed.answer),
+                "n_code_blocks": len(processed.code_blocks),
+                "valid": processed.valid,
+                "error": processed.error,
+                "std_libs": processed.std_libs,
+                "ext_libs": processed.ext_libs,
+                "logical_lines": processed.logical_lines,
+                "maintainability_index": processed.maintainability_index,
             }
         )
 
@@ -65,8 +64,8 @@ def score_tested(
         "n_total": n_total,
         "n_passed": n_passed,
         "accuracy": _rate(n_passed, n_total),
-        "n_reasoning": sum(1 for r in results if r.get("reasoning")),
-        "n_answer": sum(1 for r in results if r.get("answer")),
+        "n_reasoning": sum(1 for r in results if r["has_reasoning"]),
+        "n_answer": sum(1 for r in results if r["has_answer"]),
         "n_overflow": sum(1 for r in results if r.get("stop_reason") == "length"),
         "n_valid_code": len(valid),
         "avg_std_libs": _average([len(r["std_libs"]) for r in valid]),

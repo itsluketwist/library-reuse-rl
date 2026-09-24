@@ -142,9 +142,10 @@ class TestScoreLibReuseBench:
 
         assert seen["responses"] == {"LRB/T000": ["print(1)", "print(2)"]}
         assert analysis["pass@1"] == 0.5
-        # each sample's own stop_reason is matched back by its sample idx
+        # each sample's own stop_reason and full text are matched back by its sample idx
         assert results[0]["stop_reason"] == "stop"
         assert results[1]["stop_reason"] == "length"
+        assert [r["response"] for r in results] == ["print(1)", "print(2)"]
 
     def test_environment_setup_failure_is_fatal(self, monkeypatch):
         """An official evaluator abort caused by failed installs fails the run."""

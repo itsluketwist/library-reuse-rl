@@ -132,7 +132,12 @@ combination, and [`scripts/run_eval_local.sh`](scripts/run_eval_local.sh) runs t
 sequentially on the current node.
 
 Results are saved under `output/eval/{model}/`, keyed by dataset/decoding-profile/prompt-style,
-so re-running the same combination overwrites its previous result - a combination whose
+as two files per combination: `{name}.json` holds the run's settings and its aggregate
+analysis (small, tracked in git), and `{name}.generations.jsonl` holds one line per response
+- its full text and its scores (tens of mb, so git-ignored). The code isn't stored
+separately: `parse_response` in [`src/response/parser.py`](src/response/parser.py)
+re-extracts it from the text.
+Re-running the same combination overwrites its previous result - a combination whose
 result file already exists is skipped instead, unless the `update` setting (`--update` on
 `run_eval`) is set. Each invocation's logs still get their own `logs/{run_timestamp}/`
 folder. Summarise results into per-task comparison tables (and a `summary.csv`) with:

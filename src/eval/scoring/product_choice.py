@@ -33,6 +33,7 @@ def score_product_choice(
                 "idx": row["idx"],
                 "task_id": row.get("task_id"),
                 "stop_reason": parsed.stop_reason,
+                "response": response,
                 "category_id": row.get("category_id"),
                 "primary": pick.primary,
                 "external_pick": pick.is_external,

@@ -1,6 +1,7 @@
 """Tests for scoring the library-usage split."""
 
 from src.eval.scoring import score_dataset
+from src.response.parser import parse_response
 
 
 def _responses(*texts: str) -> list[list[tuple[str, str]]]:
@@ -94,8 +95,10 @@ Item()
         assert results[0]["n_code_blocks"] == 2
         assert results[0]["n_valid_code_blocks"] == 2
         assert results[0]["all_code_blocks_valid"]
-        assert not results[0]["code_blocks"][0]["selected_for_tests"]
-        assert results[0]["code_blocks"][1]["selected_for_tests"]
+        # the blocks are not stored, but re-extract from the stored response
+        reparsed = parse_response(results[0]["response"])
+        assert not reparsed.code_blocks[0].selected_for_tests
+        assert reparsed.code_blocks[1].selected_for_tests
         assert analysis["library_use"]["library_counts"] == {
             "numpy": 1,
             "requests": 1,
@@ -164,6 +167,8 @@ def broken(:
 
         assert len(results) == 2
         assert [r["sample_idx"] for r in results] == [0, 1]
+        # each result keeps its sample's full text, reasoning included
+        assert results[1]["response"].startswith("r</think>")
         # per-response: only half the samples used the library
         assert analysis["external_lib_used_rate"] == 0.5
         assert analysis["library_use"]["using_lib_rate"] == 0.5

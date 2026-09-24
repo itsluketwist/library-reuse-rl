@@ -58,9 +58,12 @@ def score_libreusebench(
             "environment; see the evaluator log above for failed packages."
         )
 
+    # the official results number each task's samples as "idx" (0, 1, ...), which is
+    # how they are matched back to the stop reason and full text of that sample
     results = official.pop("results")
     for result in results:
         result["stop_reason"] = stop_reasons[(result["task_id"], result["idx"])]
+        result["response"] = response_texts[result["task_id"]][result["idx"]]
 
     return {
         "task": "libreusebench",

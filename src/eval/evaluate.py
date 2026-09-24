@@ -7,7 +7,7 @@ from src.eval.generate_api import ApiSettings, generate_api_responses
 from src.eval.scoring import score_dataset
 from src.prompts import PromptStyle, build_system_prompt
 from src.response.evaluate import resolve_eval_python
-from src.utils.io import save_json
+from src.utils.io import save_json, save_jsonl
 from src.utils.log import log, log_header, log_timer
 
 
@@ -178,9 +178,16 @@ def evaluate_model(
                 "debug": debug,
             },
             "analysis": analysis,
-            "results": results,
         }
 
+        # two files per dataset: the small analysis above (tracked in git), and beside it
+        # one line per response - its full text and its scores (see src/eval/scoring) -
+        # which runs to tens of mb, so is git-ignored. the code is not stored separately:
+        # parse_response (src/response/parser.py) re-extracts it from the text
+        # if needed
         output_path = output_paths[name]
         save_json(output, output_path)
-        log(f"Saved results to {output_path}")
+        generations_path = output_path.with_suffix(".generations.jsonl")
+        save_jsonl(results, generations_path)
+        log(f"Saved analysis to {output_path}")
+        log(f"Saved every response and its scores to {generations_path}")

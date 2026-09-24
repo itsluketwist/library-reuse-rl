@@ -3,6 +3,7 @@
 import sys
 
 from src.eval.scoring import score_dataset
+from src.response.parser import parse_response
 
 
 def _responses(*texts: str) -> list[list[tuple[str, str]]]:
@@ -39,7 +40,9 @@ print(value)
         )
 
         assert analysis["accuracy"] == 1.0
-        assert len(results[0]["code_blocks"]) == 2
-        assert not results[0]["code_blocks"][0]["selected_for_tests"]
-        assert results[0]["code_blocks"][1]["selected_for_tests"]
-        assert "value = line.strip()" in results[0]["code"]
+        assert results[0]["n_code_blocks"] == 2
+        # the code is not stored, but re-extracts from the stored response
+        reparsed = parse_response(results[0]["response"])
+        assert not reparsed.code_blocks[0].selected_for_tests
+        assert reparsed.code_blocks[1].selected_for_tests
+        assert "value = line.strip()" in (reparsed.code or "")
