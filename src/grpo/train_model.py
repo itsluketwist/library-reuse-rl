@@ -36,7 +36,7 @@ from src.grpo.rewards import build_reward_functions, infer_reward_kind
 from src.grpo.wandb_logging import init_wandb_training
 from src.prompts import PromptStyle, build_system_prompt
 from src.utils.config import check_config_keys, load_full_yaml
-from src.utils.io import load_json, save_json
+from src.utils.io import save_json
 from src.utils.log import log_gpu_memory, log_timer
 
 
@@ -114,26 +114,6 @@ class LogGPUMemoryCallback(TrainerCallback):
     ) -> None:
         if state.is_world_process_zero and state.global_step == 1:
             log_gpu_memory("after first optimizer step", device=args.device.index)
-
-
-def _save_metrics_json(
-    metrics_dir: str | Path,
-    split: str,
-    metrics: dict,
-) -> None:
-    """
-    Write metrics_dir/{split}_results.json, updating metrics_dir/all_results.json too.
-
-    Mirrors trainer.save_metrics(), but targets metrics_dir (tracked) not output_dir
-    (scratch) - see train_model_with_grpo.
-    """
-    metrics_dir = Path(metrics_dir)
-    save_json(metrics, metrics_dir / f"{split}_results.json")
-
-    all_results_path = metrics_dir / "all_results.json"
-    all_metrics = load_json(all_results_path) if all_results_path.exists() else {}
-    all_metrics.update(metrics)
-    save_json(all_metrics, all_results_path)
 
 
 def _periodic_eval_history(log_history: list[dict]) -> dict[str, dict]:
@@ -401,14 +381,16 @@ def train_model_with_grpo(
 
     checkpoints = epoch_checkpoints(training_args.output_dir)
     if trainer.is_world_process_zero():
-        # added after log_metrics (which only formats scalars); _save_metrics_json below
-        # json.dumps it into train_results.json regardless
+        # added after log_metrics (which only formats scalars); save_json below writes
+        # them into train_results.json regardless
         metrics["reward_profile"] = {"name": reward_profile, "weights": reward_weights}
         metrics["reward_kind"] = reward_kind
         metrics["epoch_checkpoints"] = {
             str(epoch): str(path) for epoch, path in checkpoints.items()
         }
-        _save_metrics_json(metrics_dir, "train", metrics)
+        # to metrics_dir (the repo) rather than trainer.save_metrics' output_dir, which
+        # is project storage alongside the checkpoints
+        save_json(metrics, metrics_dir / "train_results.json")
         trainer.state.save_to_json(metrics_dir / "trainer_state.json")
         logger.info(f"Saved {len(checkpoints)} epoch checkpoint(s) to {output_dir}")
 
@@ -427,6 +409,6 @@ def train_model_with_grpo(
         if trainer.is_world_process_zero():
             # "final" first so it's the headline number when the json file is read
             eval_results = {"final": final_metrics, "steps": eval_step_history}
-            _save_metrics_json(metrics_dir, "eval", eval_results)
+            save_json(eval_results, metrics_dir / "eval_results.json")
 
     return checkpoints

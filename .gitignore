@@ -195,10 +195,12 @@ benchmark/results/example
 
 logs/*
 wandb/*
-output/grpo/*debug*/
-output/eval/*debug*/
+# debug runs' outputs (see src/utils/paths.py for the layout)
+output/qwen3-debug/
+output/baselines/qwen3-debug/
+output/*/qwen3-8b-scale/
 # every eval response in full (see src/eval/evaluate.py) - tens of mb per model
-output/eval/**/*.generations.jsonl
+output/**/*.generations.jsonl
 unsloth_compiled_cache/
 grpo_trainer_lora_model*/
 config/*.lock

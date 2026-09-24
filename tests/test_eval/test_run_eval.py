@@ -12,14 +12,14 @@ from src.run_eval import apply_environment_root, build_api_settings, eval_result
 class TestEvalResultsPath:
     """eval_results_path decides where a run's results are saved."""
 
-    def test_groups_by_model(self) -> None:
+    def test_saves_in_the_models_folder(self) -> None:
         path = eval_results_path(
-            model="qwen3-8b",
+            output_dir=Path("output/baselines/qwen3-8b"),
             dataset="libreusebench",
             decoding_profile="greedy",
         )
 
-        assert path.parts[:3] == ("output", "eval", "qwen3-8b")
+        assert path.parent == Path("output/baselines/qwen3-8b")
 
     def test_prompt_styles_never_share_a_path(self) -> None:
         """ "base", and "lib"/"use" with no requirements file, all produce an empty library
@@ -27,7 +27,7 @@ class TestEvalResultsPath:
         which is exactly what concurrent slurm jobs from one submission would do."""
         paths = {
             eval_results_path(
-                model="qwen3-8b",
+                output_dir=Path("output/baselines/qwen3-8b"),
                 dataset="libreusebench",
                 decoding_profile="greedy",
                 prompt_style=style,
@@ -41,7 +41,7 @@ class TestEvalResultsPath:
         """A requirements file keeps its versioned suffix, so runs under different library
         prompts stay distinguishable."""
         path = eval_results_path(
-            model="qwen3-8b",
+            output_dir=Path("output/baselines/qwen3-8b"),
             dataset="libreusebench",
             decoding_profile="greedy",
             libraries_requirements_file="setup/requirements/v1.txt",
@@ -98,7 +98,7 @@ class TestApplyEnvironmentRoot:
 class TestDebugEnvironment:
     """Debug runs reuse one venv instead of building a disposable one each time."""
 
-    def test_debug_reuses_a_named_environment(self, monkeypatch) -> None:
+    def test_debug_reuses_a_named_environment(self, monkeypatch, tmp_path) -> None:
         """Repeated smoke tests are never concurrent, so they can share a venv rather
         than reinstalling every package - and it survives for inspection afterwards."""
         seen = {}
@@ -110,7 +110,6 @@ class TestDebugEnvironment:
         monkeypatch.setattr(evaluate, "score_dataset", fake_score_dataset)
         monkeypatch.setattr(evaluate, "load_eval_dataset", lambda **_: {"prompt": []})
         monkeypatch.setattr(evaluate, "generate_api_responses", lambda **_: [])
-        monkeypatch.setattr(evaluate, "save_json", lambda *_args, **_kwargs: None)
 
         evaluate.evaluate_model(
             base="deepseek-v4-flash",
@@ -123,7 +122,8 @@ class TestDebugEnvironment:
                 }
             },
             decoding_settings={"max_new_tokens": 16},
-            output_paths={"libreusebench": Path("out.json")},
+            # a temporary folder, so the result files it writes never land in the repo
+            output_paths={"libreusebench": tmp_path / "out.json"},
             debug=True,
             api=ApiSettings(api_key_env="FAKE_API_KEY"),
         )

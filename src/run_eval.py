@@ -10,6 +10,7 @@ from src.eval.generate_api import DEFAULT_MAX_TOKENS_PARAM, ApiSettings
 from src.prompts import PromptStyle, library_prompt_suffix
 from src.utils.config import load_full_yaml, load_model_settings, load_yaml_config
 from src.utils.log import log, log_header, silence_library_warnings
+from src.utils.paths import model_output_dir
 
 
 # tiny model (see config/models.yaml) used to smoke-test --debug runs
@@ -163,7 +164,7 @@ parser.add_argument(
 
 
 def eval_results_path(
-    model: str,
+    output_dir: Path,
     dataset: str,
     decoding_profile: str,
     libraries_requirements_file: str | None = None,
@@ -172,13 +173,14 @@ def eval_results_path(
     """
     Compute the output path an evaluation run saves its results to.
 
-    Output lives under output/eval/{model}/, with the file name encoding the dataset and
-    decoding profile. A rerun of the same model/dataset/decoding-profile/prompt-style
-    combination overwrites the previous result file at this same path - see the `update`
-    flag on `run_eval`, which skips regenerating a result that already exists here unless
-    told otherwise. A suffix ("-libv1"/"-usev1", else the style name) separates runs under
-    different system-prompt settings (see library_prompt_suffix). Each epoch of a training
-    run is its own model key, so epochs never share a path.
+    `output_dir` is the model's folder (see model_output_dir in src/utils/paths.py -
+    output/baselines/{model}/ for a base model, a training run's epoch{n}/ folder for a
+    checkpoint), and the file name encodes the dataset and decoding profile. A rerun of
+    the same model/dataset/decoding-profile/prompt-style combination overwrites the
+    previous result file at this same path - see the `update` flag on `run_eval`, which
+    skips regenerating a result that already exists here unless told otherwise. A suffix
+    ("-libv1"/"-usev1", else the style name) separates runs under different system-prompt
+    settings (see library_prompt_suffix).
 
     Returns the output file path.
     """
@@ -187,12 +189,7 @@ def eval_results_path(
     # back to the style name so those runs can't share one path and overwrite each other
     if not lib_suffix:
         lib_suffix = f"-{prompt_style}"
-    return (
-        Path("output")
-        / "eval"
-        / model
-        / f"{dataset}-{decoding_profile}{lib_suffix}.json"
-    )
+    return output_dir / f"{dataset}-{decoding_profile}{lib_suffix}.json"
 
 
 def apply_environment_root(
@@ -323,9 +320,11 @@ def run_eval(
         log(f"Execution environment root: {environment_root}")
     dataset_configs = apply_environment_root(dataset_configs, environment_root)
 
+    output_dir = model_output_dir(model_key=model, model_settings=model_settings)
+    log(f"Results folder: {output_dir}")
     output_paths = {
         name: eval_results_path(
-            model=model,
+            output_dir=output_dir,
             dataset=name,
             decoding_profile=decoding_profile,
             libraries_requirements_file=libraries_requirements_file,

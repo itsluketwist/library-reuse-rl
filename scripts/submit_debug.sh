@@ -85,8 +85,7 @@ case "$mode" in
         shopt -s nullglob
         candidates=(
             "$OUTPUT_BASE"/qwen3-debug-* "$OUTPUT_BASE"/qwen3-8b-scale
-            output/grpo/qwen3-debug-* output/grpo/qwen3-8b-scale
-            output/eval/qwen3-debug output/eval/qwen3-debug-* output/eval/qwen3-8b-scale-*
+            output/qwen3-debug output/baselines/qwen3-debug output/qwen3-8b/qwen3-8b-scale
             config/debug_models.yaml config/debug_models.yaml.lock
         )
         leftovers=()

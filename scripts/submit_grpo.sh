@@ -90,11 +90,17 @@ echo "  Recipe: $recipe_config"
 echo "  Sharding: $accelerate_config (${GPUS} gpus)"
 echo "  Seed: $seed"
 echo "  Checkpoints: $OUTPUT_BASE"
+
+# one timestamped directory per invocation, holding the training logs and the logs of the
+# eval jobs queued after them, so everything from one submission is in one place
+run_timestamp=$(date +%y%m%dT%H%M%S)
+log_dir="logs/${run_timestamp}"
+mkdir -p "$log_dir"
+echo "  Log directory: $log_dir"
 echo
 
 for model in "${models[@]}"; do
     echo "Submitting jobs for $model"
-    mkdir -p "logs/train-$model"
 
     for training_job in "${training_jobs[@]}"; do
         IFS="|" read -r training_dataset reward_profile library_prompt_style <<< "$training_job"
@@ -109,7 +115,7 @@ for model in "${models[@]}"; do
         train_job_id=$(sbatch --parsable <<EOF
 #!/bin/bash -l
 #SBATCH --job-name=train-${model}-${dataset_name}
-#SBATCH --output=logs/train-${model}/${dataset_name}-%j.out
+#SBATCH --output=${log_dir}/train-${model}-${dataset_name}-%j.out
 #SBATCH --account=${ACCOUNT}
 #SBATCH --partition=${PARTITION}
 #SBATCH --nodes=1
@@ -143,7 +149,7 @@ EOF
 )
 
         echo "  Submitted train job $train_job_id (run id: $run_id) - follow it with:"
-        echo "    tail -f logs/train-${model}/${dataset_name}-${train_job_id}.out"
+        echo "    tail -f ${log_dir}/train-${model}-${dataset_name}-${train_job_id}.out"
 
         # queue one single-gpu eval job per epoch checkpoint, held until training succeeds.
         # submit_eval.sh owns the eval settings (datasets, samples, decoding, prompt style),
@@ -156,6 +162,7 @@ EOF
             echo "  Queueing eval jobs for $epochs epoch checkpoints (after $train_job_id)"
             EVAL_MODELS="$eval_models" \
                 EVAL_DEPENDENCY="afterok:${train_job_id}" \
+                EVAL_LOG_DIR="$log_dir" \
                 bash scripts/submit_eval.sh
         fi
 

@@ -14,6 +14,7 @@ from src.utils.config import (
     register_model,
 )
 from src.utils.log import log, log_header, silence_library_warnings
+from src.utils.paths import training_run_dir
 
 
 # default seed, matching the convention in data/download_skywork.py
@@ -254,8 +255,9 @@ def run_grpo(
     # trained_model_path)
     output_path = trained_model_path(run_id=run_id, output_root=output_root)
 
-    # small training metrics stay in the repo, separate from the large checkpoints
-    metrics_path = Path("output") / "grpo" / run_id
+    # small training metrics stay in the repo, separate from the large checkpoints, in the
+    # run's folder alongside each epoch's eval results (see src/utils/paths.py)
+    metrics_path = training_run_dir(base_model=model, run_id=run_id) / "grpo"
 
     if is_main_process():
         log(f"Checkpoint output path: {output_path}")
@@ -294,6 +296,10 @@ def run_grpo(
     # the run id is non-descriptive, so record the knobs to recognise the model later
     for epoch, checkpoint in checkpoints.items():
         properties = {
+            # which run and base model this is, so eval files its results in that run's
+            # folder (see model_output_dir in src/utils/paths.py)
+            "run_id": run_id,
+            "base_model": model,
             "dataset": dataset,
             "recipe": recipe_config,
             "reward_profile": reward_profile,

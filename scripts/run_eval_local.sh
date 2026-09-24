@@ -54,7 +54,8 @@ debug=false
 
 # true = regenerate results even if already saved (see --update in src/run_eval.py).
 # false skips a model/dataset/decoding-profile/prompt-style combination whose result file
-# already exists under output/eval/, so rerunning only fills in what is missing.
+# already exists under output/ (see src/utils/paths.py), so rerunning only fills in what
+# is missing.
 update=false
 
 ###############################################################################
@@ -103,6 +104,7 @@ source ./scripts/setup_job.sh
 # one timestamped directory per invocation, so logs from different runs don't mix
 run_timestamp=$(date +%y%m%dT%H%M%S)
 log_dir="logs/${run_timestamp}"
+mkdir -p "$log_dir"
 echo "Log directory: $log_dir"
 
 echo
@@ -114,8 +116,6 @@ echo "  n_samples: ${n_samples:-1 (default)}"
 echo
 
 for model in "${models[@]}"; do
-    mkdir -p "${log_dir}/eval-$model"
-
     for decoding_profile in "${decoding_profiles[@]}"; do
         for prompt_style in "${prompt_styles[@]}"; do
             echo
@@ -124,7 +124,7 @@ for model in "${models[@]}"; do
             echo "============================================================"
 
             # tee so progress is visible live and also kept per-run, like the slurm jobs'
-            # ${log_dir}/eval-<model>/*.out; run_eval's own exit code still drives $? below.
+            # ${log_dir}/eval-<model>-*.out; run_eval's own exit code still drives $? below.
             run_eval \
                 -m "$model" \
                 $datasets_flag \
@@ -133,7 +133,7 @@ for model in "${models[@]}"; do
                 $n_samples_flag \
                 $debug_flag \
                 $update_flag \
-                2>&1 | tee "${log_dir}/eval-$model/${decoding_profile}-${prompt_style}-local.out"
+                2>&1 | tee "${log_dir}/eval-${model}-${decoding_profile}-${prompt_style}-local.out"
 
             if [ "${PIPESTATUS[0]}" -ne 0 ]; then
                 echo "FAILED: $model [$decoding_profile] [$prompt_style] - continuing with the rest"

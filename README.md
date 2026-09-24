@@ -131,7 +131,9 @@ model sets: [`scripts/submit_eval.sh`](scripts/submit_eval.sh) submits one slurm
 combination, and [`scripts/run_eval_local.sh`](scripts/run_eval_local.sh) runs them
 sequentially on the current node.
 
-Results are saved under `output/eval/{model}/`, keyed by dataset/decoding-profile/prompt-style,
+Results are saved in the model's folder - `output/baselines/{model}/` for a base model, and
+`output/{base-model}/{run-id}/epoch{n}/` for a training run's epoch (see
+[`src/utils/paths.py`](src/utils/paths.py)) - keyed by dataset/decoding-profile/prompt-style,
 as two files per combination: `{name}.json` holds the run's settings and its aggregate
 analysis (small, tracked in git), and `{name}.generations.jsonl` holds one line per response
 - its full text and its scores (tens of mb, so git-ignored). The code isn't stored
@@ -140,7 +142,10 @@ re-extracts it from the text.
 Re-running the same combination overwrites its previous result - a combination whose
 result file already exists is skipped instead, unless the `update` setting (`--update` on
 `run_eval`) is set. Each invocation's logs still get their own `logs/{run_timestamp}/`
-folder. Summarise results into per-task comparison tables (and a `summary.csv`) with:
+folder, with what each job ran in its log's name (e.g.
+`eval-{model}-{decoding-profile}-{prompt-style}-{job-id}.out`) - and a `submit_grpo.sh`
+submission puts its training log (`train-{model}-{dataset}-{job-id}.out`) and the logs of
+the eval jobs it queues in one such folder. Summarise results into per-task comparison tables (and a `summary.csv`) with:
 
 ```shell
 python scripts/summarize_eval.py
@@ -248,8 +253,10 @@ them.
   see [`data/README.md`](data/README.md).
 - [`notebooks/`](notebooks/) - One-off, numbered notebooks for exploratory work that doesn't
   belong in `src/`.
-- [`output/`](output/) - Training metrics under `output/grpo/{run-id}/` and evaluation
-  results under `output/eval/{model}/`. The checkpoints themselves are far too large for
+- [`output/`](output/) - Base models' evaluation results under `output/baselines/{model}/`,
+  and everything from a training run under `output/{base-model}/{run-id}/`: its training
+  metrics in `grpo/`, and each epoch's evaluation results in `epoch1/`, `epoch2/`, ... (see
+  [`src/utils/paths.py`](src/utils/paths.py)). The checkpoints themselves are far too large for
   the repo and live under `--output-root` instead (project storage on the HPC, see
   `trained_model_path` in [`src/run_grpo.py`](src/run_grpo.py)). Debug runs are
   gitignored; finished results are committed as the experimental record.

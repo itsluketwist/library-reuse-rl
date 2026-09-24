@@ -25,7 +25,8 @@ TIME="12:00:00"
 #
 # EVAL_MODELS overrides this list (a space-separated string), which is how
 # scripts/submit_grpo.sh queues its epoch checkpoints without duplicating the settings
-# below; EVAL_DEPENDENCY holds those jobs until training succeeds.
+# below; EVAL_DEPENDENCY holds those jobs until training succeeds, and EVAL_LOG_DIR puts
+# their logs in the training run's log directory.
 models=(
     # "vllm:qwen3-debug"
     "vllm:qwen3-4b"
@@ -72,7 +73,8 @@ debug=false
 
 # true = regenerate results even if already saved (see --update in src/run_eval.py).
 # false skips a model/dataset/decoding-profile/prompt-style combination whose result file
-# already exists under output/eval/, so resubmitting only fills in what is missing.
+# already exists under output/ (see src/utils/paths.py), so resubmitting only fills in
+# what is missing.
 update=false
 
 ###############################################################################
@@ -115,9 +117,12 @@ if [ ${#models[@]} -eq 0 ]; then
     exit 1
 fi
 
-# one timestamped directory per invocation, so logs from different submissions don't mix
+# one timestamped directory per invocation, so logs from different submissions don't mix -
+# unless queued by scripts/submit_grpo.sh, which passes its own (EVAL_LOG_DIR) so the eval
+# logs sit beside the training log they follow
 run_timestamp=$(date +%y%m%dT%H%M%S)
-log_dir="logs/${run_timestamp}"
+log_dir="${EVAL_LOG_DIR:-logs/${run_timestamp}}"
+mkdir -p "$log_dir"
 echo "Log directory: $log_dir"
 
 echo
@@ -133,7 +138,6 @@ for model_entry in "${models[@]}"; do
     model="${model_entry#*:}"
 
     echo "Submitting jobs for $model"
-    mkdir -p "${log_dir}/eval-$model"
 
     if [ "$provider" != "vllm" ]; then
         echo "Unknown provider '$provider' for model entry '$model_entry' - expected 'vllm:<model>'."
@@ -154,7 +158,7 @@ for model_entry in "${models[@]}"; do
             eval_job_id=$(sbatch --parsable <<EOF
 #!/bin/bash -l
 #SBATCH --job-name=eval-${model}-${decoding_profile}-${prompt_style}
-#SBATCH --output=${log_dir}/eval-${model}/${decoding_profile}-${prompt_style}-%j.out
+#SBATCH --output=${log_dir}/eval-${model}-${decoding_profile}-${prompt_style}-%j.out
 #SBATCH --account=${ACCOUNT}
 #SBATCH --partition=${PARTITION}
 #SBATCH --nodes=1
@@ -177,7 +181,7 @@ echo "Eval complete for model: $model, decoding: $decoding_profile, prompt style
 EOF
 )
             echo "    Submitted eval job $eval_job_id - follow it with:"
-            echo "      tail -f ${log_dir}/eval-${model}/${decoding_profile}-${prompt_style}-${eval_job_id}.out"
+            echo "      tail -f ${log_dir}/eval-${model}-${decoding_profile}-${prompt_style}-${eval_job_id}.out"
 
             # small delay between submissions to avoid scheduler overload
             sleep 0.5

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Summarize eval result JSON files into per-task comparison tables.
 
-Reads every output/eval/{model}/*.json file (see eval_results_path in src/run_eval.py),
-and prints one table per dataset task, comparing models and prompt/decoding settings on
-that task's key metrics. Also writes a combined summary.csv into the results directory.
+Reads every base model's results (output/baselines/{model}/*.json) and every training
+epoch's (output/{base_model}/{run_id}/epoch{n}/*.json) - see src/utils/paths.py - and
+prints one table per dataset task, comparing models and prompt/decoding settings on that
+task's key metrics. Also writes a combined summary.csv into the output directory.
 """
 
 import argparse
@@ -14,6 +15,7 @@ from typing import Any
 import pandas as pd
 
 from src.utils.log import log
+from src.utils.paths import OUTPUT_DIR
 
 
 # metrics to show per task, as the path to each within the result's "analysis" block (see
@@ -48,16 +50,30 @@ def _dig(
     return value
 
 
-def _load_results(run_dir: Path) -> list[dict]:
+def _result_files(output_dir: Path) -> list[tuple[str, Path]]:
     """
-    Load every result JSON under `run_dir` (output/eval/{model}/*.json), pulling the
-    run's identifiers and that task's metrics out of each file's "metadata"/"analysis"
-    blocks.
+    Find every eval result file under `output_dir`, with the model it belongs to - a base
+    model's folder name, or "{run_id}-epoch{n}" (its registry key) for a training epoch.
+
+    Returns (model, path) pairs.
+    """
+    found = []
+    for path in sorted(output_dir.glob("baselines/*/*.json")):
+        found.append((path.parent.name, path))
+    for path in sorted(output_dir.glob("*/*/epoch*/*.json")):
+        found.append((f"{path.parent.parent.name}-{path.parent.name}", path))
+    return found
+
+
+def _load_results(output_dir: Path) -> list[dict]:
+    """
+    Load every result JSON under `output_dir` (see _result_files), pulling the run's
+    identifiers and that task's metrics out of each file's "metadata"/"analysis" blocks.
 
     Returns one row per result file, as a flat dict.
     """
     rows = []
-    for path in sorted(run_dir.glob("*/*.json")):
+    for model, path in _result_files(output_dir):
         data = json.loads(path.read_text())
         metadata = data["metadata"]
         analysis = data["analysis"]
@@ -70,7 +86,7 @@ def _load_results(run_dir: Path) -> list[dict]:
         # metrics are keyed by the scorer's own task name, not the dataset name
         task = analysis.get("task")
         row = {
-            "model": path.parent.name,
+            "model": model,
             "dataset": dataset,
             "task": task,
             "decoding_profile": decoding_profile,
@@ -112,28 +128,30 @@ def _print_task_table(rows: list[dict], dataset: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "run_dir",
+        "output_dir",
         type=Path,
         nargs="?",
-        default=Path("output/eval"),
-        help="Directory to summarize, in the output/eval/{model}/ layout. "
-        "Defaults to output/eval/ (every model's results).",
+        default=OUTPUT_DIR,
+        help="Output directory to summarize, in the layout described in "
+        "src/utils/paths.py. Defaults to output/ (every model's results).",
     )
     args = parser.parse_args()
 
-    if not args.run_dir.is_dir():
-        raise FileNotFoundError(f"{args.run_dir} does not exist or is not a directory")
+    if not args.output_dir.is_dir():
+        raise FileNotFoundError(
+            f"{args.output_dir} does not exist or is not a directory"
+        )
 
-    rows = _load_results(args.run_dir)
+    rows = _load_results(args.output_dir)
     if not rows:
-        log(f"No result JSON files found under {args.run_dir}")
+        log(f"No result JSON files found under {args.output_dir}")
         return
 
-    log(f"Eval summary: {args.run_dir}")
+    log(f"Eval summary: {args.output_dir}")
     for dataset in sorted({row["dataset"] for row in rows}):
         _print_task_table(rows, dataset)
 
-    csv_path = args.run_dir / "summary.csv"
+    csv_path = args.output_dir / "summary.csv"
     pd.DataFrame(rows).to_csv(csv_path, index=False)
     log(f"\nSaved combined summary to {csv_path}")
 
