@@ -17,8 +17,11 @@ jobs:
       name: release
       url: https://pypi.org/p/lure
 
+    # listing any permission sets the rest to none, so contents: read is needed for the
+    # checkout step to read this (private) repository
     permissions:
       id-token: write
+      contents: read
 
     steps:
 
