@@ -112,16 +112,23 @@ vllm = { index = "vllm-cu129" }
 libreusebench = { path = "benchmark", editable = true }
 
 # the build pipeline scripts (benchmark/pipeline) are run as files and import sibling build
-# helpers; put them on the path so their unit tests can import them too
+# helpers; put them on the path so their unit tests can import them too. reward/ holds the
+# standalone lure package, tested here before the rest of the repo depends on it.
 [tool.pytest.ini_options]
-pythonpath = ["benchmark/pipeline", "fireworks", "fireworks/rft/evaluator"]
+pythonpath = ["benchmark/pipeline", "fireworks", "fireworks/rft/evaluator", "reward"]
 
 # ty can't follow the libreusebench editable install (it uses a custom import finder), and the
 # pipeline scripts are run by path - point ty at these directories so `libreusebench`, `build`,
 # `review`, `fw_rlvr` and `library_reuse_evaluator` imports resolve (mirroring pytest's
 # pythonpath above)
 [tool.ty.environment]
-extra-paths = ["benchmark", "benchmark/pipeline", "fireworks", "fireworks/rft/evaluator"]
+extra-paths = [
+    "benchmark",
+    "benchmark/pipeline",
+    "fireworks",
+    "fireworks/rft/evaluator",
+    "reward",
+]
 
 # these files import the GPU stack from the [hpc] extra (torch, transformers, trl, unsloth,
 # vllm), which only installs on linux - ignore just the missing imports when checking locally
