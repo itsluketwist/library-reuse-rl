@@ -196,8 +196,10 @@ benchmark/results/example
 logs/*
 wandb/*
 # debug runs' outputs (see src/utils/paths.py for the layout)
+output/debug/
 output/qwen3-debug/
 output/baselines/qwen3-debug/
+output/*/*-scale/
 output/*/qwen3-8b-scale/
 unsloth_compiled_cache/
 grpo_trainer_lora_model*/

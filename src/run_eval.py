@@ -10,7 +10,7 @@ from src.eval.generate_api import DEFAULT_MAX_TOKENS_PARAM, ApiSettings
 from src.prompts import PromptStyle, library_prompt_suffix
 from src.utils.config import load_full_yaml, load_model_settings, load_yaml_config
 from src.utils.log import log, log_header, silence_library_warnings
-from src.utils.paths import model_output_dir
+from src.utils.paths import debug_output_dir, model_output_dir
 
 
 # tiny model (see config/models.yaml) used to smoke-test --debug runs
@@ -321,6 +321,8 @@ def run_eval(
     dataset_configs = apply_environment_root(dataset_configs, environment_root)
 
     output_dir = model_output_dir(model_key=model, model_settings=model_settings)
+    if debug:
+        output_dir = debug_output_dir(output_dir)
     log(f"Results folder: {output_dir}")
     output_paths = {
         name: eval_results_path(

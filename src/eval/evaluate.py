@@ -11,6 +11,7 @@ from src.prompts import PromptStyle, build_system_prompt
 from src.response.evaluate import resolve_eval_python
 from src.utils.io import save_json, save_jsonl
 from src.utils.log import log, log_header, log_timer
+from src.utils.vllm_settings import VLLM_ADDITIONAL_CONFIG
 
 
 # sample count used by --debug mode (src/run_eval.py) for a quick end-to-end check
@@ -99,6 +100,7 @@ def evaluate_model(
             model=weights_path or base,
             dtype="bfloat16",
             enforce_eager=debug,
+            additional_config=dict(VLLM_ADDITIONAL_CONFIG),
         )
 
     for name, dataset_config in dataset_configs.items():

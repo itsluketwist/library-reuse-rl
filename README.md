@@ -125,6 +125,9 @@ bash scripts/submit_debug.sh scale   # 4 gpus, ~30 minutes - memory and timings 
 bash scripts/submit_debug.sh clean   # no job - deletes the checks' checkpoints and results
 ```
 
+`eval` and `scale` also take a model key, to check a new candidate model before using it
+(e.g. `bash scripts/submit_debug.sh eval domyn-small`, then `scale domyn-small`).
+
 There are two eval launchers, each with its own configuration block at the top (models,
 datasets, decoding profiles, prompt styles, debug, update), so the two can be pointed at different
 model sets: [`scripts/submit_eval.sh`](scripts/submit_eval.sh) submits one slurm job per
@@ -164,7 +167,8 @@ weights, so its registry `path` stays blank. See
 
 Pass `--debug` to either command to smoke-test the code end-to-end: it truncates the
 dataset(s) to a handful of samples, and defaults to the tiny `qwen3-debug` model (see
-[`config/models.yaml`](config/models.yaml)) if `-m`/`--model` isn't given.
+[`config/models.yaml`](config/models.yaml)) if `-m`/`--model` isn't given. Debug eval results
+are written under the git-ignored `output/debug/`, so they never replace real results.
 
 ```shell
 run_grpo -d data/train/library_usage --debug

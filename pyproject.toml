@@ -78,12 +78,16 @@ dependencies = [
 #   without it flashinfer compiles them on first use, which needs a cuda compiler (nvcc) the
 #   nodes don't have. its version must equal the flashinfer-python version vllm pins.
 # - transformers and accelerate are pinned to the versions uv resolved for the above
+# - flash-linear-attention holds the fast kernels for qwen3.5's linear-attention layers -
+#   without it transformers falls back to a pure-torch version, over 10x slower. it is pure
+#   python on triton (no compiled cuda libraries), so it runs on isambard as-is.
 # isambard's gpu driver (565) supports cuda <=12.7 and cannot run cuda 13, which is what
 # pypi's default torch, torchcodec and vllm builds now use - so they (and flashinfer's
 # kernels) come from their cuda 12.9 indexes below instead (12.9 runs on the 12.7 driver
 # via cuda's minor-version compatibility).
 hpc = [
     "accelerate==1.15.0 ; sys_platform == 'linux'",
+    "flash-linear-attention==0.5.2 ; sys_platform == 'linux'",
     "flashinfer-jit-cache==0.6.16.post3 ; sys_platform == 'linux'",
     "torch==2.13.0 ; sys_platform == 'linux'",
     "torchaudio==2.11.0 ; sys_platform == 'linux'",

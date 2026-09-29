@@ -5,6 +5,7 @@ output/
     {base_model}/{run_id}/          everything from one training run of that base model:
         grpo/                       its training metrics (trainer_state.json, ...)
         epoch1/, epoch2/, ...       each epoch checkpoint's eval results
+    debug/                          debug (--debug) eval results, in the same layout as above
 
 Eval results are two files per dataset (see src/eval/evaluate.py). The checkpoints
 themselves are far larger, and live on project storage instead (see --output-root in
@@ -16,6 +17,17 @@ from typing import Any
 
 
 OUTPUT_DIR = Path("output")
+
+
+def debug_output_dir(output_dir: Path) -> Path:
+    """
+    The folder a debug (truncated) eval's results go in, kept apart from real results so
+    they are never mistaken for them - a real eval skips datasets that already have a result
+    file. Mirrors the normal layout under output/debug/.
+
+    Returns output/debug/{the normal folder, relative to output/}.
+    """
+    return OUTPUT_DIR / "debug" / output_dir.relative_to(OUTPUT_DIR)
 
 
 def baseline_dir(model: str) -> Path:

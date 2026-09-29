@@ -4,7 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from src.utils.paths import baseline_dir, model_output_dir, training_run_dir
+from src.utils.paths import (
+    baseline_dir,
+    debug_output_dir,
+    model_output_dir,
+    training_run_dir,
+)
 
 
 class TestModelOutputDir:
@@ -57,3 +62,13 @@ def test_training_metrics_and_epochs_share_the_run_folder() -> None:
 
     assert run == Path("output/qwen3-8b/qwen3-8b-a1b2")
     assert baseline_dir("qwen3-8b") == Path("output/baselines/qwen3-8b")
+
+
+def test_debug_results_mirror_the_normal_layout_under_debug() -> None:
+    """Debug evals never land in (and so can't be mistaken for) real result folders."""
+    assert debug_output_dir(baseline_dir("domyn-small")) == Path(
+        "output/debug/baselines/domyn-small"
+    )
+    assert debug_output_dir(training_run_dir("qwen3-debug", "run")) == Path(
+        "output/debug/qwen3-debug/run"
+    )

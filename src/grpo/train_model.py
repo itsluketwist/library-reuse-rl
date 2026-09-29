@@ -39,6 +39,7 @@ from src.prompts import PromptStyle, build_system_prompt
 from src.utils.config import check_config_keys, load_full_yaml
 from src.utils.io import save_json
 from src.utils.log import log_gpu_memory, log_timer
+from src.utils.vllm_settings import VLLM_ADDITIONAL_CONFIG
 
 
 logger = logging.getLogger(__name__)
@@ -130,23 +131,25 @@ def _periodic_eval_history(log_history: list[dict]) -> dict[str, dict]:
     }
 
 
-def _fix_vllm_kv_cache_size(kv_cache_memory_gib: float) -> None:
+def _configure_trl_vllm_engine(kv_cache_memory_gib: float | None) -> None:
     """
-    Make trl's colocated vllm engine use a fixed-size kv cache.
+    Pass extra settings to trl's colocated vllm engine, which trl exposes no setting for,
+    by swapping the engine class trl builds for one with them filled in.
 
-    At startup vllm measures the gpu's free memory, runs a dummy forward pass, and
-    asserts free memory did not go up in between. In colocate mode the training model
-    shares the process, and gpu memory it frees mid-profile (e.g. fsdp's weight
-    broadcast buffers) trips that assertion (vllm issue #56830, unfixed in 0.28).
-    Giving vllm a fixed cache size skips the check. trl exposes no setting for this, so
-    the engine class trl builds is swapped for one with the size filled in.
+    The engine gets the same `additional_config` as eval's (see src/utils/vllm_settings.py).
+    And, when `kv_cache_memory_gib` is set, a fixed-size kv cache: at startup vllm measures
+    the gpu's free memory, runs a dummy forward pass, and asserts free memory did not go up
+    in between. In colocate mode the training model shares the process, and gpu memory it
+    frees mid-profile (e.g. fsdp's weight broadcast buffers) trips that assertion (vllm
+    issue #56830, unfixed in 0.28). Giving vllm a fixed cache size skips the check.
     """
     from trl.generation import vllm_generation
 
-    vllm_generation.LLM = partial(
-        vllm_generation.LLM,
-        kv_cache_memory_bytes=int(kv_cache_memory_gib * 1024**3),
-    )
+    engine_settings: dict = {"additional_config": dict(VLLM_ADDITIONAL_CONFIG)}
+    if kv_cache_memory_gib is not None:
+        engine_settings["kv_cache_memory_bytes"] = int(kv_cache_memory_gib * 1024**3)
+
+    vllm_generation.LLM = partial(vllm_generation.LLM, **engine_settings)
 
 
 def train_model_with_grpo(
@@ -217,6 +220,11 @@ def train_model_with_grpo(
     overrides["top_p"] = rollout_decoding["top_p"]
     overrides["top_k"] = rollout_decoding["top_k"]
     overrides["max_completion_length"] = rollout_decoding["max_new_tokens"]
+    # passed to the chat template, as eval does (see src/eval/generate_vllm.py) - needed
+    # since some models (e.g. domyn-small) don't reason unless it is switched on
+    overrides["chat_template_kwargs"] = {
+        "enable_thinking": rollout_decoding.get("enable_thinking", True),
+    }
 
     if epochs is not None:
         overrides["num_train_epochs"] = epochs
@@ -338,8 +346,8 @@ def train_model_with_grpo(
     #############################
     # Initialize the GRPO trainer
     #############################
-    if training_args.use_vllm and training_args.vllm_kv_cache_memory_gib is not None:
-        _fix_vllm_kv_cache_size(training_args.vllm_kv_cache_memory_gib)
+    if training_args.use_vllm:
+        _configure_trl_vllm_engine(training_args.vllm_kv_cache_memory_gib)
 
     with log_timer(
         "trainer init (model loading, vllm startup)", enabled=is_main_process
@@ -413,5 +421,10 @@ def train_model_with_grpo(
             # "final" first so it's the headline number when the json file is read
             eval_results = {"final": final_metrics, "steps": eval_step_history}
             save_json(eval_results, metrics_dir / "eval_results.json")
+
+    # once every gpu's process is done, close the connections between them - otherwise
+    # pytorch warns at exit that destroy_process_group() was never called
+    trainer.accelerator.wait_for_everyone()
+    trainer.accelerator.end_training()
 
     return checkpoints

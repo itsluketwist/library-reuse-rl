@@ -43,7 +43,7 @@ class GRPOConfig(trl.GRPOConfig):
             "help": (
                 "Fixed size of the colocated vllm engine's kv cache, in GiB. When set, "
                 "vllm skips its startup memory profiling (and so ignores "
-                "vllm_gpu_memory_utilization) - see _fix_vllm_kv_cache_size in "
+                "vllm_gpu_memory_utilization) - see _configure_trl_vllm_engine in "
                 "src/grpo/train_model.py for why."
             ),
         },

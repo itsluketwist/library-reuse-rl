@@ -6,10 +6,13 @@
 #   bash scripts/submit_debug.sh eval    # 1 gpu, ~10 minutes - the evaluation path
 #   bash scripts/submit_debug.sh scale   # 4 gpus, ~30 minutes - memory and timings at 8b
 #
-# run them in that order: eval defaults to the checkpoint smoke trains, and takes an
-# optional model key to check another one instead (e.g. the untrained base model):
+# run them in that order: eval defaults to the checkpoint smoke trains, and scale to
+# qwen3-8b. both take an optional model key to check another model instead - e.g. the
+# untrained base model, or a new candidate model:
 #
 #   bash scripts/submit_debug.sh eval qwen3-debug
+#   bash scripts/submit_debug.sh eval domyn-small
+#   bash scripts/submit_debug.sh scale domyn-small
 #
 # afterwards, delete what the checks leave behind (it lists everything and asks first):
 #
@@ -44,6 +47,7 @@ eval_datasets="library_usage,library_usage_val,libreusebench_test,libreusebench_
 
 mode="${1:-}"
 eval_model="${2:-qwen3-debug-smoke-epoch2}"
+scale_model="${2:-qwen3-8b}"
 
 case "$mode" in
     smoke)
@@ -58,15 +62,15 @@ case "$mode" in
     -s $seed --run-id qwen3-debug-smoke --output-root $OUTPUT_BASE"
         ;;
     scale)
-        # a few steps of the real model: sharding, the vllm weight sync, peak memory and
+        # a few steps of a full-size model: sharding, the vllm weight sync, peak memory and
         # step time. stops before the first epoch ends, so it registers nothing - but the
         # trainer still saves its last step (~100GB) - run the clean mode afterwards
         gpus=4
         time_limit="01:00:00"
         command="\$HOST_MEMBIND accelerate launch --config_file $accelerate_config --num_processes 4 \
-    --module src.run_grpo --model qwen3-8b --max-steps 3 -d $dataset \
+    --module src.run_grpo --model $scale_model --max-steps 3 -d $dataset \
     --reward-profile $reward_profile --library-prompt-style $prompt_style \
-    -s $seed --run-id qwen3-8b-scale --output-root $OUTPUT_BASE"
+    -s $seed --run-id $scale_model-scale --output-root $OUTPUT_BASE"
         ;;
     eval)
         # truncated evaluation: loading weights in vllm, the execution venvs, scoring and
@@ -80,12 +84,12 @@ case "$mode" in
         # deletes what the debug runs leave behind: checkpoints on project storage, their
         # metrics and eval results under output/, and their registry file (debug runs
         # register in config/debug_models.yaml, never alongside real runs). every debug
-        # run is named after qwen3-debug or qwen3-8b-scale, which real runs never are.
+        # run is named qwen3-debug-* or {model}-scale, which real runs never are.
         # runs here on the login node rather than as a job, and asks first.
         shopt -s nullglob
         candidates=(
-            "$OUTPUT_BASE"/qwen3-debug-* "$OUTPUT_BASE"/qwen3-8b-scale
-            output/qwen3-debug output/baselines/qwen3-debug output/qwen3-8b/qwen3-8b-scale
+            "$OUTPUT_BASE"/qwen3-debug-* "$OUTPUT_BASE"/*-scale
+            output/debug output/qwen3-debug output/baselines/qwen3-debug output/*/*-scale
             config/debug_models.yaml config/debug_models.yaml.lock
         )
         leftovers=()
@@ -122,7 +126,7 @@ case "$mode" in
         echo
         echo "  smoke  4 gpus, ~10 minutes  tiny truncated training run, small model"
         echo "  eval   1 gpu,  ~10 minutes  truncated evaluation of [model-key]"
-        echo "  scale  4 gpus, ~30 minutes  a few steps of qwen3-8b, for memory and timing"
+        echo "  scale  4 gpus, ~30 minutes  a few steps of [model-key] (qwen3-8b), for memory and timing"
         echo "  clean  no job               delete the debug runs' checkpoints, results and registry entries"
         exit 1
         ;;
