@@ -24,15 +24,14 @@ TIME="12:00:00"
 # need network access - run them with scripts/run_eval_local.sh instead.
 models=(
     # "vllm:qwen3-debug"
-    # already evaluated - uncommenting one only runs datasets it has no results for yet
-    # "vllm:qwen3-4b"
-    # "vllm:qwen3-8b"
-    # "vllm:qwen3-14b"
-    # "vllm:qwen3-32b"
+    "vllm:qwen3-4b"
+    "vllm:qwen3-8b"
+    "vllm:qwen3-14b"
+    "vllm:qwen3-32b"
     # "vllm:olmo3-7b"
     # "vllm:ocr-7b"
-    "vllm:qwen3.5-9b"
-    "vllm:domyn-small"
+    # "vllm:qwen3.5-9b"
+    # "vllm:domyn-small"
 )
 
 # training runs to evaluate, by run id (e.g. "qwen3-8b-ef47"). each is added to the models
@@ -50,9 +49,9 @@ training_runs=(
 # eval dataset names (config/eval_datasets.yaml). leave empty to evaluate every dataset in
 # that file. product_choice is gitignored and must have been built locally.
 datasets=(
-    "library_usage"
-    "library_usage_val"
-    "library_usage_train"
+    # "library_usage"
+    # "library_usage_val"
+    # "library_usage_train"
     "libreusebench_test"
     "libreusebench_control"
 )
@@ -83,7 +82,7 @@ debug=false
 # false skips a model/dataset/decoding-profile/prompt-style combination whose result file
 # already exists under output/ (see src/utils/paths.py), so resubmitting only fills in
 # what is missing.
-update=false
+update=true
 
 ###############################################################################
 #                      submit jobs - do not edit below                        #
