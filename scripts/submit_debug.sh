@@ -66,7 +66,9 @@ case "$mode" in
         # step time. stops before the first epoch ends, so it registers nothing - but the
         # trainer still saves its last step (~100GB) - run the clean mode afterwards
         gpus=4
-        time_limit="01:00:00"
+        # generous, since a new model's startup (e.g. qwen3.5's vllm kernel warmup) and step
+        # time aren't known yet
+        time_limit="02:00:00"
         command="\$HOST_MEMBIND accelerate launch --config_file $accelerate_config --num_processes 4 \
     --module src.run_grpo --model $scale_model --max-steps 3 -d $dataset \
     --reward-profile $reward_profile --library-prompt-style $prompt_style \
