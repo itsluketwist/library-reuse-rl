@@ -54,6 +54,7 @@ case "$mode" in
         # tiny truncated run (2 epochs of 16 prompts) through the real 4-gpu setup: the
         # fsdp2 launch, vllm, rewards, checkpointing and registration. a fixed
         # run id, so repeats overwrite the same registry entries that eval then loads
+        job_model="qwen3-debug"
         gpus=4
         time_limit="01:00:00"
         command="\$HOST_MEMBIND accelerate launch --config_file $accelerate_config --num_processes 4 \
@@ -65,6 +66,7 @@ case "$mode" in
         # a few steps of a full-size model: sharding, the vllm weight sync, peak memory and
         # step time. stops before the first epoch ends, so it registers nothing - but the
         # trainer still saves its last step (~100GB) - run the clean mode afterwards
+        job_model="$scale_model"
         gpus=4
         # generous, since a new model's startup (e.g. qwen3.5's vllm kernel warmup) and step
         # time aren't known yet
@@ -77,6 +79,7 @@ case "$mode" in
     eval)
         # truncated evaluation: loading weights in vllm, the execution venvs, scoring and
         # the result files - the path the post-training eval jobs depend on
+        job_model="$eval_model"
         gpus=1
         time_limit="01:00:00"
         command="run_eval --debug --model $eval_model -d $eval_datasets \
@@ -141,7 +144,10 @@ esac
 mkdir -p logs/debug
 
 echo
-echo ">>> Submitting debug job: $mode >>>"
+# the job and its log are named after the mode and the model, e.g. debug-scale-domyn-small
+job_name="${mode}-${job_model}"
+
+echo ">>> Submitting debug job: $mode ($job_model) >>>"
 echo "  GPUs: $gpus"
 echo "  Time limit: $time_limit"
 echo "  Output: $OUTPUT_BASE"
@@ -149,8 +155,8 @@ echo
 
 job_id=$(sbatch --parsable <<EOF
 #!/bin/bash -l
-#SBATCH --job-name=debug-${mode}
-#SBATCH --output=logs/debug/${mode}-%j.out
+#SBATCH --job-name=debug-${job_name}
+#SBATCH --output=logs/debug/${job_name}-%j.out
 #SBATCH --account=${ACCOUNT}
 #SBATCH --partition=${PARTITION}
 #SBATCH --nodes=1
@@ -166,4 +172,4 @@ EOF
 )
 
 echo "Submitted job $job_id - follow it with:"
-echo "  tail -f logs/debug/${mode}-${job_id}.out"
+echo "  tail -f logs/debug/${job_name}-${job_id}.out"
