@@ -38,7 +38,12 @@ dependencies = [
     "datasets>=4.7.0",
     "huggingface_hub",
     "Jupyter",
+    # lure (Library Usage REwards), the response parsing + library analysis shared by the
+    # rewards, eval and benchmark - lives in reward/, installed editable (see below)
+    "lure",
     "llm-codegen-research",
+    # plotting in the analysis notebooks (notebooks/)
+    "matplotlib",
     # openai sdk for eval's "api" provider (src/eval/generate_api.py) - also speaks
     # DeepSeek's OpenAI-compatible chat completions api, via base_url
     "openai",
@@ -93,7 +98,6 @@ hpc = [
 [project.scripts]
 run_grpo = "src.run_grpo:main"
 run_eval = "src.run_eval:main"
-run_scoring = "src.run_scoring:main"
 
 # torch and vllm need their cuda 12.9 builds (see the [hpc] extra above), which live on their
 # own indexes rather than pypi.org. marking an index "explicit" scopes it to just the packages
@@ -110,23 +114,22 @@ torchcodec = { index = "pytorch-cu129" }
 vllm = { index = "vllm-cu129" }
 # the benchmark package lives in this repo under benchmark/ - install it editable
 libreusebench = { path = "benchmark", editable = true }
+# the lure package also lives in this repo, under reward/
+lure = { path = "reward", editable = true }
 
 # the build pipeline scripts (benchmark/pipeline) are run as files and import sibling build
-# helpers; put them on the path so their unit tests can import them too. reward/ holds the
-# standalone lure package, tested here before the rest of the repo depends on it.
+# helpers; put them on the path so their unit tests can import them too
 [tool.pytest.ini_options]
-pythonpath = ["benchmark/pipeline", "fireworks", "fireworks/rft/evaluator", "reward"]
+pythonpath = ["benchmark/pipeline"]
 
-# ty can't follow the libreusebench editable install (it uses a custom import finder), and the
-# pipeline scripts are run by path - point ty at these directories so `libreusebench`, `build`,
-# `review`, `fw_rlvr` and `library_reuse_evaluator` imports resolve (mirroring pytest's
-# pythonpath above)
+# ty can't follow the libreusebench and lure editable installs (they use a custom import
+# finder), and the pipeline scripts are run by path - point ty at these directories so
+# `libreusebench`, `lure`, `build` and `review` imports resolve (mirroring pytest's pythonpath
+# above)
 [tool.ty.environment]
 extra-paths = [
     "benchmark",
     "benchmark/pipeline",
-    "fireworks",
-    "fireworks/rft/evaluator",
     "reward",
 ]
 
@@ -142,14 +145,6 @@ include = [
     "src/run_grpo.py",
     "src/utils/log.py",
 ]
-
-[tool.ty.overrides.rules]
-unresolved-import = "ignore"
-
-# eval-protocol is deliberately installed in the separate .venv-eval environment (see
-# fireworks/README.md), not the main venv - ignore the missing import when checking locally
-[[tool.ty.overrides]]
-include = ["fireworks/rft/evaluator/tests/pytest/library_reuse/test_library_reuse_evaluation.py"]
 
 [tool.ty.overrides.rules]
 unresolved-import = "ignore"

@@ -68,6 +68,15 @@ class TestLibraryComponents:
         assert not components["appropriate_lib_used"]
 
 
+def test_is_appropriate_library():
+    """Import and pypi names both match, ignoring case."""
+    from lure import is_appropriate_library
+
+    assert is_appropriate_library("PIL", ["pillow"])
+    assert is_appropriate_library("requests", ["Requests"])
+    assert not is_appropriate_library("numpy", ["pandas"])
+
+
 class TestCreateLibraryReward:
     """Tests for create_library_reward and LibraryReward."""
 

@@ -112,8 +112,9 @@ def test_every_reward_reports_exactly_its_supported_components(monkeypatch):
 
 def _passed_response():
     """Build a passing ProcessedResponse, so the tested reward needs no execution."""
-    from src.response.parser import parse_response
+    from lure import parse_response
+
     from src.response.pipeline import ProcessedResponse
 
-    parsed = parse_response(response=_completion("import requests"))
-    return ProcessedResponse(**vars(parsed), passed=True, output="")
+    parsed = parse_response(_completion("import requests"))
+    return ProcessedResponse(parsed=parsed, passed=True, output="")

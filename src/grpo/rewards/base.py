@@ -2,7 +2,8 @@
 
 from typing import Any
 
-from src.response.parser import ParsedResponse, parse_response
+from lure import ParsedResponse, components_from_parsed, parse_response
+
 from src.response.stop_reason import stop_reason_from_tokens
 from src.utils.config import load_yaml_config
 
@@ -181,29 +182,12 @@ class LibraryReward:
         """
         Judge the correct_format component: shared by every reward, no code required.
 
+        Uses lure's definition, so it matches the library-usage reward exactly.
+
         Returns whether the response has both reasoning and an answer, and wasn't cut
         off by the token limit.
         """
-        has_shape = bool(parsed.reasoning.strip() and parsed.answer)
-        return has_shape and parsed.stop_reason != "length"
-
-
-class CodeReward(LibraryReward):
-    """
-    Shared parent for the code-writing rewards (tested + library implementation).
-
-    Adds the syntax-check component both variants share, plus the import classifier
-    used to tell a genuine external library apart from the project's own modules.
-    """
-
-    @staticmethod
-    def has_valid_syntax(parsed: ParsedResponse) -> bool:
-        """
-        Judge the passes_syntax_check component.
-
-        Returns whether the selected code fragment is valid python.
-        """
-        return bool(parsed.valid)
+        return components_from_parsed(parsed)["correct_format"]
 
     def parse(
         self,
@@ -211,27 +195,33 @@ class CodeReward(LibraryReward):
         row: dict[str, Any],
     ) -> ParsedResponse:
         """
-        Parse a completion into its reasoning, answer, and analysed code fragment.
+        Parse a completion into its reasoning, answer, and analysed code blocks (with lure).
+
+        The row's `local_modules` - the top-level module/package names of the repo the
+        task was set in - are passed through, so importing the project's own code (e.g.
+        `from app.models import User`) is never mistaken for reusing an external library.
 
         Returns the ParsedResponse.
         """
-        return parse_response(response=content, stop_reason=self._stop_reason(row))
+        return parse_response(
+            content,
+            stop_reason=self._stop_reason(row),
+            local_modules=row.get("local_modules") or (),
+        )
+
+
+class CodeReward(LibraryReward):
+    """
+    Shared parent for the code-writing rewards (tested + library implementation).
+
+    Adds the syntax-check component both variants share.
+    """
 
     @staticmethod
-    def external_libraries(
-        parsed: ParsedResponse,
-        local_modules: list[str] | None = None,
-    ) -> list[str]:
+    def has_valid_syntax(parsed: ParsedResponse) -> bool:
         """
-        The third-party libraries a completion imports, excluding the project's own code.
+        Judge the passes_syntax_check component.
 
-        `parsed.ext_libs` already drops standard-library modules and (via the parser)
-        relative imports. Here we additionally subtract `local_modules` - the top-level
-        module/package names of the repo the task was set in - so importing the
-        project's own code (e.g. `from app.models import User`) is never mistaken for
-        reusing an external library.
-
-        Returns the remaining external library names.
+        Returns whether the answer has python code, and all of it is valid.
         """
-        local = set(local_modules or [])
-        return [lib for lib in parsed.ext_libs if lib not in local]
+        return parsed.valid

@@ -26,7 +26,7 @@ COMPONENTS: tuple[str, ...] = (
 )
 
 
-def _is_appropriate(
+def is_appropriate_library(
     library: str,
     appropriate_libraries: Iterable[str],
 ) -> bool:
@@ -62,7 +62,8 @@ def components_from_parsed(
         "external_lib_imported": bool(parsed.external_imports),
         "external_lib_used": bool(parsed.external_used),
         "appropriate_lib_used": any(
-            _is_appropriate(library, appropriate) for library in parsed.external_used
+            is_appropriate_library(library, appropriate)
+            for library in parsed.external_used
         ),
     }
 

@@ -2,17 +2,19 @@
 
 from typing import Any
 
+from lure import CodeBlock
+
 from src.grpo.rewards.base import _IO_BOILERPLATE_LIB, CodeReward
-from src.response.parser import ParsedResponse
 from src.response.pipeline import process_response
 
 
 def execution_components(
-    parsed: ParsedResponse,
+    block: CodeBlock | None,
     passed: bool,
 ) -> dict[str, bool]:
     """
-    Judge the execution-specific components of the tested-implementation reward.
+    Judge the execution-specific components of the tested-implementation reward, from
+    the code block that was run (the answer's longest code block).
 
     correct_format and passes_syntax_check are shared with the other rewards (see
     LibraryReward.has_correct_format / CodeReward.has_valid_syntax) and judged by
@@ -20,38 +22,30 @@ def execution_components(
 
     Returns each component name mapped to whether the completion satisfies it.
     """
-    # stdlib imports, excluding the io-boilerplate exception (see base.py)
-    internal_libs = [lib for lib in parsed.std_libs if lib != _IO_BOILERPLATE_LIB]
+    if block is None:
+        internal_imported: frozenset[str] = frozenset()
+        internal_used: frozenset[str] = frozenset()
+        external_imported: frozenset[str] = frozenset()
+        external_used: frozenset[str] = frozenset()
+    else:
+        # stdlib modules, excluding the io-boilerplate exception (see base.py)
+        internal_imported = block.stdlib_imports - {_IO_BOILERPLATE_LIB}
+        internal_used = block.stdlib_used - {_IO_BOILERPLATE_LIB}
+        external_imported = block.external_imports
+        external_used = block.external_used
 
     return {
         # the code passed evaluation against the record's tests
         "passed_tests": passed,
         # imports a stdlib module (other than the io boilerplate exception)
-        "internal_lib_imported": bool(internal_libs),
+        "internal_lib_imported": bool(internal_imported),
         # imports a third-party module
-        "external_lib_imported": bool(parsed.ext_libs),
+        "external_lib_imported": bool(external_imported),
         # actually calls/uses an imported stdlib module
-        "internal_lib_used": any(lib in parsed.lib_usage for lib in internal_libs),
+        "internal_lib_used": bool(internal_used),
         # actually calls/uses an imported third-party module
-        "external_lib_used": any(lib in parsed.lib_usage for lib in parsed.ext_libs),
+        "external_lib_used": bool(external_used),
     }
-
-
-def compute_reward(
-    parsed: ParsedResponse,
-    passed: bool,
-    weights: dict[str, float],
-) -> float:
-    """
-    Compute the execution-specific part of the tested-implementation reward.
-
-    Returns a scalar reward.
-    """
-    components = execution_components(parsed=parsed, passed=passed)
-    return sum(
-        (weights.get(component, 0.0) for component, ok in components.items() if ok),
-        0.0,
-    )
 
 
 class TestedImplementationReward(CodeReward):
@@ -85,7 +79,10 @@ class TestedImplementationReward(CodeReward):
             stop_reason=self._stop_reason(row),
         )
         return {
-            "correct_format": self.has_correct_format(processed),
-            "passes_syntax_check": self.has_valid_syntax(processed),
-            **execution_components(parsed=processed, passed=processed.passed),
+            "correct_format": self.has_correct_format(processed.parsed),
+            "passes_syntax_check": self.has_valid_syntax(processed.parsed),
+            **execution_components(
+                block=processed.executed_block,
+                passed=processed.passed,
+            ),
         }

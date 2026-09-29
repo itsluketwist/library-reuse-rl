@@ -129,9 +129,11 @@ The rules it follows:
   `</thought>`, or your own tags, see below), and is never analysed. The opening tag is
   optional, because some chat templates put it in the prompt. An opening tag with no closing
   tag means there is no answer.
-- **Code** is every complete fenced block labelled `python`, `py` or `python3`, or left
-  unlabelled. Other languages and unterminated fences are ignored. If the answer has no
-  fences but is entirely valid python, the whole answer is used as the code.
+- **Code** is every complete fenced block labelled `python`, `py` or `python3`, plus any
+  unlabelled fenced block whose code parses as python (unlabelled blocks often hold shell
+  commands, program output or directory trees). Other languages and unterminated fences are
+  ignored. If the answer has no fences but is entirely valid python, the whole answer is
+  used as the code.
 - **Libraries** are top-level import names in their original case (e.g. `PIL`). The standard
   library, relative imports, `__future__`, and `local_modules` are never counted as external.
   A library is *used* when a single code block imports it and then references it.

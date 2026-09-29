@@ -2,8 +2,9 @@
 
 from typing import Iterable
 
+from lure import split_reasoning
+
 from src.eval.scoring.base import _rate
-from src.response.parser import parse_response
 from src.response.pick import extract_primary_pick
 
 
@@ -21,9 +22,10 @@ def score_product_choice(
     del python_executable, environment_root, environment_cache_dir
     results = []
     for row, (response, stop_reason) in zip(dataset, responses):
-        parsed = parse_response(response=response, stop_reason=stop_reason)
+        # only the answer is judged, never the reasoning
+        _, answer = split_reasoning(response)
         pick = extract_primary_pick(
-            response=parsed.answer or "",
+            response=answer,
             allowlist=row.get("allowlist") or [],
             aliases=row.get("aliases") or {},
             diy_terms=row.get("diy_terms") or [],
@@ -32,7 +34,7 @@ def score_product_choice(
             {
                 "idx": row["idx"],
                 "task_id": row.get("task_id"),
-                "stop_reason": parsed.stop_reason,
+                "stop_reason": stop_reason,
                 "response": response,
                 "category_id": row.get("category_id"),
                 "primary": pick.primary,

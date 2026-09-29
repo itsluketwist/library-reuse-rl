@@ -210,11 +210,5 @@ docs/
 # local cluster discovery reports.
 /environment-report*.txt
 
-# generated Fireworks datasets, generations, and remote launch records
-/fireworks/rft/data/
-/fireworks/rft/runs/
-/fireworks/output/
-/fireworks/rft/evaluator/.ep_tmp/
-
 # temporary ignore
 CLAUDE.md

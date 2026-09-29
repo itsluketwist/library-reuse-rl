@@ -137,8 +137,7 @@ Results are saved in the model's folder - `output/baselines/{model}/` for a base
 as two files per combination, both committed as the experimental record: `{name}.json`
 holds the run's settings and its aggregate analysis, and `{name}.generations.jsonl` holds
 one line per response - its full text and its scores. The code isn't stored separately:
-`parse_response` in [`src/response/parser.py`](src/response/parser.py) re-extracts it from
-the text.
+`lure.parse_response` (see [`reward/`](reward/)) re-extracts it from the text.
 Re-running the same combination overwrites its previous result - a combination whose
 result file already exists is skipped instead, unless the `update` setting (`--update` on
 `run_eval`) is set. Each invocation's logs still get their own `logs/{run_timestamp}/`
@@ -185,21 +184,6 @@ prompt, so the model knows what it can import and reuse - see
 [`src/prompts.py`](src/prompts.py). `run_eval` reads this straight from the same
 recipe file too, so training and evaluation always agree on it.
 
-Responses generated outside this repo (e.g. by [`fireworks/`](fireworks/), which only
-generates - see its README) are scored with the `run_scoring` console script
-(see [`src/run_scoring.py`](src/run_scoring.py)), instead of `run_eval`'s
-in-process vllm generation:
-
-```shell
-run_scoring -d library_usage -g output/fireworks/qwen3-8b/library_usage-qwen3.jsonl
-```
-
-`-d`/`--dataset` names a dataset from `config/eval_datasets.yaml`, same as `run_eval`, so
-the dataset path, evaluator, and execution environment are never duplicated. `-g`/`--generations`
-is a JSON or JSONL file with one record per (`task_id`, `sample_index`) carrying at least
-`content` and `finish_reason` (the schema `fireworks/fw_rlvr/inference.py` writes). Output
-defaults alongside the generations file, replacing its suffix with `.json`.
-
 ## *rewards*
 
 GRPO training scores each response with a reward function built from named **reward
@@ -208,13 +192,12 @@ component names to the weight they contribute when satisfied - a component left 
 of a profile never contributes for that profile:
 
 ```yaml
-full:
-  correct_format: 0.1
-  passes_syntax_check: 0.05
-  passed_tests: 1.0
-
-correctness_only:
-  passed_tests: 1.0
+lu-v1:
+  correct_format: 0.25
+  passes_syntax_check: 0.25
+  external_lib_imported: 0.5
+  external_lib_used: 1.0
+  appropriate_lib_used: 0
 ```
 
 Pick a profile by name with `-rp`/`--reward-profile` (default `full`). The resolved
@@ -225,7 +208,9 @@ run's reward function stays recoverable.
 The reward logic lives in [`src/grpo/rewards/`](src/grpo/rewards/). The dataset row's
 `task_type` selects the reward class automatically; `-rp` selects that class's component
 weights. Incompatible combinations fail before training instead of silently becoming no-op
-components.
+components. Every reward (and every evaluator) parses responses with
+[lure](reward/README.md), so training and evaluation judge code, and the libraries it
+imports and uses, in exactly the same way.
 
 **To add a new reward profile**, add a top-level entry to `config/rewards.yaml` using
 existing component names.
@@ -253,6 +238,10 @@ them.
   see [`data/README.md`](data/README.md).
 - [`notebooks/`](notebooks/) - One-off, numbered notebooks for exploratory work that doesn't
   belong in `src/`.
+- [`reward/`](reward/) - lure (Library Usage REwards), our response parsing and library
+  analysis, released on PyPI as a standalone package (`pip install lure`); see
+  [`reward/README.md`](reward/README.md). It is used by the rewards, the evaluators and the
+  benchmark, and installed editable here.
 - [`output/`](output/) - Base models' evaluation results under `output/baselines/{model}/`,
   and everything from a training run under `output/{base-model}/{run-id}/`: its training
   metrics in `grpo/`, and each epoch's evaluation results in `epoch1/`, `epoch2/`, ... (see
@@ -274,14 +263,11 @@ them.
     `checkpoints.py` for reading and tidying the per-epoch checkpoints).
   - `run_eval.py` - the evaluation entry point: CLI parsing, dataset/output-path
     naming.
-  - `run_scoring.py` - the entry point for scoring responses generated outside
-    this repo (e.g. by `fireworks/`): CLI parsing, dataset/output-path naming.
   - `eval/` - the evaluation loop itself (model/tokenizer loading, generation,
-    scoring each response, saving results), plus `score_generations.py`'s alignment
-    of externally generated responses onto a dataset for the same scorers.
+    scoring each response, saving results).
   - `prompts.py` - builds the system prompt from the available-libraries list.
-  - `response/` - parses an LLM response into candidate code, sandboxes and runs it
-    against a record's test cases, and computes a reward from the outcome.
+  - `response/` - runs a response's code (parsed by lure) in a sandbox against a record's
+    test cases, measures code size and maintainability, and maps stop reasons.
   - `utils/` - shared config loading, logging, and I/O helpers.
 - [`tests/`](tests/) - Unit tests, mirroring the structure of `src/`.
 

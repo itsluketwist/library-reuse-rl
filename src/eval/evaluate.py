@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import lure
+
 from src.data import load_eval_dataset
 from src.eval.generate_api import ApiSettings, generate_api_responses
 from src.eval.scoring import score_dataset
@@ -163,6 +165,8 @@ def evaluate_model(
                 "dataset": name,
                 "dataset_file": dataset_file,
                 "evaluator": evaluator,
+                # the lure version that parsed and scored every response
+                "lure_version": lure.__version__,
                 "python_executable": python_executable,
                 "environment_root": environment_root,
                 "environment_cache_dir": environment_cache_dir,

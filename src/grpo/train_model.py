@@ -22,6 +22,7 @@ from functools import partial
 from pathlib import Path
 
 import datasets
+import lure
 import transformers
 from transformers import AutoTokenizer, TrainerCallback, set_seed
 from transformers.trainer_callback import TrainerControl, TrainerState
@@ -385,6 +386,8 @@ def train_model_with_grpo(
         # them into train_results.json regardless
         metrics["reward_profile"] = {"name": reward_profile, "weights": reward_weights}
         metrics["reward_kind"] = reward_kind
+        # the lure version that parsed and scored every completion
+        metrics["lure_version"] = lure.__version__
         metrics["epoch_checkpoints"] = {
             str(epoch): str(path) for epoch, path in checkpoints.items()
         }

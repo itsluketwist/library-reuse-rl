@@ -104,6 +104,22 @@ class TestExtractCodeBlocks:
         """Unlabelled and python-labelled fences (including extra info) are python."""
         assert extract_code_blocks(f"```{info}\nx = 1\n```") == ["x = 1"]
 
+    def test_broken_python_labelled_block_is_kept(self):
+        """A block labelled python is python, even when its code is broken."""
+        assert extract_code_blocks("```python\ndef broken(:\n```") == ["def broken(:"]
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "pip install requests\npython main.py",
+            "project/\n├── main.py\n└── utils.py",
+            "Output: 42 items processed",
+        ],
+    )
+    def test_unlabelled_non_python_is_skipped(self, text: str):
+        """An unlabelled fence only counts as python when its code parses."""
+        assert extract_code_blocks(f"```\n{text}\n```") == []
+
     @pytest.mark.parametrize("info", ["bash", "sh", "javascript", "text", "json"])
     def test_other_languages_are_skipped(self, info: str):
         """Fences in other languages are never analysed as python."""

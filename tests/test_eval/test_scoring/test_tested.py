@@ -2,8 +2,9 @@
 
 import sys
 
+from lure import parse_response
+
 from src.eval.scoring import score_dataset
-from src.response.parser import parse_response
 
 
 def _responses(*texts: str) -> list[list[tuple[str, str]]]:
@@ -43,6 +44,5 @@ print(value)
         assert results[0]["n_code_blocks"] == 2
         # the code is not stored, but re-extracts from the stored response
         reparsed = parse_response(results[0]["response"])
-        assert not reparsed.code_blocks[0].selected_for_tests
-        assert reparsed.code_blocks[1].selected_for_tests
-        assert "value = line.strip()" in (reparsed.code or "")
+        assert reparsed.longest_block is reparsed.code_blocks[1]
+        assert "value = line.strip()" in reparsed.longest_block.code

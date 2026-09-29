@@ -1,1 +1,0 @@
-eval-protocol @ git+https://github.com/eval-protocol/python-sdk.git@1a619c9071a982320d69ca1b97d6e0190f7edcf4

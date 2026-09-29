@@ -27,6 +27,8 @@ classifiers = [
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "llm-codegen-research",
+    # finds the code in a response and the libraries it imports and uses
+    "lure>=0.1.1",
     # code size (logical lines) and maintainability index of each response's code
     "radon",
 ]
@@ -43,3 +45,8 @@ dev = [
 
 [project.scripts]
 libreuseeval = "libreusebench.cli:main"
+
+# while developing, use the lure package from this repo (reward/) - this only affects local
+# installs, the published package just requires lure from pypi
+[tool.uv.sources]
+lure = { path = "../reward", editable = true }

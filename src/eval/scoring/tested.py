@@ -3,6 +3,7 @@
 from typing import Any, Iterable
 
 from src.eval.scoring.base import _average, _rate
+from src.response.metrics import code_metrics
 from src.response.pipeline import process_response
 
 
@@ -32,26 +33,32 @@ def score_tested(
             stop_reason=stop_reason,
         )
         n_passed += processed.passed
+        parsed = processed.parsed
+        block = processed.executed_block
+        logical_lines, maintainability_index = (
+            code_metrics(block.code) if block is not None else (None, None)
+        )
         # the response in full plus its scores. the extracted code is not stored, as
-        # parse_response(response) re-extracts it; the properties below describe the block
-        # marked for tests
+        # lure.parse_response(response) re-extracts it; the libraries, error and metrics
+        # below describe the block that was run (the longest one)
         results.append(
             {
                 "idx": row["idx"],
                 "task_id": row.get("task_id"),
-                "stop_reason": processed.stop_reason,
+                "stop_reason": stop_reason,
                 "response": response,
                 "passed": processed.passed,
                 "output": processed.output,
-                "has_reasoning": bool(processed.reasoning),
-                "has_answer": bool(processed.answer),
-                "n_code_blocks": len(processed.code_blocks),
-                "valid": processed.valid,
-                "error": processed.error,
-                "std_libs": processed.std_libs,
-                "ext_libs": processed.ext_libs,
-                "logical_lines": processed.logical_lines,
-                "maintainability_index": processed.maintainability_index,
+                "has_reasoning": bool(parsed.reasoning),
+                "has_answer": bool(parsed.answer),
+                "n_code_blocks": len(parsed.code_blocks),
+                # the answer has code and all of it parses, like passes_syntax_check
+                "valid": parsed.valid,
+                "error": block.error if block is not None else None,
+                "std_libs": sorted(block.stdlib_imports) if block is not None else [],
+                "ext_libs": sorted(block.external_imports) if block is not None else [],
+                "logical_lines": logical_lines,
+                "maintainability_index": maintainability_index,
             }
         )
 

@@ -11,10 +11,7 @@ from src.grpo.rewards.base import (
 )
 from src.grpo.rewards.library_usage import LibraryUsageReward
 from src.grpo.rewards.product_choice import ProductChoiceReward
-from src.grpo.rewards.tested_implementation import (
-    TestedImplementationReward,
-    compute_reward,
-)
+from src.grpo.rewards.tested_implementation import TestedImplementationReward
 
 
 # maps a dataset's task type to the reward class that scores it. the tested path is the
@@ -213,7 +210,6 @@ __all__ = [
     "TestedImplementationReward",
     "build_reward",
     "build_reward_functions",
-    "compute_reward",
     "infer_reward_kind",
     "load_reward_profile",
     "rows_from_columns",

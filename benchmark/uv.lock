@@ -68,6 +68,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "llm-codegen-research" },
+    { name = "lure" },
     { name = "radon" },
 ]
 
@@ -81,6 +82,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "llm-codegen-research" },
+    { name = "lure", editable = "../reward" },
     { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "radon" },
@@ -99,6 +101,10 @@ sdist = { url = "https://files.pythonhosted.org/packages/8c/30/9afbc5cffabe9fd27
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b2/21/bf2e8ad0086c43bb2203191cc7e394156c55997c2783226b434c3c50d943/llm_codegen_research-2.19-py3-none-any.whl", hash = "sha256:b72bf852c8c1b44f6093eb1f23eb09f1a79239594fb48cc7f09ba28f9d8b7672", size = 40051, upload-time = "2026-07-05T20:41:36.947Z" },
 ]
+
+[[package]]
+name = "lure"
+source = { editable = "../reward" }
 
 [[package]]
 name = "mando"

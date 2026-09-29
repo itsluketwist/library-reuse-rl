@@ -4,23 +4,35 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from lure import CodeBlock, ParsedResponse, parse_response
+
 from src.response.evaluate import evaluate_record
-from src.response.parser import ParsedResponse, parse_response
 
 
-@dataclass
-class ProcessedResponse(ParsedResponse):
+@dataclass(frozen=True)
+class ProcessedResponse:
     """
-    A parsed response plus the outcome of evaluating its code against a record.
+    A parsed response plus the outcome of running its code against a record's tests.
 
-    Inherits ParsedResponse's complete block collection. Candidate properties such as
-    `.code` and `.valid` resolve to the block marked for tests.
+    The program that is run is the answer's longest python code block (see
+    `executed_block`), since a response may also contain short usage examples.
     """
 
+    parsed: ParsedResponse
     passed: bool
-    output: (
-        str | None
-    )  # captured stdout or error message, None if there was no code to run
+    # captured stdout or error message, None if there was no code to run
+    output: str | None
+
+    @property
+    def executed_block(
+        self,
+    ) -> CodeBlock | None:
+        """
+        The code block that was run against the tests.
+
+        Returns the longest code block, or None when the answer has no code.
+        """
+        return self.parsed.longest_block
 
 
 def process_response(
@@ -31,26 +43,21 @@ def process_response(
     stop_reason: str = "unknown",
 ) -> ProcessedResponse:
     """
-    Parse a response and evaluate its code against a record.
+    Parse a response and run its longest code block against a record's tests.
 
-    Returns a ProcessedResponse with the parsed response's fields and the evaluation outcome.
+    Returns a ProcessedResponse with the parsed response and the evaluation outcome.
     """
-    parsed = parse_response(response=response, stop_reason=stop_reason)
+    parsed = parse_response(response, stop_reason=stop_reason)
+    block = parsed.longest_block
 
     # no code extracted means there is nothing to evaluate - the record fails
     # without an output, rather than running the empty string against the tests
-    if parsed.code is None:
-        passed: bool = False
-        output: str | None = None
-    else:
-        passed, output = evaluate_record(
-            code=parsed.code,
-            record=record,
-            python_executable=python_executable,
-        )
+    if block is None:
+        return ProcessedResponse(parsed=parsed, passed=False, output=None)
 
-    return ProcessedResponse(
-        **vars(parsed),
-        passed=passed,
-        output=output,
+    passed, output = evaluate_record(
+        code=block.code,
+        record=record,
+        python_executable=python_executable,
     )
+    return ProcessedResponse(parsed=parsed, passed=passed, output=output)

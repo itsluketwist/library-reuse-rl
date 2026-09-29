@@ -1,10 +1,11 @@
 """Split an LLM response into reasoning and answer, and extract the answer's python code."""
 
-import ast
 import re
 from collections.abc import Iterable
 from functools import lru_cache
 from typing import Any
+
+from lure.analysis import parse_python
 
 
 # the (opening, closing) tag pairs that wrap a model's reasoning by default
@@ -25,8 +26,8 @@ _FENCE = re.compile(
     re.DOTALL,
 )
 
-# fence languages treated as python - an unlabelled fence is assumed to be python
-PYTHON_LANGUAGES: frozenset[str] = frozenset({"", "py", "python", "python3"})
+# fence labels that mark a block as python
+PYTHON_LANGUAGES: frozenset[str] = frozenset({"py", "python", "python3"})
 
 
 def normalise_reasoning_tags(
@@ -79,6 +80,21 @@ def _reasoning_patterns(
     )
 
 
+def _is_valid_python(
+    code: str,
+) -> bool:
+    """
+    Check whether some text parses as python.
+
+    Returns True when the text is valid python.
+    """
+    try:
+        parse_python(code)
+    except (SyntaxError, ValueError, RecursionError):
+        return False
+    return True
+
+
 def split_reasoning(
     response: str,
     reasoning_tags: ReasoningTags = DEFAULT_REASONING_TAGS,
@@ -122,10 +138,12 @@ def extract_code_blocks(
     """
     Extract the python code from an answer (the response with reasoning removed).
 
-    Complete fenced code blocks labelled as python (or unlabelled) are extracted in the
-    order they appear, and fences in other languages (e.g. bash) are skipped. If the answer
-    has no fences at all, but the whole answer is valid python, it is treated as one raw
-    code block. Prose is never treated as code, and neither is an unterminated fence.
+    Complete fenced code blocks labelled as python are extracted in the order they appear,
+    even if their code is broken. Unlabelled fences often hold other things (shell commands,
+    program output, directory trees), so one only counts as python when its code parses.
+    Fences in other languages (e.g. bash) are skipped. If the answer has no fences at all,
+    but the whole answer is valid python, it is treated as one raw code block. Prose is
+    never treated as code, and neither is an unterminated fence.
 
     Returns the python code blocks, each stripped of surrounding whitespace.
     """
@@ -137,7 +155,11 @@ def extract_code_blocks(
             info = match.group("info").strip().lower().split()
             language = info[0] if info else ""
             code = match.group("code").strip()
-            if language in PYTHON_LANGUAGES and code:
+            if not code:
+                continue
+            if language in PYTHON_LANGUAGES or (
+                not language and _is_valid_python(code)
+            ):
                 blocks.append(code)
         return blocks
 
@@ -146,8 +168,4 @@ def extract_code_blocks(
         return []
 
     # fall back to the whole answer, but only when it is entirely valid python
-    try:
-        ast.parse(answer)
-    except (SyntaxError, ValueError, RecursionError):
-        return []
-    return [answer.strip()]
+    return [answer.strip()] if _is_valid_python(answer) else []

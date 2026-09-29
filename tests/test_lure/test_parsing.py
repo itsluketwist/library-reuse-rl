@@ -42,6 +42,15 @@ class TestParseResponse:
 
         assert not parsed.valid
 
+    def test_unlabelled_output_block_does_not_affect_validity(self):
+        """An unlabelled block of program output isn't python, so can't be invalid."""
+        parsed = parse_response(
+            "```python\nprint(sum([1, 2]))\n```\nThis prints:\n```\n3 items processed\n```",
+        )
+
+        assert parsed.valid
+        assert len(parsed.code_blocks) == 1
+
     def test_long_bash_block_does_not_affect_validity(self):
         """A longer non-python block is ignored, rather than failing the syntax check."""
         parsed = parse_response(

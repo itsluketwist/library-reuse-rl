@@ -2,6 +2,7 @@
 
 import ast
 import sys
+import warnings
 from collections.abc import Iterable
 from dataclasses import dataclass
 
@@ -337,6 +338,23 @@ class _ImportUsageVisitor(ast.NodeVisitor):
         self._visit_comprehension(node.generators, [node.key, node.value])
 
 
+def parse_python(
+    code: str,
+) -> ast.Module:
+    """
+    Parse python source into a syntax tree, without python's style warnings.
+
+    Model-written code often has style mistakes, like an invalid escape sequence in a
+    normal string, which make python emit a SyntaxWarning. They don't affect validity, and
+    would flood the logs.
+
+    Returns the parsed syntax tree, or raises SyntaxError when the code is invalid.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", SyntaxWarning)
+        return ast.parse(code)
+
+
 def analyse_code(
     code: str,
     local_modules: Iterable[str] = (),
@@ -354,7 +372,7 @@ def analyse_code(
     """
     visitor = _ImportUsageVisitor(local_modules=set(local_modules))
     try:
-        visitor.visit(ast.parse(code))
+        visitor.visit(parse_python(code))
     except (SyntaxError, ValueError, RecursionError) as error:
         # ValueError covers source containing null bytes, and RecursionError covers
         # extremely deeply nested code - a reward function must never crash on a response

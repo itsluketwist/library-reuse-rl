@@ -3,7 +3,6 @@
 from typing import Any
 
 from src.grpo.rewards.base import LibraryReward
-from src.response.parser import parse_response
 from src.response.pick import extract_primary_pick
 
 
@@ -27,10 +26,10 @@ class ProductChoiceReward(LibraryReward):
 
         Returns each component name mapped to whether the completion satisfies it.
         """
-        parsed = parse_response(response=content, stop_reason=self._stop_reason(row))
+        parsed = self.parse(content, row)
 
         pick = extract_primary_pick(
-            response=parsed.answer or "",
+            response=parsed.answer,
             allowlist=row.get("allowlist") or [],
             aliases=row.get("aliases") or {},
             diy_terms=row.get("diy_terms") or [],

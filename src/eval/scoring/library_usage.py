@@ -3,9 +3,9 @@
 from collections import Counter
 from typing import Any, Iterable
 
+from lure import is_appropriate_library, parse_response
+
 from src.eval.scoring.base import _library_statistics, _rate
-from src.grpo.rewards.library_usage import analyse_library_usage
-from src.response.parser import parse_response
 
 
 def _per_phrasing_mode_rate(
@@ -74,18 +74,20 @@ def score_library_usage(
     for row, samples in zip(dataset, responses):
         row_results = []
         for sample_idx, (response, stop_reason) in enumerate(samples):
-            parsed = parse_response(response=response, stop_reason=stop_reason)
-            usage = analyse_library_usage(parsed, row.get("local_modules"))
-            external = usage.external_libs
-            used = usage.used_external_libs
-            useful = set(row.get("useful_libs") or [])
-            appropriate = sorted(lib for lib in used if lib in useful)
-            all_blocks_valid = (
-                bool(usage.n_code_blocks)
-                and usage.n_valid_code_blocks == usage.n_code_blocks
+            # the same parsing and library analysis (lure) as the training reward
+            parsed = parse_response(
+                response,
+                stop_reason=stop_reason,
+                local_modules=row.get("local_modules") or (),
             )
-            # one working code block is enough to count the response as valid
-            any_block_valid = usage.n_valid_code_blocks > 0
+            external = sorted(parsed.external_imports)
+            used = sorted(parsed.external_used)
+            appropriate = [
+                lib
+                for lib in used
+                if is_appropriate_library(lib, row.get("useful_libs") or ())
+            ]
+            n_valid_blocks = sum(block.valid for block in parsed.code_blocks)
             result = {
                 "idx": row["idx"],
                 "task_id": row.get("task_id"),
@@ -93,12 +95,14 @@ def score_library_usage(
                 "stop_reason": stop_reason,
                 "response": response,
                 "category_id": row.get("category_id"),
-                "valid": any_block_valid,
+                # valid means the answer has code and all of it parses, matching the
+                # training reward's passes_syntax_check
+                "valid": parsed.valid,
                 # the code blocks themselves are not stored - parse_response(response)
                 # re-extracts them - only what was found in them
-                "n_code_blocks": usage.n_code_blocks,
-                "n_valid_code_blocks": usage.n_valid_code_blocks,
-                "all_code_blocks_valid": all_blocks_valid,
+                "n_code_blocks": len(parsed.code_blocks),
+                "n_valid_code_blocks": n_valid_blocks,
+                "any_code_block_valid": n_valid_blocks > 0,
                 "external_libs": external,
                 "external_lib": bool(external),
                 "used_external_libs": used,

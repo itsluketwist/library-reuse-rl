@@ -139,3 +139,11 @@ class TestInvalidCode:
 
         assert not block.valid
         assert block.error
+
+
+def test_style_warnings_are_silenced(recwarn: pytest.WarningsRecorder):
+    """Invalid escape sequences in model code don't emit SyntaxWarnings."""
+    code = 'import re\nre.match("\\d+", text)'
+
+    assert analyse_code(code).valid
+    assert not [w for w in recwarn if issubclass(w.category, SyntaxWarning)]

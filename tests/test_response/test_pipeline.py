@@ -25,8 +25,8 @@ print(line)
             response=response, record=record, python_executable=PYTHON
         )
 
-        assert result.code is not None
-        assert result.code.strip() == "line = input()\nprint(line)"
+        assert result.executed_block is not None
+        assert result.executed_block.code == "line = input()\nprint(line)"
         assert result.passed is True
 
     def test_failing_response(self):
@@ -54,7 +54,7 @@ print("wrong")
             python_executable=PYTHON,
         )
 
-        assert result.code is None
+        assert result.executed_block is None
         assert result.passed is False
         assert result.output is None
 
@@ -78,12 +78,35 @@ print(result)
             python_executable=PYTHON,
         )
 
-        assert result.code is not None
-        assert "result = line.strip()" in result.code
+        assert result.executed_block is not None
+        assert "result = line.strip()" in result.executed_block.code
+        assert result.passed is True
+
+    def test_longer_non_python_block_is_not_executed(self):
+        """Only python code is run, even when a bash block is longer."""
+        response = """
+```bash
+pip install nothing
+echo one
+echo two
+echo three
+```
+```python
+print(input())
+```
+"""
+        record = {"inputs": ["hello\n"], "expected_outputs": ["hello\n"]}
+
+        result = process_response(
+            response=response,
+            record=record,
+            python_executable=PYTHON,
+        )
+
         assert result.passed is True
 
     def test_stop_reason_is_passed_through(self):
-        """stop_reason flows into the returned ProcessedResponse like any other field."""
+        """stop_reason flows into the parsed response, marking it as truncated."""
         record = {"inputs": ["hello\n"], "expected_outputs": ["hello\n"]}
 
         result = process_response(
@@ -93,4 +116,5 @@ print(result)
             stop_reason="length",
         )
 
-        assert result.stop_reason == "length"
+        assert result.parsed.stop_reason == "length"
+        assert result.parsed.truncated

@@ -1,7 +1,8 @@
 """Tests for scoring the library-usage split."""
 
+from lure import parse_response
+
 from src.eval.scoring import score_dataset
-from src.response.parser import parse_response
 
 
 def _responses(*texts: str) -> list[list[tuple[str, str]]]:
@@ -94,18 +95,19 @@ Item()
         assert results[0]["used_external_libs"] == ["numpy", "requests"]
         assert results[0]["n_code_blocks"] == 2
         assert results[0]["n_valid_code_blocks"] == 2
-        assert results[0]["all_code_blocks_valid"]
+        assert results[0]["valid"]
         # the blocks are not stored, but re-extract from the stored response
         reparsed = parse_response(results[0]["response"])
-        assert not reparsed.code_blocks[0].selected_for_tests
-        assert reparsed.code_blocks[1].selected_for_tests
+        assert len(reparsed.code_blocks) == 2
+        assert reparsed.longest_block is reparsed.code_blocks[1]
         assert analysis["library_use"]["library_counts"] == {
             "numpy": 1,
             "requests": 1,
         }
 
-    def test_one_valid_block_is_enough_for_valid_code_rate(self):
-        """A throwaway broken snippet alongside a working one still counts as valid."""
+    def test_every_block_must_parse_for_valid_code_rate(self):
+        """A broken snippet alongside a working one makes the response invalid, matching
+        the training reward's passes_syntax_check."""
         dataset = [
             {
                 "idx": 0,
@@ -133,12 +135,11 @@ def broken(:
 
         assert results[0]["n_code_blocks"] == 2
         assert results[0]["n_valid_code_blocks"] == 1
-        # one working block is enough, unlike all_code_blocks_valid below
-        assert results[0]["valid"]
-        assert not results[0]["all_code_blocks_valid"]
-        assert analysis["valid_code_rate"] == 1.0
-        # external_lib_used always comes from a block that parsed
-        assert analysis["external_lib_used_rate"] <= analysis["valid_code_rate"]
+        assert not results[0]["valid"]
+        assert results[0]["any_code_block_valid"]
+        assert analysis["valid_code_rate"] == 0.0
+        # the working block's library use still counts
+        assert analysis["external_lib_used_rate"] == 1.0
 
     def test_multiple_samples_are_all_scored_and_aggregated_per_task(self):
         """With n_samples > 1, every sample is scored; per-task rates are any-of-k."""

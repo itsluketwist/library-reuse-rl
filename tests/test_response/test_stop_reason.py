@@ -6,7 +6,7 @@ from src.response.stop_reason import map_stop_reason, stop_reason_from_tokens
 
 
 class TestMapStopReason:
-    """One mapping shared by vllm, API, and externally generated responses."""
+    """One mapping shared by vllm and API responses."""
 
     @pytest.mark.parametrize(
         ("finish_reason", "expected"),

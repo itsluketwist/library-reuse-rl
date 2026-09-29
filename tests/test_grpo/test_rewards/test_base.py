@@ -1,6 +1,7 @@
 """Tests for the shared reward base classes, helpers, and profile loading."""
 
 import pytest
+from lure import ParsedResponse, parse_response
 
 from src.grpo.rewards.base import (
     CodeReward,
@@ -8,44 +9,23 @@ from src.grpo.rewards.base import (
     load_reward_profile,
     rows_from_columns,
 )
-from src.response.parser import ParsedCodeBlock, ParsedResponse
 
 
 def _parsed(
     reasoning: str = "thinking",
-    answer: str | None = "answer",
+    # real prose, since an answer that happens to be valid python (e.g. one word) is code
+    answer: str | None = "Here is my answer.",
     code: str | None = "print(1)",
-    valid: bool | None = True,
-    std_libs: list[str] | None = None,
-    ext_libs: list[str] | None = None,
-    lib_usage: dict[str, list[dict]] | None = None,
     stop_reason: str = "eos",
 ) -> ParsedResponse:
-    """Build a ParsedResponse for the base-class tests."""
-    code_blocks = (
-        [
-            ParsedCodeBlock(
-                language="python",
-                text=code,
-                valid=valid,
-                error=None,
-                std_libs=std_libs or [],
-                ext_libs=ext_libs or [],
-                lib_usage=lib_usage or {},
-                logical_lines=1,
-                maintainability_index=100.0,
-                selected_for_tests=True,
-            )
-        ]
-        if code is not None
-        else []
-    )
-    return ParsedResponse(
-        reasoning=reasoning,
-        answer=answer,
-        code_blocks=code_blocks,
-        stop_reason=stop_reason,
-    )
+    """Build a ParsedResponse for the base-class tests, by parsing a real response."""
+    body = ""
+    if answer is not None:
+        body = answer
+        if code is not None:
+            body += f"\n```python\n{code}\n```"
+    response = f"<think>{reasoning}</think>\n{body}" if reasoning else body
+    return parse_response(response, stop_reason=stop_reason)
 
 
 class TestRowsFromColumns:
@@ -137,19 +117,22 @@ class TestLibraryRewardWiring:
 class TestCodeReward:
     """Tests for the shared CodeReward helpers."""
 
-    def test_external_libraries_subtracts_local_modules(self):
-        """The project's own modules are not counted as external libraries."""
-        parsed = _parsed(ext_libs=["requests", "app"])
+    def test_parse_subtracts_the_rows_local_modules(self):
+        """The project's own modules (the row's local_modules) are not external."""
+        reward = CodeReward({})
+        content = "r</think>\n```python\nimport requests\nimport app\n```"
 
-        assert CodeReward.external_libraries(parsed, ["app"]) == ["requests"]
-        assert CodeReward.external_libraries(parsed, None) == ["requests", "app"]
+        parsed = reward.parse(content, {"local_modules": ["app"]})
+        assert parsed.external_imports == {"requests"}
+        assert reward.parse(content, {}).external_imports == {"requests", "app"}
 
-    def test_valid_syntax_only_cares_about_validity(self):
-        """passes_syntax_check needs the selected code fragment to parse."""
+    def test_valid_syntax_needs_code_that_parses(self):
+        """passes_syntax_check needs python code, all of which parses."""
         reward = CodeReward({"passes_syntax_check": 0.2})
 
-        assert reward.has_valid_syntax(_parsed(valid=True)) is True
-        assert reward.has_valid_syntax(_parsed(valid=False)) is False
+        assert reward.has_valid_syntax(_parsed(code="print(1)")) is True
+        assert reward.has_valid_syntax(_parsed(code="def broken(:")) is False
+        assert reward.has_valid_syntax(_parsed(code=None)) is False
 
 
 class TestLoadRewardProfile:
