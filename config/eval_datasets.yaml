@@ -28,6 +28,11 @@ library_usage:
 library_usage_val:
   path: "data/train/library_usage/val.jsonl"
   evaluator: library_usage
+# the training split itself - not a held-out result, but shows how a model scores on the
+# exact prompts training uses, e.g. to analyse the rewards a base model would start from
+library_usage_train:
+  path: "data/train/library_usage/train.jsonl"
+  evaluator: library_usage
 
 # LibReuseBench: library-agnostic stdin/stdout problems with executable test cases
 libreusebench_test:

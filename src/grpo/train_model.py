@@ -220,12 +220,6 @@ def train_model_with_grpo(
     overrides["top_p"] = rollout_decoding["top_p"]
     overrides["top_k"] = rollout_decoding["top_k"]
     overrides["max_completion_length"] = rollout_decoding["max_new_tokens"]
-    # passed to the chat template, as eval does (see src/eval/generate_vllm.py) - needed
-    # since some models (e.g. domyn-small) don't reason unless it is switched on
-    overrides["chat_template_kwargs"] = {
-        "enable_thinking": rollout_decoding.get("enable_thinking", True),
-    }
-
     if epochs is not None:
         overrides["num_train_epochs"] = epochs
     if max_steps is not None:

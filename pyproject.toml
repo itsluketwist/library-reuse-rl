@@ -78,6 +78,8 @@ dependencies = [
 #   without it flashinfer compiles them on first use, which needs a cuda compiler (nvcc) the
 #   nodes don't have. its version must equal the flashinfer-python version vllm pins.
 # - transformers and accelerate are pinned to the versions uv resolved for the above
+# - liger-kernel is required by trl's fused GRPO loss (use_liger_kernel in the recipe), which
+#   saves memory on large-vocabulary models. pure python on triton, like the package below.
 # - flash-linear-attention holds the fast kernels for qwen3.5's linear-attention layers -
 #   without it transformers falls back to a pure-torch version, over 10x slower. it is pure
 #   python on triton (no compiled cuda libraries), so it runs on isambard as-is.
@@ -89,6 +91,7 @@ hpc = [
     "accelerate==1.15.0 ; sys_platform == 'linux'",
     "flash-linear-attention==0.5.2 ; sys_platform == 'linux'",
     "flashinfer-jit-cache==0.6.16.post3 ; sys_platform == 'linux'",
+    "liger-kernel==0.8.3 ; sys_platform == 'linux'",
     "torch==2.13.0 ; sys_platform == 'linux'",
     "torchaudio==2.11.0 ; sys_platform == 'linux'",
     "torchcodec==0.16.0 ; sys_platform == 'linux'",

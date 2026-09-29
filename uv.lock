@@ -1695,6 +1695,19 @@ requires-dist = [
 provides-extras = ["dev"]
 
 [[package]]
+name = "liger-kernel"
+version = "0.8.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "torch" },
+    { name = "triton" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/06/2f/30d51933d4f53da7c78cc972b7a24cf4292e19e249f5f0c3946e71684562/liger_kernel-0.8.3.tar.gz", hash = "sha256:a5b2a1e297da9e4e8a95b7f303d5b73d1a2fdd023b72d380164f12854551e168", size = 6756028, upload-time = "2026-09-16T18:57:26.309Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/67/9f/9d1d35fd945b9c84024a46caaf19200d1bfbe536f24f3f1ab6a38480f26c/liger_kernel-0.8.3-py3-none-any.whl", hash = "sha256:c22541c11ba0102b8989e3be3ace3fecc81737dc3f7a7e63e2c587c153eede90", size = 887607, upload-time = "2026-09-16T18:57:24.435Z" },
+]
+
+[[package]]
 name = "llguidance"
 version = "1.7.6"
 source = { registry = "https://pypi.org/simple" }
@@ -3501,6 +3514,7 @@ hpc = [
     { name = "accelerate", marker = "sys_platform == 'linux'" },
     { name = "flash-linear-attention", marker = "sys_platform == 'linux'" },
     { name = "flashinfer-jit-cache", marker = "sys_platform == 'linux'" },
+    { name = "liger-kernel", marker = "sys_platform == 'linux'" },
     { name = "torch", marker = "sys_platform == 'linux'" },
     { name = "torchaudio", marker = "sys_platform == 'linux'" },
     { name = "torchcodec", marker = "sys_platform == 'linux'" },
@@ -3522,6 +3536,7 @@ requires-dist = [
     { name = "huggingface-hub" },
     { name = "jupyter" },
     { name = "libreusebench", editable = "benchmark" },
+    { name = "liger-kernel", marker = "sys_platform == 'linux' and extra == 'hpc'", specifier = "==0.8.3" },
     { name = "llm-codegen-research" },
     { name = "lure", editable = "reward" },
     { name = "lxml" },
