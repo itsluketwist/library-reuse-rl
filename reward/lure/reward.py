@@ -86,6 +86,7 @@ def library_components(
         stop_reason=stop_reason,
         local_modules=local_modules,
         reasoning_tags=reasoning_tags,
+        require_reasoning=require_reasoning,
     )
     return components_from_parsed(
         parsed,
@@ -258,7 +259,9 @@ def create_library_reward(
 
     Each component adds its weight to the reward when the response satisfies it:
     - correct_format: the response has reasoning (unless `require_reasoning` is False) and
-      an answer, and was not cut off by the token limit.
+      an answer, and was not cut off by the token limit. With `require_reasoning`, a
+      response with no reasoning tags is unfinished reasoning, so it has no answer (and no
+      code) at all.
     - passes_syntax_check: the answer has python code, and all of it is valid.
     - external_lib_imported: the code imports an external (non-standard-library) library.
     - external_lib_used: the code imports an external library and then actually uses it.

@@ -116,6 +116,7 @@ def parse_response(
     stop_reason: str | None = None,
     local_modules: Iterable[str] = (),
     reasoning_tags: ReasoningTags = DEFAULT_REASONING_TAGS,
+    require_reasoning: bool = False,
 ) -> ParsedResponse:
     """
     Parse an LLM response into its reasoning, answer, and analysed python code blocks.
@@ -124,11 +125,17 @@ def parse_response(
     "length"), used to detect truncated responses. `local_modules` are the top-level names
     of the project's own modules, which are never counted as external libraries.
     `reasoning_tags` are the (opening, closing) pairs that wrap the model's reasoning, e.g.
-    [("[THINK]", "[/THINK]")] - see split_reasoning.
+    [("[THINK]", "[/THINK]")]. Set `require_reasoning` for a model that always reasons
+    first, so a response with no tags counts as unfinished reasoning rather than an answer -
+    see split_reasoning.
 
     Returns the ParsedResponse.
     """
-    reasoning, answer = split_reasoning(response or "", reasoning_tags=reasoning_tags)
+    reasoning, answer = split_reasoning(
+        response or "",
+        reasoning_tags=reasoning_tags,
+        require_reasoning=require_reasoning,
+    )
     local = list(local_modules)
     code_blocks = tuple(
         analyse_code(code, local_modules=local) for code in extract_code_blocks(answer)

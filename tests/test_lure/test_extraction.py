@@ -23,6 +23,20 @@ class TestSplitReasoning:
         """A response without reasoning tags is entirely answer."""
         assert split_reasoning("  just an answer  ") == ("", "just an answer")
 
+    def test_no_tags_is_unfinished_reasoning_when_required(self):
+        """When the model must reason first, a response without tags never finished it."""
+        assert split_reasoning("  still thinking  ", require_reasoning=True) == (
+            "still thinking",
+            "",
+        )
+
+    def test_close_tag_splits_even_when_reasoning_is_required(self):
+        """The usual split is unchanged when reasoning is required."""
+        assert split_reasoning("plan</think>answer", require_reasoning=True) == (
+            "plan",
+            "answer",
+        )
+
     @pytest.mark.parametrize("tag", ["think", "thinking", "reasoning", "THOUGHT"])
     def test_tag_variants(self, tag: str):
         """The common reasoning tag names are recognised, in any case."""

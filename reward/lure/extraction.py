@@ -98,16 +98,21 @@ def _is_valid_python(
 def split_reasoning(
     response: str,
     reasoning_tags: ReasoningTags = DEFAULT_REASONING_TAGS,
+    require_reasoning: bool = False,
 ) -> tuple[str, str]:
     """
     Split a response into its reasoning and its final answer.
 
     Everything before the first closing reasoning tag (e.g. </think>) is reasoning, and
     everything after it is the answer. Only the closing tag is required, because some chat
-    templates (e.g. Qwen3) put the opening <think> tag in the prompt rather than the
+    templates (e.g. Qwen3.5) put the opening <think> tag in the prompt rather than the
     response. If there is an opening tag but no closing tag, the model never finished
-    reasoning, so there is no answer. If there are no tags at all, the whole response is
-    the answer.
+    reasoning, so there is no answer.
+
+    A response with no tags at all is ambiguous. By default it is all answer (e.g. from a
+    model that doesn't reason). With `require_reasoning`, the model is known to reason
+    first, so it is all unfinished reasoning (e.g. cut off by the token limit before
+    </think>, when the template put <think> in the prompt), and there is no answer.
 
     `reasoning_tags` are the (opening, closing) pairs to look for, matched ignoring case,
     e.g. [("[THINK]", "[/THINK]")]. By default the common xml-style tags are used (<think>,
@@ -129,6 +134,9 @@ def split_reasoning(
     if opening.search(response):
         return opening.sub("", response).strip(), ""
 
+    # no tags at all: unfinished reasoning if the model must reason first, else the answer
+    if require_reasoning:
+        return response.strip(), ""
     return "", response.strip()
 
 

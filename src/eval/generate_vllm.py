@@ -9,7 +9,13 @@ from typing import Any
 
 from vllm import LLM, SamplingParams
 
+from src.eval.reasoning_prefill import prefilled_reasoning_tag
 from src.response.stop_reason import map_stop_reason
+
+
+# how many of each prompt's final tokens to decode when looking for a prefilled opening
+# reasoning tag - enough to cover the tag and its trailing whitespace
+_PROMPT_END_TOKENS = 16
 
 
 def generate_vllm_responses(
@@ -68,10 +74,21 @@ def generate_vllm_records(
         },
     )
 
+    # some chat templates end the prompt with the opening <think>, so the model's text starts
+    # mid-reasoning. store the whole assistant turn by adding that tag back, so a response
+    # cut off before </think> is scored as unfinished reasoning rather than as an answer
+    tokenizer = llm.get_tokenizer()
+    prefills = [
+        prefilled_reasoning_tag(
+            tokenizer.decode(list(output.prompt_token_ids or [])[-_PROMPT_END_TOKENS:]),
+        )
+        for output in outputs
+    ]
+
     return [
         [
             {
-                "content": sample.text,
+                "content": prefill + sample.text,
                 "finish_reason": map_stop_reason(sample.finish_reason),
                 "usage": {
                     "prompt_tokens": len(output.prompt_token_ids or []),
@@ -80,5 +97,5 @@ def generate_vllm_records(
             }
             for sample in output.outputs
         ]
-        for output in outputs
+        for output, prefill in zip(outputs, prefills)
     ]

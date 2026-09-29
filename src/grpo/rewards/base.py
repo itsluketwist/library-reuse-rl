@@ -201,12 +201,17 @@ class LibraryReward:
         task was set in - are passed through, so importing the project's own code (e.g.
         `from app.models import User`) is never mistaken for reusing an external library.
 
+        Every model we train reasons first, and some chat templates (e.g. qwen3.5's) put
+        the opening <think> in the prompt - so a completion without a closing </think> is
+        unfinished reasoning, with no answer (and no code to earn credit for).
+
         Returns the ParsedResponse.
         """
         return parse_response(
             content,
             stop_reason=self._stop_reason(row),
             local_modules=row.get("local_modules") or (),
+            require_reasoning=True,
         )
 
 

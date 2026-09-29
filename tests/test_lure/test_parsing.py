@@ -99,6 +99,15 @@ class TestParseResponse:
         assert parsed.reasoning == "import pandas\npandas.read_csv(p)"
         assert parsed.external_imports == set()
 
+    def test_require_reasoning(self):
+        """With reasoning required, code in an unfinished (untagged) response is ignored."""
+        response = "Thinking...\n```python\nimport requests\nrequests.get(u)\n```"
+
+        assert parse_response(response).external_used == {"requests"}
+        parsed = parse_response(response, require_reasoning=True)
+        assert parsed.answer == ""
+        assert parsed.code_blocks == ()
+
     def test_local_modules(self):
         """Local modules are passed through to every block's analysis."""
         parsed = parse_response(

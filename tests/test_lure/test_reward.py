@@ -44,6 +44,18 @@ class TestLibraryComponents:
         assert not library_components(response)["correct_format"]
         assert library_components(response, require_reasoning=False)["correct_format"]
 
+    def test_untagged_response_is_unfinished_reasoning(self):
+        """A reasoning model cut off before </think> (with <think> in the prompt) earns
+        nothing, even for code it wrote while reasoning."""
+        response = "Let me think.\n```python\nimport requests\nrequests.get(u)\n```"
+
+        components = library_components(response, stop_reason="length")
+        assert not any(components.values())
+
+        # without require_reasoning, the same text is an answer
+        relaxed = library_components(response, require_reasoning=False)
+        assert relaxed["external_lib_used"]
+
     def test_format_needs_an_answer(self):
         """Reasoning that never finished has no answer, so fails the format check."""
         assert not library_components("<think>still thinking")["correct_format"]
@@ -133,7 +145,8 @@ class TestCreateLibraryReward:
             "[THINK]plan[/THINK]\n```python\nimport requests\nrequests.get(u)\n```"
         )
 
-        assert create_library_reward()(response) == 1.75
+        # with the default tags, nothing is recognised, so it all counts as unfinished reasoning
+        assert create_library_reward()(response) == 0.0
         reward = create_library_reward(reasoning_tags=[("[THINK]", "[/THINK]")])
         assert reward(response) == 2.0
 
