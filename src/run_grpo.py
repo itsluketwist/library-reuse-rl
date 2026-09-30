@@ -1,6 +1,7 @@
 """The command-line entry point and orchestration for RL training with GRPO."""
 
 import os
+import sys
 import uuid
 from argparse import ArgumentParser
 from pathlib import Path
@@ -321,6 +322,7 @@ def run_grpo(
 
 def main() -> None:
     args = parser.parse_args()
+    sys.argv = sys.argv[:1]
     silence_library_warnings()
 
     # --- startup banner (once per run, not once per gpu) ---

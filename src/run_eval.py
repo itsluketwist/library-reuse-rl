@@ -1,6 +1,7 @@
 """The command-line entry point and orchestration for evaluating untrained, pretrained, or trained models."""
 
 import os
+import sys
 import threading
 from argparse import ArgumentParser
 from pathlib import Path
@@ -385,6 +386,7 @@ def _exit_if_shutdown_hangs(
 
 def main() -> None:
     args = parser.parse_args()
+    sys.argv = sys.argv[:1]
     silence_library_warnings()
     datasets = args.datasets.split(",") if args.datasets else None
 
