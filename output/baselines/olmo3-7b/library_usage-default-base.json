@@ -1,0 +1,99 @@
+{
+  "metadata": {
+    "base": "allenai/OLMo-3-7B-Think",
+    "weights": null,
+    "provider": "vllm",
+    "dataset": "library_usage",
+    "dataset_file": "data/train/library_usage/test.jsonl",
+    "evaluator": "library_usage",
+    "lure_version": "0.1.2",
+    "python_executable": null,
+    "environment_root": null,
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 8192,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "library_usage",
+    "n_total": 540,
+    "n_valid_code": 254,
+    "n_external_lib_used": 58,
+    "n_appropriate_lib_used": 43,
+    "valid_code_rate": 0.4703703703703704,
+    "external_lib_rate": 0.1259259259259259,
+    "external_lib_used_rate": 0.10740740740740741,
+    "appropriate_lib_rate": 0.07962962962962963,
+    "library_use": {
+      "using_lib_rate": 0.10740740740740741,
+      "avg_extlibs": 0.1425925925925926,
+      "library_counts": {
+        "pandas": 19,
+        "numpy": 9,
+        "sklearn": 7,
+        "bs4": 7,
+        "pydantic": 5,
+        "fastapi": 5,
+        "qrcode": 4,
+        "PIL": 3,
+        "markdown": 3,
+        "watchdog": 3,
+        "barcode": 2,
+        "sqlalchemy": 2,
+        "inotify": 2,
+        "pyinotify": 2,
+        "pyqr": 1,
+        "matplotlib": 1,
+        "rarfile": 1,
+        "p7zlib": 1
+      },
+      "appropriate_lib_rate": 0.07962962962962963,
+      "appropriate_given_use_rate": 0.7413793103448276
+    },
+    "library_use_per_task": {
+      "using_lib_rate": 0.23148148148148148,
+      "avg_extlibs": 0.4074074074074074,
+      "library_counts": {
+        "pandas": 9,
+        "numpy": 5,
+        "sklearn": 4,
+        "bs4": 3,
+        "fastapi": 3,
+        "PIL": 2,
+        "qrcode": 2,
+        "pydantic": 2,
+        "barcode": 2,
+        "sqlalchemy": 2,
+        "inotify": 2,
+        "pyinotify": 2,
+        "pyqr": 1,
+        "matplotlib": 1,
+        "markdown": 1,
+        "watchdog": 1,
+        "rarfile": 1,
+        "p7zlib": 1
+      },
+      "appropriate_lib_rate": 0.17592592592592593,
+      "appropriate_given_use_rate": 0.76
+    },
+    "external_lib_used_rate_by_phrasing_mode": {
+      "repo": 0.12777777777777777,
+      "script": 0.05,
+      "simple": 0.14444444444444443
+    },
+    "appropriate_lib_rate_by_phrasing_mode": {
+      "repo": 0.08333333333333333,
+      "script": 0.03888888888888889,
+      "simple": 0.11666666666666667
+    }
+  }
+}
