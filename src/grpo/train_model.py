@@ -168,6 +168,7 @@ def train_model_with_grpo(
     debug: bool = False,
     epochs: int | None = None,
     max_steps: int | None = None,
+    learning_rate: float | None = None,
 ) -> dict[int, Path]:
     """
     Run full-weight GRPO training for `model_name_or_path` against the dataset at
@@ -179,8 +180,9 @@ def train_model_with_grpo(
     colocated on those same gpus.
 
     `seed` and `library_prompt_style` override the corresponding `recipe_config` fields
-    (resolved once by the caller), and `epochs`/`max_steps` override the recipe's run
-    length when given (see the debug modes in scripts/submit_debug.sh); every other
+    (resolved once by the caller), `epochs`/`max_steps` override the recipe's run length
+    when given (see the debug modes in scripts/submit_debug.sh), and `learning_rate` its
+    peak learning rate (see training_jobs in scripts/submit_grpo.sh); every other
     hyperparameter, including libraries_requirements_file and the rollout decoding
     settings, comes from `recipe_config`.
 
@@ -227,6 +229,8 @@ def train_model_with_grpo(
         overrides["num_train_epochs"] = epochs
     if max_steps is not None:
         overrides["max_steps"] = max_steps
+    if learning_rate is not None:
+        overrides["learning_rate"] = learning_rate
 
     if debug:
         # a debug run is only a couple of steps: log every step, cap rollout length, and
@@ -393,6 +397,8 @@ def train_model_with_grpo(
         # them into train_results.json regardless
         metrics["reward_profile"] = {"name": reward_profile, "weights": reward_weights}
         metrics["reward_kind"] = reward_kind
+        # the peak learning rate used, which a run can override (see --learning-rate)
+        metrics["learning_rate"] = training_args.learning_rate
         # the lure version that parsed and scored every completion
         metrics["lure_version"] = lure.__version__
         metrics["epoch_checkpoints"] = {

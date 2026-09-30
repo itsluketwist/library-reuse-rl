@@ -29,13 +29,15 @@ models=(
     # "olmo3-7b"
 )
 
-# training jobs are dataset|reward-profile|prompt-style. keeping these together avoids
-# silently applying a reward or a python-specific system prompt to the wrong task.
+# training jobs are dataset|reward-profile|prompt-style|learning-rate. keeping these together
+# avoids silently applying a reward or a python-specific system prompt to the wrong task. the
+# learning rate is optional - leave it off (e.g. "...|lu-v1|base") to use the recipe's.
 training_jobs=(
-    "data/train/library_usage|lu-v1|base"
-    # the same, with the fixed system prompt nudging towards third-party libraries (see
-    # src/prompts.py) - its epochs are still evaluated as submit_eval.sh sets (base prompt)
-    "data/train/library_usage|lu-v1|ext"
+    # "data/train/library_usage|lu-v1|base"
+    "data/train/library_usage|lu-v1|base|3e-6"
+    # with the fixed system prompt nudging towards third-party libraries (see src/prompts.py) -
+    # its epochs are still evaluated as submit_eval.sh sets (base prompt)
+    "data/train/library_usage|lu-v1|ext|3e-6"
     # "data/train/skywork|full|lib"
 )
 
@@ -82,7 +84,7 @@ if [ ${#training_jobs[@]} -eq 0 ]; then
     exit 1
 fi
 for training_job in "${training_jobs[@]}"; do
-    IFS="|" read -r training_dataset _reward_profile _prompt_style <<< "$training_job"
+    IFS="|" read -r training_dataset _reward_profile _prompt_style _learning_rate <<< "$training_job"
     if [ ! -f "$training_dataset/train.jsonl" ] || \
         [ ! -f "$training_dataset/val.jsonl" ]; then
         echo "Training dataset is missing train.jsonl or val.jsonl: $training_dataset"
@@ -109,19 +111,28 @@ for model in "${models[@]}"; do
     echo "Submitting jobs for $model"
 
     for training_job in "${training_jobs[@]}"; do
-        IFS="|" read -r training_dataset reward_profile library_prompt_style <<< "$training_job"
+        IFS="|" read -r training_dataset reward_profile library_prompt_style learning_rate \
+            <<< "$training_job"
         dataset_name=$(basename "$training_dataset")
+
+        # the optional learning rate overrides the recipe's, and is named in the job and log
+        learning_rate_flag=""
+        job_name="train-${model}-${dataset_name}-${library_prompt_style}"
+        if [ -n "$learning_rate" ]; then
+            learning_rate_flag="--learning-rate $learning_rate"
+            job_name="${job_name}-lr${learning_rate}"
+        fi
 
         # prefix the epoch checkpoints are registered under (config/trained_models.yaml), fixed
         # here so the dependent eval jobs below can name them before training finishes
         run_id="${model}-$(uuidgen | tr '[:upper:]' '[:lower:]' | cut -c1-4)"
 
-        echo "  Submitting: $dataset_name [$reward_profile] [$library_prompt_style]"
+        echo "  Submitting: $dataset_name [$reward_profile] [$library_prompt_style] [lr ${learning_rate:-recipe}]"
 
         train_job_id=$(sbatch --parsable <<EOF
 #!/bin/bash -l
-#SBATCH --job-name=train-${model}-${dataset_name}-${library_prompt_style}
-#SBATCH --output=${log_dir}/train-${model}-${dataset_name}-${library_prompt_style}-%j.out
+#SBATCH --job-name=${job_name}
+#SBATCH --output=${log_dir}/${job_name}-%j.out
 #SBATCH --account=${ACCOUNT}
 #SBATCH --partition=${PARTITION}
 #SBATCH --nodes=1
@@ -147,6 +158,7 @@ trap 'echo "time limit approaching - requeuing \$SLURM_JOB_ID"; scontrol requeue
     --output-root ${OUTPUT_BASE} \
     --run-id $run_id \
     --reward-profile $reward_profile \
+    $learning_rate_flag \
     $debug_flag &
 wait \$!
 
@@ -155,7 +167,7 @@ EOF
 )
 
         echo "  Submitted train job $train_job_id (run id: $run_id) - follow it with:"
-        echo "    tail -f ${log_dir}/train-${model}-${dataset_name}-${library_prompt_style}-${train_job_id}.out"
+        echo "    tail -f ${log_dir}/${job_name}-${train_job_id}.out"
 
         # queue one single-gpu eval job per epoch checkpoint, held until training succeeds.
         # submit_eval.sh owns the eval settings (datasets, samples, decoding, prompt style),

@@ -11,6 +11,7 @@ from src.prompts import PromptStyle
 from src.utils.config import (
     DEBUG_MODELS_FILE,
     TRAINED_MODELS_FILE,
+    load_full_yaml,
     load_model_settings,
     register_model,
 )
@@ -123,6 +124,16 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--learning-rate",
+    type=float,
+    default=None,
+    help=(
+        "Peak learning rate, overriding the recipe's learning_rate - so runs can vary it "
+        "without a separate recipe file (see training_jobs in scripts/submit_grpo.sh)."
+    ),
+)
+
+parser.add_argument(
     "--max-steps",
     type=int,
     default=None,
@@ -206,6 +217,7 @@ def run_grpo(
     run_id: str | None = None,
     epochs: int | None = None,
     max_steps: int | None = None,
+    learning_rate: float | None = None,
 ) -> None:
     """
     Run GRPO RL training for the given model and dataset.
@@ -213,7 +225,7 @@ def run_grpo(
     `dataset` is a directory of train/val/test.jsonl files (e.g. data/train/library_usage);
     training runs against train.jsonl and uses val.jsonl for periodic evaluation if the
     recipe enables it. `seed` and `library_prompt_style` override the recipe's fields, as
-    do `epochs`/`max_steps` when given.
+    do `epochs`/`max_steps`/`learning_rate` when given.
 
     If `debug` is set, the dataset is truncated to a few samples (a quick end-to-end
     check) and `model` defaults to DEBUG_MODEL_KEY; otherwise `model` is required.
@@ -278,6 +290,7 @@ def run_grpo(
         debug=debug,
         epochs=epochs,
         max_steps=max_steps,
+        learning_rate=learning_rate,
     )
 
     # every process trained; only one of them writes to the shared registry
@@ -295,6 +308,10 @@ def run_grpo(
         log("No epoch finished, so no checkpoint to register.")
         return
 
+    # the learning rate the run actually used - the override if given, else the recipe's
+    if learning_rate is None:
+        learning_rate = load_full_yaml(recipe_config)["learning_rate"]
+
     # the run id is non-descriptive, so record the knobs to recognise the model later
     for epoch, checkpoint in checkpoints.items():
         properties = {
@@ -307,6 +324,7 @@ def run_grpo(
             "reward_profile": reward_profile,
             "seed": seed,
             "library_prompt_style": library_prompt_style,
+            "learning_rate": learning_rate,
             "epoch": epoch,
         }
         model_key = f"{run_id}-epoch{epoch}"
@@ -336,6 +354,7 @@ def main() -> None:
         log(f"Library prompt style: {args.library_prompt_style}")
         log(f"Epochs: {args.epochs or '(recipe)'}")
         log(f"Max steps: {args.max_steps or '(recipe)'}")
+        log(f"Learning rate: {args.learning_rate or '(recipe)'}")
         log(f"Debug: {args.debug}")
         log(f"Output root: {args.output_root}")
         log(f"Run id: {args.run_id or '(generated)'}")
@@ -354,6 +373,7 @@ def main() -> None:
         output_root=args.output_root,
         epochs=args.epochs,
         max_steps=args.max_steps,
+        learning_rate=args.learning_rate,
     )
 
     # --- summary ---
