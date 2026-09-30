@@ -20,9 +20,11 @@ from libreusebench.libraries import (
 from libreusebench.load import load_dataset, load_records
 
 
+# the single source of the package version (read by pyproject.toml when building)
 __version__ = "0.1.0"
 
 __all__ = [
+    "__version__",
     "load_dataset",
     "load_records",
     "load_responses",

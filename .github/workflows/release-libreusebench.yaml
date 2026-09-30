@@ -50,8 +50,8 @@ jobs:
       name: release
       url: https://huggingface.co/datasets/itsluketwist/LibReuseBench
 
+    # only needs to read the repository - the hub is authenticated with the HF_TOKEN secret
     permissions:
-      id-token: write
       contents: read
 
     steps:
@@ -62,12 +62,14 @@ jobs:
       - name: 2. Configure uv...
         uses: astral-sh/setup-uv@v6
 
-      - name: 3. Generate VERSION file from pyproject.toml...
-        run: python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])" > VERSION
+      - name: 3. Generate VERSION file from libreusebench/__init__.py...
+        run: python3 -c "import re; print(re.search(r'__version__ = \"(.+)\"', open('libreusebench/__init__.py').read()).group(1))" > VERSION
 
       - name: 4. Upload dataset to Hugging Face Hub
+        # a write token for the dataset, rather than trusted publishing (which can't upload to a
+        # gated repo) - stored as a secret of the release environment
         env:
-          HF_OIDC_RESOURCE: datasets/itsluketwist/LibReuseBench
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           uvx --from 'huggingface_hub>=1.19.0' hf upload itsluketwist/LibReuseBench docs/HF_README.md README.md --repo-type dataset
           uvx --from 'huggingface_hub>=1.19.0' hf upload itsluketwist/LibReuseBench VERSION VERSION --repo-type dataset

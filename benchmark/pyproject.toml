@@ -12,11 +12,14 @@ packages = ["libreusebench"]
 # ship the benchmark splits, plus the canary string marking them as eval-only data
 libreusebench = ["data/*.jsonl", "CANARY.txt"]
 
+[tool.setuptools.dynamic]
+# bump __version__ in libreusebench/__init__.py before triggering a release
+version = { attr = "libreusebench.__version__" }
+
 [project]
 name = "libreusebench"
+dynamic = ["version"]
 readme = "docs/PYPI_README.md"
-# bump the version here before triggering a release
-version = "0.1.0"
 description = "LibReuseBench - a library-agnostic, test-backed benchmark for measuring library reuse."
 authors = [{ name = "Lukas Twist", email = "itsluketwist@gmail.com" }]
 license-files = ["LICENSE"]

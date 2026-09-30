@@ -27,8 +27,12 @@ set -euo pipefail
 ACCOUNT="brics.u6yb"
 PARTITION="workq"
 
-# checkpoints go to project storage, as real runs do (see scripts/submit_grpo.sh)
-OUTPUT_BASE="${PROJECTDIR:?PROJECTDIR is not set - are you on isambard?}/$USER/library-reuse-rl"
+# checkpoints go to project storage, as real runs do (see scripts/submit_grpo.sh). PROJECTDIR
+# only exists on isambard - elsewhere, only the clean mode works, tidying local debug outputs
+OUTPUT_BASE=""
+if [ -n "${PROJECTDIR:-}" ]; then
+    OUTPUT_BASE="$PROJECTDIR/$USER/library-reuse-rl"
+fi
 
 # the same training configuration the real run uses, so these checks exercise it
 accelerate_config="config/accelerate_configs/fsdp2.yaml"
@@ -90,13 +94,18 @@ case "$mode" in
         # metrics and eval results under output/, and their registry file (debug runs
         # register in config/debug_models.yaml, never alongside real runs). every debug
         # run is named qwen3-debug-* or {model}-scale, which real runs never are.
-        # runs here on the login node rather than as a job, and asks first.
+        # runs here on the login node rather than as a job, and asks first. off isambard
+        # (e.g. on your own machine) it tidies just the local copies.
         shopt -s nullglob
         candidates=(
-            "$OUTPUT_BASE"/qwen3-debug-* "$OUTPUT_BASE"/*-scale
             output/debug output/qwen3-debug output/baselines/qwen3-debug output/*/*-scale
             config/debug_models.yaml config/debug_models.yaml.lock
         )
+        # only when the project storage path is known - an empty one would make these
+        # patterns match from the root of the filesystem
+        if [ -n "$OUTPUT_BASE" ]; then
+            candidates+=("$OUTPUT_BASE"/qwen3-debug-* "$OUTPUT_BASE"/*-scale)
+        fi
         leftovers=()
         for path in "${candidates[@]}"; do
             if [ -e "$path" ]; then
@@ -140,6 +149,12 @@ esac
 ###############################################################################
 #                              submit                                         #
 ###############################################################################
+
+# every mode that gets here submits a job, which writes checkpoints to project storage
+if [ -z "$OUTPUT_BASE" ]; then
+    echo "PROJECTDIR is not set - are you on isambard? (only the clean mode works elsewhere)"
+    exit 1
+fi
 
 mkdir -p logs/debug
 
