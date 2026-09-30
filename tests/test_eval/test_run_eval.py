@@ -32,10 +32,10 @@ class TestEvalResultsPath:
                 decoding_profile="greedy",
                 prompt_style=style,
             )
-            for style in ("lib", "use", "std", "base")
+            for style in ("lib", "use", "std", "ext", "base")
         }
 
-        assert len(paths) == 4
+        assert len(paths) == 5
 
     def test_requirements_file_still_versions_the_suffix(self) -> None:
         """A requirements file keeps its versioned suffix, so runs under different library

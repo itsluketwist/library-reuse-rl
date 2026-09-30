@@ -33,6 +33,25 @@ def sorted_checkpoints(output_dir: str | Path) -> list[Path]:
     return sorted(Path(output_dir).glob("checkpoint-*"), key=_checkpoint_step)
 
 
+def last_resumable_checkpoint(output_dir: str | Path) -> Path | None:
+    """
+    Find the newest checkpoint a run can resume from.
+
+    A checkpoint is only resumable once the trainer has finished saving it - its
+    trainer_state.json is written last - and while it still holds its optimizer state
+    (prune_resume_state removes that from all but the newest). A job killed partway through
+    saving (e.g. at the time limit) leaves a newer, incomplete checkpoint, which is skipped.
+
+    Returns the checkpoint directory, or None if there is nothing to resume from.
+    """
+    for checkpoint in reversed(sorted_checkpoints(output_dir)):
+        saved = (checkpoint / "trainer_state.json").exists()
+        has_optimizer = any(checkpoint.glob("optimizer*"))
+        if saved and has_optimizer:
+            return checkpoint
+    return None
+
+
 def epoch_checkpoints(output_dir: str | Path) -> dict[int, Path]:
     """
     Find the checkpoint each epoch ended at (save_strategy is "epoch", see the recipe).

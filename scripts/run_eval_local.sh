@@ -46,6 +46,7 @@ prompt_styles=(
     # "lib"
     # "use"
     # "std"
+    # "ext"
     "base"
 )
 

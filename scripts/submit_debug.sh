@@ -166,8 +166,11 @@ job_id=$(sbatch --parsable <<EOF
 source ./scripts/setup_job.sh
 
 $command
+# keep the command's exit status, so a failed run shows as FAILED in slurm (sacct)
+status=\$?
 
-echo "Debug run complete: $mode [\$(date '+%Y-%m-%d %H:%M:%S')]"
+echo "Debug run complete: $mode, exit status \$status [\$(date '+%Y-%m-%d %H:%M:%S')]"
+exit \$status
 EOF
 )
 

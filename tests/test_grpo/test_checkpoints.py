@@ -3,7 +3,11 @@
 import json
 from pathlib import Path
 
-from src.grpo.checkpoints import epoch_checkpoints, prune_resume_state
+from src.grpo.checkpoints import (
+    epoch_checkpoints,
+    last_resumable_checkpoint,
+    prune_resume_state,
+)
 
 
 def _checkpoint(
@@ -79,6 +83,36 @@ class TestEpochCheckpoints:
     def test_no_checkpoints_is_not_an_error(self, tmp_path) -> None:
         """A run that saved no checkpoints just registers nothing."""
         assert epoch_checkpoints(tmp_path) == {}
+
+
+class TestLastResumableCheckpoint:
+    """last_resumable_checkpoint finds the newest checkpoint a requeued job can resume."""
+
+    def test_the_newest_complete_checkpoint(self, tmp_path) -> None:
+        """With every checkpoint fully saved, the newest is used."""
+        _checkpoint(tmp_path, step=28, epoch=1.0)
+        newest = _checkpoint(tmp_path, step=56, epoch=2.0)
+
+        assert last_resumable_checkpoint(tmp_path) == newest
+
+    def test_skips_a_checkpoint_killed_partway_through_saving(self, tmp_path) -> None:
+        """A save killed before trainer_state.json was written can't be resumed."""
+        complete = _checkpoint(tmp_path, step=28, epoch=1.0)
+        # weights written, then killed before the trainer state
+        _checkpoint(tmp_path, step=56)
+
+        assert last_resumable_checkpoint(tmp_path) == complete
+
+    def test_skips_a_checkpoint_without_its_optimizer_state(self, tmp_path) -> None:
+        """A pruned checkpoint (weights only) can't be resumed."""
+        pruned = _checkpoint(tmp_path, step=28, epoch=1.0)
+        (pruned / "optimizer.bin").unlink()
+
+        assert last_resumable_checkpoint(tmp_path) is None
+
+    def test_no_checkpoints(self, tmp_path) -> None:
+        """A fresh run has nothing to resume."""
+        assert last_resumable_checkpoint(tmp_path) is None
 
 
 class TestPruneResumeState:

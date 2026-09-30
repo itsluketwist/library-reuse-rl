@@ -26,12 +26,15 @@ import lure
 import transformers
 from transformers import AutoTokenizer, TrainerCallback, set_seed
 from transformers.trainer_callback import TrainerControl, TrainerState
-from transformers.trainer_utils import get_last_checkpoint
 from transformers.training_args import TrainingArguments
 from trl import GRPOTrainer, TrlParser
 
 from src.data import load_train_dataset
-from src.grpo.checkpoints import epoch_checkpoints, prune_resume_state
+from src.grpo.checkpoints import (
+    epoch_checkpoints,
+    last_resumable_checkpoint,
+    prune_resume_state,
+)
 from src.grpo.config import GRPOConfig
 from src.grpo.rewards import build_reward_functions, infer_reward_kind
 from src.grpo.wandb_logging import init_wandb_training
@@ -272,9 +275,11 @@ def train_model_with_grpo(
     logger.debug(f"Training parameters {training_args}")
 
     # Check for last checkpoint
+    # only a fully saved checkpoint counts - a job killed partway through saving one (e.g. at
+    # the time limit, before requeuing) leaves an incomplete one behind, which is skipped
     last_checkpoint = None
     if os.path.isdir(training_args.output_dir):
-        last_checkpoint = get_last_checkpoint(training_args.output_dir)
+        last_checkpoint = last_resumable_checkpoint(training_args.output_dir)
     if last_checkpoint is not None and training_args.resume_from_checkpoint is None:
         logger.info(f"Checkpoint detected, resuming training at {last_checkpoint=}.")
 

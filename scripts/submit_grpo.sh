@@ -23,13 +23,19 @@ OUTPUT_BASE="${PROJECTDIR:?PROJECTDIR is not set - are you on isambard?}/$USER/l
 # the base models to train (see config/models.yaml)
 models=(
     # "qwen3-debug"
-    "qwen3-8b"
+    # "qwen3-8b"
+    "qwen3.5-9b"
+    "domyn-small"
+    "olmo3-7b"
 )
 
 # training jobs are dataset|reward-profile|prompt-style. keeping these together avoids
 # silently applying a reward or a python-specific system prompt to the wrong task.
 training_jobs=(
     "data/train/library_usage|lu-v1|base"
+    # the same, with the fixed system prompt nudging towards third-party libraries (see
+    # src/prompts.py) - its epochs are still evaluated as submit_eval.sh sets (base prompt)
+    "data/train/library_usage|lu-v1|ext"
     # "data/train/skywork|full|lib"
 )
 
@@ -114,8 +120,8 @@ for model in "${models[@]}"; do
 
         train_job_id=$(sbatch --parsable <<EOF
 #!/bin/bash -l
-#SBATCH --job-name=train-${model}-${dataset_name}
-#SBATCH --output=${log_dir}/train-${model}-${dataset_name}-%j.out
+#SBATCH --job-name=train-${model}-${dataset_name}-${library_prompt_style}
+#SBATCH --output=${log_dir}/train-${model}-${dataset_name}-${library_prompt_style}-%j.out
 #SBATCH --account=${ACCOUNT}
 #SBATCH --partition=${PARTITION}
 #SBATCH --nodes=1
@@ -149,7 +155,7 @@ EOF
 )
 
         echo "  Submitted train job $train_job_id (run id: $run_id) - follow it with:"
-        echo "    tail -f ${log_dir}/train-${model}-${dataset_name}-${train_job_id}.out"
+        echo "    tail -f ${log_dir}/train-${model}-${dataset_name}-${library_prompt_style}-${train_job_id}.out"
 
         # queue one single-gpu eval job per epoch checkpoint, held until training succeeds.
         # submit_eval.sh owns the eval settings (datasets, samples, decoding, prompt style),

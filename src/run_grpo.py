@@ -100,13 +100,14 @@ parser.add_argument(
 parser.add_argument(
     "--library-prompt-style",
     type=str,
-    choices=["lib", "use", "std", "base"],
+    choices=["lib", "use", "std", "ext", "base"],
     default="lib",
     help=(
         "System-prompt wording (see src/prompts.py): 'lib' lists the available "
         "libraries, 'use' also pushes the model to prefer them (both need the recipe's "
         "libraries_requirements_file), 'std' pushes the model to prefer the standard "
-        "library (independent of that file), and 'base' skips the system prompt."
+        "library and 'ext' to prefer any third-party library (both independent of that "
+        "file), and 'base' skips the system prompt."
     ),
 )
 

@@ -7,7 +7,7 @@ import lure
 from src.data import load_eval_dataset
 from src.eval.generate_api import ApiSettings, generate_api_responses
 from src.eval.scoring import score_dataset
-from src.prompts import PromptStyle, build_system_prompt
+from src.prompts import FIXED_SYSTEM_PROMPTS, PromptStyle, build_system_prompt
 from src.response.evaluate import resolve_eval_python
 from src.utils.io import save_json, save_jsonl
 from src.utils.log import log, log_header, log_timer
@@ -174,10 +174,11 @@ def evaluate_model(
                 "environment_cache_dir": environment_cache_dir,
                 "model_dtype": None if api is not None else "auto",
                 "system_prompt": system_prompt,
-                # lib/use need the requirements file to matter; std applies regardless
+                # lib/use need the requirements file to matter; std/ext apply regardless
                 "prompt_style": (
                     prompt_style
-                    if libraries_requirements_file or prompt_style == "std"
+                    if libraries_requirements_file
+                    or prompt_style in FIXED_SYSTEM_PROMPTS
                     else None
                 ),
                 "decoding_settings": decoding_settings,

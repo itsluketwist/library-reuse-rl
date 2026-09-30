@@ -30,8 +30,9 @@ class GRPOConfig(trl.GRPOConfig):
             "help": (
                 "System-prompt wording (see src/prompts.py): 'lib' lists the available "
                 "libraries, 'use' also pushes the model to prefer them, 'std' pushes "
-                "the model to prefer the standard library (independent of "
-                "libraries_requirements_file), and 'base' skips the system prompt. "
+                "the model to prefer the standard library and 'ext' to prefer any "
+                "third-party library (both independent of libraries_requirements_file), "
+                "and 'base' skips the system prompt. "
                 "Set via src/run_grpo.py's "
                 "--library-prompt-style flag rather than the recipe file."
             ),

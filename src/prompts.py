@@ -5,9 +5,10 @@ from typing import Literal
 
 
 # system prompt styles: "lib" lists the installed libraries, "use" also pushes the model
-# to prefer them, "std" pushes the model to prefer the standard library, "base" skips the
-# system prompt entirely (see build_system_prompt)
-PromptStyle = Literal["lib", "use", "std", "base"]
+# to prefer them, "std" pushes the model to prefer the standard library, "ext" pushes it
+# to prefer any third-party library, "base" skips the system prompt entirely (see
+# build_system_prompt)
+PromptStyle = Literal["lib", "use", "std", "ext", "base"]
 
 # templates for the styles that list the requirements-file libraries (lib/use); the
 # {libraries} placeholder is filled by build_libraries_system_prompt
@@ -24,13 +25,21 @@ _SYSTEM_PROMPT_TEMPLATES: dict[PromptStyle, str] = {
     ),
 }
 
-# the "std" style: independent of the requirements file, since the standard library is
-# always available - so this lists no third-party libraries (see build_system_prompt)
-_STD_SYSTEM_PROMPT = (
-    "You are writing Python3.11 code. Actively prefer using the Python standard "
-    "library over writing your own implementations - before writing any non-trivial "
-    "logic, check whether the standard library already provides it."
-)
+# the styles whose prompt is fixed, independent of the requirements file, so they name no
+# specific libraries (see build_system_prompt). "std" prefers the standard library; "ext"
+# is its mirror, a generic nudge towards reusing a third-party library
+FIXED_SYSTEM_PROMPTS: dict[PromptStyle, str] = {
+    "std": (
+        "You are writing Python3.11 code. Actively prefer using the Python standard "
+        "library over writing your own implementations - before writing any "
+        "non-trivial logic, check whether the standard library already provides it."
+    ),
+    "ext": (
+        "You are writing Python3.11 code. Actively prefer using well-established "
+        "third-party libraries over writing your own implementations - before writing "
+        "any non-trivial logic, check whether a library already provides it."
+    ),
+}
 
 
 def load_requirements_libraries(
@@ -78,9 +87,9 @@ def build_system_prompt(
     """
     Build the effective system prompt for a training or evaluation run.
 
-    "base" always returns None (no system prompt). "std" returns the standard-library
-    prompt regardless of `libraries_requirements_file`, since the standard library is
-    always available. "lib"/"use" list the file's libraries (see
+    "base" always returns None (no system prompt). "std"/"ext" return their fixed prompt
+    (see FIXED_SYSTEM_PROMPTS) regardless of `libraries_requirements_file`, since they
+    name no specific libraries. "lib"/"use" list the file's libraries (see
     build_libraries_system_prompt), and return None when no file is given.
 
     Returns the system prompt string, or None.
@@ -88,8 +97,8 @@ def build_system_prompt(
     if style == "base":
         return None
 
-    if style == "std":
-        return _STD_SYSTEM_PROMPT
+    if style in FIXED_SYSTEM_PROMPTS:
+        return FIXED_SYSTEM_PROMPTS[style]
 
     if libraries_requirements_file is None:
         return None
@@ -103,16 +112,16 @@ def library_prompt_suffix(
 ) -> str:
     """
     Compute the output-path suffix for a run's system-prompt setting, e.g. "-libv1"/
-    "-usev1" for requirements file "v1.txt", or a fixed "-std" for the "std" style.
+    "-usev1" for requirements file "v1.txt", or a fixed "-std"/"-ext" for those styles.
 
     Used by eval_results_path so runs under different (file, style) combinations land in
     distinct output paths.
 
     Returns "" when `style` is "base", or when "lib"/"use" have no requirements file.
     """
-    if style == "std":
+    if style in FIXED_SYSTEM_PROMPTS:
         # file-independent, so a fixed suffix (no requirements-file version stem)
-        return "-std"
+        return f"-{style}"
 
     if style == "base" or libraries_requirements_file is None:
         return ""

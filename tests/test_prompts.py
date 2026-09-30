@@ -139,6 +139,32 @@ class TestBuildSystemPrompt:
         assert result is not None
         assert "numpy==2.4.6" not in result
 
+    def test_ext_style_builds_a_prompt_without_a_requirements_file(self):
+        """The "ext" style produces a third-party-library prompt even with no file."""
+        result = build_system_prompt(libraries_requirements_file=None, style="ext")
+
+        assert result is not None
+        assert "third-party libraries" in result
+
+    def test_ext_style_ignores_the_requirements_file_libraries(self, tmp_path: Path):
+        """The "ext" style is file-independent, so it names no specific libraries."""
+        requirements_file = _write_requirements(tmp_path, ["numpy==2.4.6"])
+
+        result = build_system_prompt(
+            libraries_requirements_file=requirements_file,
+            style="ext",
+        )
+
+        assert result is not None
+        assert "numpy" not in result
+
+    def test_ext_style_differs_from_std_style(self):
+        """The "ext" and "std" styles push in opposite directions, so differ."""
+        ext_result = build_system_prompt(libraries_requirements_file=None, style="ext")
+        std_result = build_system_prompt(libraries_requirements_file=None, style="std")
+
+        assert ext_result != std_result
+
 
 class TestLibraryPromptSuffix:
     """Tests for library_prompt_suffix."""
@@ -161,3 +187,8 @@ class TestLibraryPromptSuffix:
         """The "std" style produces a fixed "-std" suffix, with or without a file."""
         assert library_prompt_suffix(None, style="std") == "-std"
         assert library_prompt_suffix("setup/requirements/v1.txt", style="std") == "-std"
+
+    def test_ext_style_produces_a_fixed_suffix_regardless_of_file(self):
+        """The "ext" style produces a fixed "-ext" suffix, with or without a file."""
+        assert library_prompt_suffix(None, style="ext") == "-ext"
+        assert library_prompt_suffix("setup/requirements/v1.txt", style="ext") == "-ext"
