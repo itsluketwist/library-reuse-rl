@@ -51,7 +51,7 @@ class TestGenerateApiResponses:
             )
 
             responses = generate_api_responses(
-                model="deepseek-v4-flash",
+                model="deepseek-flash",
                 api=DEEPSEEK,
                 prompts=[
                     [{"role": "user", "content": "hello"}],
@@ -90,7 +90,7 @@ class TestGenerateApiResponses:
             mock_client.chat.completions.create.side_effect = completions
 
             responses = generate_api_responses(
-                model="deepseek-v4-flash",
+                model="deepseek-flash",
                 api=DEEPSEEK,
                 prompts=[
                     [{"role": "user", "content": "prompt a"}],
@@ -169,7 +169,7 @@ class TestGenerateApiResponses:
             )
 
             generate_api_responses(
-                model="deepseek-v4-flash",
+                model="deepseek-flash",
                 api=DEEPSEEK._replace(extra_params={"thinking": {"type": "disabled"}}),
                 prompts=[[{"role": "user", "content": "hi"}]],
                 decoding_settings={
@@ -222,7 +222,7 @@ class TestGenerateApiResponses:
             )
 
             responses = generate_api_responses(
-                model="deepseek-v4-flash",
+                model="deepseek-flash",
                 api=DEEPSEEK,
                 prompts=[[{"role": "user", "content": "hi"}]],
                 decoding_settings={
@@ -249,7 +249,7 @@ class TestGenerateApiResponses:
             mock_client.chat.completions.create.side_effect = completions
 
             responses = generate_api_responses(
-                model="deepseek-v4-flash",
+                model="deepseek-flash",
                 api=DEEPSEEK,
                 prompts=[
                     [{"role": "user", "content": "a"}],

@@ -38,7 +38,7 @@ def build_api_settings(
     """
     provider = model_settings.get("provider", DEFAULT_PROVIDER)
     # caught here rather than silently falling back to vllm, which would try to load an
-    # api model id ("deepseek-v4-flash") as local weights and fail confusingly
+    # api model id ("deepseek-flash") as local weights and fail confusingly
     if provider not in get_args(Provider):
         raise ValueError(
             f"unknown provider '{provider}' - expected one of {get_args(Provider)}."

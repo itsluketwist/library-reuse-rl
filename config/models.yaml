@@ -49,13 +49,9 @@ olmo3-7b:
   base: "allenai/OLMo-3-7B-Think"
   path:
 
-ocr-7b:
-  base: "nvidia/OpenCodeReasoning-Nemotron-1.1-7B"
-  path:
-
-deepseek-v4-flash:
+deepseek-flash:
   provider: api
-  base: "deepseek-v4-flash"
+  base: "deepseek-flash"
   base_url: "https://api.deepseek.com"
   api_key_env: "DEEPSEEK_API_KEY"
   path:
@@ -70,6 +66,13 @@ gpt-5.6-luna:
 gpt-5.6-terra:
   provider: api
   base: "gpt-5.6-terra"
+  api_key_env: "OPENAI_API_KEY"
+  max_tokens_param: "max_completion_tokens"
+  path:
+
+gpt-5.6-sol:
+  provider: api
+  base: "gpt-5.6-sol"
   api_key_env: "OPENAI_API_KEY"
   max_tokens_param: "max_completion_tokens"
   path:

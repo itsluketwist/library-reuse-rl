@@ -29,7 +29,6 @@ models=(
     # "vllm:qwen3-14b"
     # "vllm:qwen3-32b"
     # "vllm:olmo3-7b"
-    # "vllm:ocr-7b"
     # "vllm:qwen3.5-9b"
     # "vllm:domyn-small"
 )

@@ -112,7 +112,7 @@ class TestDebugEnvironment:
         monkeypatch.setattr(evaluate, "generate_api_responses", lambda **_: [])
 
         evaluate.evaluate_model(
-            base="deepseek-v4-flash",
+            base="deepseek-flash",
             weights_path=None,
             dataset_configs={
                 "libreusebench": {
@@ -144,7 +144,7 @@ class TestBuildApiSettings:
         api = build_api_settings(
             {
                 "provider": "api",
-                "base": "deepseek-v4-flash",
+                "base": "deepseek-flash",
                 "base_url": "https://api.deepseek.com",
                 "api_key_env": "DEEPSEEK_API_KEY",
             }
@@ -160,11 +160,11 @@ class TestBuildApiSettings:
         """A typo is caught here rather than silently falling back to vllm, which would
         try to load an api model id as local weights."""
         with pytest.raises(ValueError, match="unknown provider"):
-            build_api_settings({"provider": "apo", "base": "deepseek-v4-flash"})
+            build_api_settings({"provider": "apo", "base": "deepseek-flash"})
 
     def test_api_entry_without_a_key_variable_raises(self) -> None:
         with pytest.raises(ValueError, match="api_key_env"):
-            build_api_settings({"provider": "api", "base": "deepseek-v4-flash"})
+            build_api_settings({"provider": "api", "base": "deepseek-flash"})
 
 
 def test_registered_api_models_resolve() -> None:
@@ -226,7 +226,7 @@ class TestScoringFailures:
         monkeypatch.setattr(evaluate, "score_dataset", score)
         output_paths = {name: tmp_path / f"{name}.json" for name in self._CONFIGS}
         evaluate.evaluate_model(
-            base="deepseek-v4-flash",
+            base="deepseek-flash",
             weights_path=None,
             dataset_configs=self._CONFIGS,
             decoding_settings={"max_new_tokens": 16},

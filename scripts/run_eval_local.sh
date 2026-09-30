@@ -16,8 +16,9 @@ models=(
     # "qwen3-8b"
     # "qwen3-14b"
     # "qwen3-32b"
+    # "qwen3.5-9b"
+    # "domyn-small"
     # "olmo3-7b"
-    # "ocr-7b"
     "gpt-5.6-sol"
     "gpt-5.6-terra"
     "gpt-5.6-luna"
@@ -28,7 +29,7 @@ models=(
 
 # comma-separated eval dataset names (config/eval_datasets.yaml)
 # product_choice is gitignored and must have been built locally.
-datasets="library_usage,libreusebench_test,libreusebench_control"
+datasets="libreusebench_test,libreusebench_control"
 
 # completions sampled per prompt (see --n-samples in src/run_eval.py); eval-only, unrelated
 # to training rollouts. leave blank to use the default of 1.
