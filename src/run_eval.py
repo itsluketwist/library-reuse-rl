@@ -1,6 +1,7 @@
 """The command-line entry point and orchestration for evaluating untrained, pretrained, or trained models."""
 
 import os
+import threading
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Literal, get_args
@@ -362,6 +363,26 @@ def run_eval(
     )
 
 
+# how long a failed run may take to shut down before it is forced to exit
+_FAILED_SHUTDOWN_SECONDS = 120
+
+
+def _exit_if_shutdown_hangs(
+    seconds: float = _FAILED_SHUTDOWN_SECONDS,
+) -> None:
+    """
+    Force the process to exit if it hasn't finished shutting down within `seconds`.
+
+    After an unhandled error, vllm's background engine can keep the process alive
+    indefinitely - a failed eval once held its gpu job for 11 hours, until the time limit.
+    The timer runs on a daemon thread, which keeps going while python waits on other threads
+    at shutdown, so the normal cleanup still gets its chance first.
+    """
+    timer = threading.Timer(seconds, os._exit, args=(1,))
+    timer.daemon = True
+    timer.start()
+
+
 def main() -> None:
     args = parser.parse_args()
     silence_library_warnings()
@@ -380,17 +401,23 @@ def main() -> None:
     log(f"Update: {args.update}")
     log()
 
-    run_eval(
-        model=args.model,
-        datasets=datasets,
-        decoding_profile=args.decoding_profile,
-        decoding_config=args.decoding_config,
-        eval_datasets_config=args.eval_datasets_config,
-        prompt_style=args.prompt_style,
-        debug=args.debug,
-        update=args.update,
-        n_samples=args.n_samples,
-    )
+    try:
+        run_eval(
+            model=args.model,
+            datasets=datasets,
+            decoding_profile=args.decoding_profile,
+            decoding_config=args.decoding_config,
+            eval_datasets_config=args.eval_datasets_config,
+            prompt_style=args.prompt_style,
+            debug=args.debug,
+            update=args.update,
+            n_samples=args.n_samples,
+        )
+    except Exception:
+        # the error is still raised and printed as normal - this only guarantees the
+        # process then actually exits (see _exit_if_shutdown_hangs)
+        _exit_if_shutdown_hangs()
+        raise
 
     # --- summary ---
     log_header("COMPLETE")

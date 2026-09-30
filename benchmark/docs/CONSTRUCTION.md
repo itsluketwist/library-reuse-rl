@@ -178,9 +178,11 @@ directory, requested packages, originating import names, and the resolved versio
 installed distribution.
 
 For control and reproducibility the environment can instead be pinned with `--env env.txt` (one pip
-package per line), which skips both collection and confirmation. If confirmation is declined or a
-package fails to install, the harness writes that editable `env.txt` for correction —
-remove unwanted or un-installable libraries, fix names/versions, and re-run with `--env`.
+package per line), which skips both collection and confirmation. If confirmation is declined, the
+harness writes that editable `env.txt` for correction — remove unwanted libraries, fix
+names/versions, and re-run with `--env`. A package that fails to install doesn't stop the run:
+responses whose code imports it aren't run, count as not passed, and are listed under `not_run` in
+the results (`--stop-on-install-failure` stops and writes the editable `env.txt` instead).
 
 The main repo's eval pipeline invokes this same complete evaluator, passing `confirm=None` to install
 automatically since it runs unattended, and uses a separate cached environment for each evaluation

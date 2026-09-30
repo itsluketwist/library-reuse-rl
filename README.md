@@ -141,6 +141,10 @@ as two files per combination, both committed as the experimental record: `{name}
 holds the run's settings and its aggregate analysis, and `{name}.generations.jsonl` holds
 one line per response - its full text and its scores. The code isn't stored separately:
 `lure.parse_response` (see [`reward/`](reward/)) re-extracts it from the text.
+If scoring a dataset fails (e.g. its code can't be run), its generations are kept in a
+git-ignored `{name}.unscored.jsonl` beside where its results would go, and the job carries on
+with the other datasets - running the same evaluation again scores those saved generations
+instead of generating them again.
 Re-running the same combination overwrites its previous result - a combination whose
 result file already exists is skipped instead, unless the `update` setting (`--update` on
 `run_eval`) is set. Each invocation's logs still get their own `logs/{run_timestamp}/`

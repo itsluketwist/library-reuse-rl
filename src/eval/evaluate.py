@@ -1,5 +1,6 @@
 """Evaluate a model against one or more datasets: generation, analysis, and saving."""
 
+import traceback
 from pathlib import Path
 
 import lure
@@ -9,7 +10,7 @@ from src.eval.generate_api import ApiSettings, generate_api_responses
 from src.eval.scoring import score_dataset
 from src.prompts import FIXED_SYSTEM_PROMPTS, PromptStyle, build_system_prompt
 from src.response.evaluate import resolve_eval_python
-from src.utils.io import save_json, save_jsonl
+from src.utils.io import load_jsonl, save_json, save_jsonl
 from src.utils.log import log, log_header, log_timer
 from src.utils.vllm_settings import VLLM_ADDITIONAL_CONFIG
 
@@ -23,6 +24,63 @@ DEBUG_MAX_NEW_TOKENS = 2048
 
 # name of the venv --debug runs reuse, under a dataset's environment_root
 DEBUG_ENVIRONMENT_NAME = "debug"
+
+
+def unscored_generations_path(output_path: Path) -> Path:
+    """
+    Where a dataset's generations are kept until they have been scored, beside its results.
+
+    Returns the path of the .unscored.jsonl file for `output_path`.
+    """
+    return output_path.with_suffix(".unscored.jsonl")
+
+
+def save_unscored_generations(
+    responses: list[list[tuple[str, str]]],
+    path: Path,
+) -> None:
+    """
+    Save a dataset's generated responses (one line per prompt, with every sample's text and
+    stop reason) before they are scored, so a scoring failure never loses them.
+    """
+    save_jsonl(
+        [
+            {
+                "samples": [
+                    {"response": response, "stop_reason": stop_reason}
+                    for response, stop_reason in samples
+                ],
+            }
+            for samples in responses
+        ],
+        path,
+    )
+
+
+def load_unscored_generations(
+    path: Path,
+    n_prompts: int,
+    n_samples: int,
+) -> list[list[tuple[str, str]]] | None:
+    """
+    Load generations a previous run saved but couldn't score, so they can be scored without
+    generating them again. They are only reused when they match this run: one line per prompt
+    in the dataset, each with the expected number of samples.
+
+    Returns the responses (as generate_*_responses returns them), or None if there are no
+    saved generations or they don't match.
+    """
+    if not path.exists():
+        return None
+
+    responses = [
+        [(sample["response"], sample["stop_reason"]) for sample in row["samples"]]
+        for row in load_jsonl(path)
+    ]
+    if len(responses) != n_prompts or any(len(s) != n_samples for s in responses):
+        log(f"Ignoring saved generations that don't match this run: {path}")
+        return None
+    return responses
 
 
 def evaluate_model(
@@ -61,6 +119,11 @@ def evaluate_model(
     If `debug` is set, each dataset is truncated to DEBUG_EVAL_SAMPLES rows for a quick
     end-to-end smoke test, and execution environments are reused between runs rather than
     rebuilt (see DEBUG_ENVIRONMENT_NAME).
+
+    Each dataset's generations are saved before they are scored (see
+    unscored_generations_path). If scoring fails, they are kept, the error is logged, and the
+    remaining datasets still run - a later run then scores the saved generations instead of
+    generating them again. Once every dataset has been tried, an error names any that failed.
     """
     if api is not None and weights_path is not None:
         raise ValueError(
@@ -103,6 +166,9 @@ def evaluate_model(
             additional_config=dict(VLLM_ADDITIONAL_CONFIG),
         )
 
+    # datasets whose scoring failed, reported once every dataset has been tried
+    failed_datasets: list[str] = []
+
     for name, dataset_config in dataset_configs.items():
         dataset_file = dataset_config["path"]
         evaluator = dataset_config["evaluator"]
@@ -126,36 +192,60 @@ def evaluate_model(
             system_prompt=system_prompt,
             n=DEBUG_EVAL_SAMPLES if debug else None,
         )
+        prompts = list(dataset["prompt"])
 
-        with log_timer("generation"):
-            if api is not None:
-                responses = generate_api_responses(
-                    model=base,
-                    api=api,
-                    prompts=list(dataset["prompt"]),
-                    decoding_settings=decoding_settings,
-                )
-            else:
-                # deferred alongside the vllm import above, for the same reason
-                from src.eval.generate_vllm import generate_vllm_responses
+        # generations a previous run saved but couldn't score are scored, not regenerated
+        output_path = output_paths[name]
+        unscored_path = unscored_generations_path(output_path)
+        responses = load_unscored_generations(
+            unscored_path,
+            n_prompts=len(prompts),
+            n_samples=decoding_settings.get("n_samples", 1),
+        )
+        if responses is not None:
+            log(
+                f"Scoring the saved generations in {unscored_path}, not generating again"
+            )
+        else:
+            with log_timer("generation"):
+                if api is not None:
+                    responses = generate_api_responses(
+                        model=base,
+                        api=api,
+                        prompts=prompts,
+                        decoding_settings=decoding_settings,
+                    )
+                else:
+                    # deferred alongside the vllm import above, for the same reason
+                    from src.eval.generate_vllm import generate_vllm_responses
 
-                responses = generate_vllm_responses(
-                    llm=llm,
-                    prompts=list(dataset["prompt"]),
-                    decoding_settings=decoding_settings,
-                )
+                    responses = generate_vllm_responses(
+                        llm=llm,
+                        prompts=prompts,
+                        decoding_settings=decoding_settings,
+                    )
+            # saved before scoring, so nothing that goes wrong while scoring loses them
+            save_unscored_generations(responses, unscored_path)
 
         # score the responses the way this dataset's task is verified (execution for the
         # tested split, prose pick / import classification for the new splits); score_dataset
         # takes care of which evaluators want every sample vs just the first
-        analysis, results = score_dataset(
-            dataset=dataset,
-            responses=responses,
-            evaluator=evaluator,
-            python_executable=python_executable,
-            environment_root=environment_root,
-            environment_cache_dir=environment_cache_dir,
-        )
+        try:
+            analysis, results = score_dataset(
+                dataset=dataset,
+                responses=responses,
+                evaluator=evaluator,
+                python_executable=python_executable,
+                environment_root=environment_root,
+                environment_cache_dir=environment_cache_dir,
+            )
+        except Exception:
+            # keep the generations and carry on with the other datasets - a later run scores
+            # them (see load_unscored_generations)
+            log(traceback.format_exc())
+            log(f"Scoring {name} failed - its generations are kept in {unscored_path}")
+            failed_datasets.append(name)
+            continue
         log(f"Scored {analysis['n_total']} responses ({analysis['task']})")
 
         output = {
@@ -189,11 +279,18 @@ def evaluate_model(
 
         # two files per dataset, both committed as the experimental record: the analysis
         # above, and beside it one line per response - its full text and its scores (see
-        # src/eval/scoring). the code is not stored separately: parse_response
-        # (src/response/parser.py) re-extracts it from the text if needed
-        output_path = output_paths[name]
+        # src/eval/scoring). the code is not stored separately: lure.parse_response
+        # re-extracts it from the text if needed
         save_json(output, output_path)
         generations_path = output_path.with_suffix(".generations.jsonl")
         save_jsonl(results, generations_path)
+        # the scored generations above replace the unscored copy
+        unscored_path.unlink(missing_ok=True)
         log(f"Saved analysis to {output_path}")
         log(f"Saved every response and its scores to {generations_path}")
+
+    if failed_datasets:
+        raise RuntimeError(
+            f"Scoring failed for {failed_datasets} - their generations are kept beside "
+            "their results (*.unscored.jsonl), and running the evaluation again scores them."
+        )

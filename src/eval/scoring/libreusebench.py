@@ -22,7 +22,9 @@ def score_libreusebench(
     The official evaluator discovers packages from the responses, installs them into
     its cached environment, executes the selected code, and aggregates the results.
     Eval runs are unattended (including on HPC/Slurm), so this passes `confirm=None`
-    to install the discovered package plan automatically rather than prompting on stdin.
+    to install the discovered package plan automatically rather than prompting on stdin,
+    and `stop_on_install_failure=False` so a package that can't be installed (e.g. a
+    made-up one a model imported) is recorded rather than stopping the whole evaluation.
 
     Returns the official analysis and per-response results.
     """
@@ -50,6 +52,7 @@ def score_libreusebench(
             env_dir=environment_cache_dir,
             env_root=environment_root,
             confirm=None,
+            stop_on_install_failure=False,
         )
 
     if not official:

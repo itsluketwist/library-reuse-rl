@@ -13,7 +13,9 @@ Since responses can name arbitrary third-party packages, installation is confirm
 default (`confirm_packages`) - pass `confirm=None` to install automatically instead, for unattended
 runs. For control and reproducibility the environment can instead be supplied as a package-per-line
 `.txt` file (`env_file`), which skips both collection and confirmation. When confirmation declines,
-or a package fails to install, an environment file is written for correction and reuse.
+an environment file is written for correction and reuse. A package that fails to install doesn't
+stop the run by default: responses whose code imports it aren't run (they count as not passed), and
+the results list them under "not_run" - pass `stop_on_install_failure=True` to stop instead.
 """
 
 import warnings
@@ -30,7 +32,6 @@ from libreusebench.libraries import (
     imported_libraries,
     pip_package,
     required_import_names,
-    required_pip_packages,
     used_libraries,
 )
 from libreusebench.load import load_dataset, load_records
@@ -208,7 +209,12 @@ def _score_response(
     unused import inflates the former without showing real reuse. Also records the code's
     size and maintainability (see _code_metrics).
 
-    Returns a per-response result dict (passed, external_lib, external_lib_used, lloc, ...).
+    The code is only run when every package it imports was installed. Otherwise it can't run
+    as written, so it isn't run: it counts as not passed, with `ran` False and the missing
+    packages in `install_failed` (its libraries and code metrics are still recorded, since
+    they come from reading the code, not running it).
+
+    Returns a per-response result dict (passed, ran, external_lib, external_lib_used, lloc, ...).
     """
     code = extract_code(response)
     if code is None:
@@ -220,14 +226,34 @@ def _score_response(
             "external_lib_used": False,
             "lloc": None,
             "maintainability_index": None,
+            "ran": False,
+            "install_failed": [],
             "reason": "no code",
         }
 
     external = imported_libraries(response)
     used = used_libraries(response)
     lloc, maintainability_index = _code_metrics(code)
-    # any of this response's own packages that failed the up-front install (explains a failure)
-    missing = sorted(required_pip_packages(response) & install_failed)
+    details = {
+        "external_libs": sorted(external),
+        "external_lib": bool(external),
+        "used_external_libs": sorted(used),
+        "external_lib_used": bool(used),
+        "lloc": lloc,
+        "maintainability_index": maintainability_index,
+    }
+
+    # the packages this code imports that failed the up-front install - it can't run without them
+    missing = sorted({pip_package(name) for name in external} & install_failed)
+    if missing:
+        return {
+            "passed": False,
+            **details,
+            "ran": False,
+            "install_failed": missing,
+            "reason": f"not run: could not install {', '.join(missing)}",
+        }
+
     passed, message = env.evaluate(
         program=code,
         inputs=record["test_inputs"],
@@ -236,13 +262,9 @@ def _score_response(
     )
     return {
         "passed": passed,
-        "external_libs": sorted(external),
-        "external_lib": bool(external),
-        "used_external_libs": sorted(used),
-        "external_lib_used": bool(used),
-        "lloc": lloc,
-        "maintainability_index": maintainability_index,
-        "install_failed": missing,
+        **details,
+        "ran": True,
+        "install_failed": [],
         "reason": "" if passed else message,
     }
 
@@ -335,6 +357,8 @@ def _aggregate(
     responses hit the bar) and per response, with a using-rate, an average, and a per-library count.
     Code size and maintainability are averaged per response, over all responses and over just
     the passing ones - failing code can be short simply because it is broken or unfinished.
+    Responses that weren't run because a package they import failed to install count as not
+    passed, and are listed under "not_run".
 
     Returns the results dict (without the per-response detail, which the caller attaches).
     """
@@ -383,6 +407,32 @@ def _aggregate(
             "all": _code_stats(per_response),
             "passed": _code_stats([row for row in per_response if row["passed"]]),
         },
+        "not_run": _not_run(per_response),
+    }
+
+
+def _not_run(
+    per_response: list[dict],
+) -> dict:
+    """Summarise the responses that weren't run because a package they import failed to install.
+
+    Returns {n_responses, packages, responses}: how many, the packages that caused it, and each
+    affected response (task id, sample index and its missing packages).
+    """
+    skipped = [row for row in per_response if row.get("install_failed")]
+    return {
+        "n_responses": len(skipped),
+        "packages": sorted(
+            {package for row in skipped for package in row["install_failed"]}
+        ),
+        "responses": [
+            {
+                "task_id": row["task_id"],
+                "idx": row["idx"],
+                "packages": row["install_failed"],
+            }
+            for row in skipped
+        ],
     }
 
 
@@ -432,6 +482,7 @@ def evaluate_responses(
     env_file: str | None = None,
     k: int | None = None,
     confirm: Callable[[dict[str, set[str]]], bool] | None = confirm_packages,
+    stop_on_install_failure: bool = False,
 ) -> dict:
     """Evaluate in-memory responses to LibReuseBench and save the results.
 
@@ -447,9 +498,14 @@ def evaluate_responses(
     of packages to install. Otherwise the responses are parsed and the collected packages are
     confirmed (by default, on stdin via `confirm_packages`) before installing. Pass `confirm=None`
     to install automatically without asking - only do this in unattended contexts, since responses
-    can name arbitrary third-party packages. If confirmation declines, or a package fails to
-    install, an editable environment file is written for the caller to fix up and pass back with
-    `env_file` - and the run stops.
+    can name arbitrary third-party packages. If confirmation declines, an editable environment
+    file is written for the caller to fix up and pass back with `env_file` - and the run stops.
+
+    A package that fails to install (e.g. one that doesn't exist, or can't be installed on its
+    own, like `backports`) doesn't stop the run: responses whose code imports it aren't run, and
+    count as not passed, and the results list them under "not_run". So one response naming a
+    bad package can't stop the whole evaluation. Pass `stop_on_install_failure=True` to stop
+    instead, with an environment file written for correcting and re-running.
 
     On success, reports pass@1 / pass@k and per-problem library-reuse statistics, split into
     "imported" (fraction of problems naming a library, average external libraries per problem, and
@@ -495,7 +551,7 @@ def evaluate_responses(
         # the way out, so this is the only chance to see where a failing run was running
         print(f"environment: {env.cache_dir}{'' if env_dir else ' (disposable)'}")
         install_failed = env.ensure_packages(packages)
-        if install_failed:
+        if install_failed and stop_on_install_failure:
             # emit a fixable environment file and stop, so the user can correct it and re-run
             path = write_env_file(
                 output_dir, packages, origins=plan, failed=install_failed
@@ -506,6 +562,12 @@ def evaluate_responses(
                 f"env_file={path} (or --env-file {path} via the libreuseeval CLI)"
             )
             return {}
+        if install_failed:
+            # carry on - responses whose code imports these packages aren't run (see "not_run")
+            print(
+                f"\ncould not install {sorted(install_failed)} - continuing; responses "
+                "importing them are not run, and count as not passed (see not_run)."
+            )
 
         # correctness (pass@1 / pass@k) and per-problem library-reuse statistics
         results = score_responses(
@@ -522,7 +584,8 @@ def evaluate_responses(
         results["environment"] = {
             "directory": str(env.cache_dir),
             "source": str(env_file) if env_file is not None else "response_imports",
-            "installed_packages": sorted(packages),
+            "installed_packages": sorted(packages - install_failed),
+            "install_failed": sorted(install_failed),
             "installed_package_versions": env.installed_distributions(),
             "package_imports": {
                 package: sorted(plan.get(package, set()))
@@ -563,6 +626,7 @@ def evaluate_responses_file(
     env_file: str | None = None,
     k: int | None = None,
     confirm: Callable[[dict[str, set[str]]], bool] | None = confirm_packages,
+    stop_on_install_failure: bool = False,
 ) -> dict:
     """Evaluate responses loaded from a .json or .jsonl file (see load_responses).
 
@@ -582,4 +646,5 @@ def evaluate_responses_file(
         env_file=env_file,
         k=k,
         confirm=confirm,
+        stop_on_install_failure=stop_on_install_failure,
     )

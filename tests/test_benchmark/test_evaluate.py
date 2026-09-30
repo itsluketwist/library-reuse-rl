@@ -246,6 +246,7 @@ class TestInstallationPlan:
             "directory": str(tmp_path / "venv"),
             "source": "response_imports",
             "installed_packages": ["scikit-learn"],
+            "install_failed": [],
             "installed_package_versions": {"scikit-learn": "1.2.3"},
             "package_imports": {"scikit-learn": ["sklearn"]},
         }
@@ -363,6 +364,8 @@ class TestScoreResponse:
             "external_lib_used": False,
             "lloc": None,
             "maintainability_index": None,
+            "ran": False,
+            "install_failed": [],
             "reason": "no code",
         }
 
@@ -488,3 +491,69 @@ class TestStatistics:
             "avg_lloc": None,
             "avg_maintainability_index": None,
         }
+
+
+class _FailingInstallEnv(_FakeEnv):
+    """A fake environment where one package (e.g. "backports") can't be installed."""
+
+    def ensure_packages(self, packages: set[str]) -> set[str]:
+        failed = {package for package in packages if package == "backports"}
+        self.installed |= set(packages) - failed
+        return failed
+
+
+class TestInstallFailures:
+    """What happens when a response imports a package that can't be installed."""
+
+    _RESPONSES = {
+        "LRB/T000": [
+            "```python\nfrom backports import zoneinfo\nprint(zoneinfo)\n```",
+            "```python\nprint(1)\n```",
+        ],
+    }
+
+    def test_continues_by_default_without_running_affected_responses(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        """Responses needing a failed package aren't run, and count as not passed; the rest
+        still run, and the results list what didn't."""
+        monkeypatch.setattr(evaluate, "load_dataset", lambda: _FAKE_BENCHMARK)
+        monkeypatch.setattr(evaluate, "Environment", _FailingInstallEnv)
+
+        result = evaluate.evaluate_responses(
+            responses=self._RESPONSES,
+            output_dir=str(tmp_path),
+            confirm=None,
+        )
+
+        needs_backports, plain = result["results"]
+        assert not needs_backports["ran"]
+        assert not needs_backports["passed"]  # the fake env would have passed it
+        assert needs_backports["install_failed"] == ["backports"]
+        assert needs_backports["reason"] == "not run: could not install backports"
+        # libraries still come from reading the code
+        assert needs_backports["external_libs"] == ["backports"]
+        assert plain["ran"] and plain["passed"]
+
+        assert result["pass@1"] == 0.5
+        assert result["not_run"] == {
+            "n_responses": 1,
+            "packages": ["backports"],
+            "responses": [{"task_id": "LRB/T000", "idx": 0, "packages": ["backports"]}],
+        }
+        assert result["environment"]["install_failed"] == ["backports"]
+        assert "backports" not in result["environment"]["installed_packages"]
+
+    def test_stops_when_asked(self, tmp_path, monkeypatch) -> None:
+        """stop_on_install_failure stops, so the environment file can be fixed and re-run."""
+        monkeypatch.setattr(evaluate, "load_dataset", lambda: _FAKE_BENCHMARK)
+        monkeypatch.setattr(evaluate, "Environment", _FailingInstallEnv)
+
+        result = evaluate.evaluate_responses(
+            responses=self._RESPONSES,
+            output_dir=str(tmp_path),
+            confirm=None,
+            stop_on_install_failure=True,
+        )
+
+        assert result == {}

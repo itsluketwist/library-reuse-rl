@@ -151,8 +151,9 @@ the resolved version of every installed distribution.
 
 Pass `--unsafe-installs` to skip the interactive approval gate and install automatically, or
 `--env env.txt` (one pip package per line) to pin the environment exactly. If confirmation is
-declined or an install fails, an editable `env.txt` is written for you to fix up and re-run with
-`--env`.
+declined, an editable `env.txt` is written for you to fix up and re-run with `--env`. If a package
+fails to install, responses importing it aren't run and count as not passed (listed under
+`not_run` in the results); `--stop-on-install-failure` stops the run instead.
 
 ## 📊  *leaderboard*
 

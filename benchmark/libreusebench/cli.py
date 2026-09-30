@@ -50,6 +50,14 @@ def main() -> None:
         action="store_true",
         help="skip confirmation and install the collected packages automatically",
     )
+    parser.add_argument(
+        "--stop-on-install-failure",
+        action="store_true",
+        help=(
+            "stop if a package fails to install, writing an environment file to fix and "
+            "re-run with (default: carry on, not running the responses that import it)"
+        ),
+    )
     args = parser.parse_args()
 
     confirm = None if args.unsafe_installs else confirm_packages
@@ -62,6 +70,7 @@ def main() -> None:
         env_file=args.env_file,
         k=args.k,
         confirm=confirm,
+        stop_on_install_failure=args.stop_on_install_failure,
     )
 
 

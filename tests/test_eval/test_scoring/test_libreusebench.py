@@ -23,12 +23,14 @@ class TestScoreLibReuseBench:
             env_dir,
             env_root,
             confirm,
+            stop_on_install_failure,
         ):
             seen["responses"] = responses
             seen["output_dir"] = output_dir
             seen["env_dir"] = env_dir
             seen["env_root"] = env_root
             seen["confirm"] = confirm
+            seen["stop_on_install_failure"] = stop_on_install_failure
             return {
                 "n_tasks": 1,
                 "n_responses": 1,
@@ -84,6 +86,8 @@ class TestScoreLibReuseBench:
         # no cache dir, so the evaluator builds a disposable venv it deletes afterwards
         assert seen["env_dir"] is None
         assert seen["confirm"] is None  # unattended eval runs install automatically
+        # and a package that can't be installed never stops the whole evaluation
+        assert seen["stop_on_install_failure"] is False
         assert analysis["task"] == "libreusebench"
         assert analysis["pass@1"] == 1.0
         assert analysis["library_use"]["per_task"]["using_lib_rate"] == 1.0
@@ -98,7 +102,9 @@ class TestScoreLibReuseBench:
         """Every sample for a row becomes its own entry in that task_id's response list."""
         seen = {}
 
-        def fake_evaluate_responses(responses, output_dir, env_dir, env_root, confirm):
+        def fake_evaluate_responses(
+            responses, output_dir, env_dir, env_root, confirm, stop_on_install_failure
+        ):
             seen["responses"] = responses
             return {
                 "n_tasks": 1,

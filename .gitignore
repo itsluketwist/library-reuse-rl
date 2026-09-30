@@ -195,6 +195,10 @@ benchmark/results/example
 
 logs/*
 wandb/*
+# generations kept only until they are scored (see unscored_generations_path in
+# src/eval/evaluate.py) - the scored results beside them are the committed record
+output/**/*.unscored.jsonl
+
 # debug runs' outputs (see src/utils/paths.py for the layout)
 output/debug/
 output/qwen3-debug/

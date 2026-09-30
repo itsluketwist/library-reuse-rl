@@ -182,3 +182,116 @@ def test_registered_api_models_resolve() -> None:
         assert api is not None, key
         # a hosted model has no local weights, so "path" must stay blank
         assert not entry.get("path"), key
+
+
+def test_a_hung_shutdown_is_forced_to_exit(monkeypatch):
+    """After an error, the process exits even if something keeps it alive."""
+    import threading
+    import time
+
+    from src import run_eval as run_eval_module
+
+    exits = []
+    monkeypatch.setattr(run_eval_module.os, "_exit", exits.append)
+
+    run_eval_module._exit_if_shutdown_hangs(seconds=0.01)
+    deadline = time.time() + 2
+    while not exits and time.time() < deadline:
+        time.sleep(0.01)
+
+    assert exits == [1]
+    assert not any(
+        isinstance(thread, threading.Timer) and thread.is_alive()
+        for thread in threading.enumerate()
+    )
+
+
+class TestScoringFailures:
+    """A scoring failure keeps the generations and doesn't stop the other datasets."""
+
+    _CONFIGS = {
+        "first": {"path": "first.jsonl", "evaluator": "library_usage"},
+        "second": {"path": "second.jsonl", "evaluator": "library_usage"},
+    }
+
+    def _evaluate(self, monkeypatch, tmp_path, generate, score) -> dict[str, Path]:
+        """Run evaluate_model on two one-prompt datasets, with fake generation and scoring.
+
+        Returns each dataset's result path.
+        """
+        monkeypatch.setattr(
+            evaluate, "load_eval_dataset", lambda **_: {"prompt": ["p"]}
+        )
+        monkeypatch.setattr(evaluate, "generate_api_responses", generate)
+        monkeypatch.setattr(evaluate, "score_dataset", score)
+        output_paths = {name: tmp_path / f"{name}.json" for name in self._CONFIGS}
+        evaluate.evaluate_model(
+            base="deepseek-v4-flash",
+            weights_path=None,
+            dataset_configs=self._CONFIGS,
+            decoding_settings={"max_new_tokens": 16},
+            output_paths=output_paths,
+            api=ApiSettings(api_key_env="FAKE_API_KEY"),
+        )
+        return output_paths
+
+    @staticmethod
+    def _score(**kwargs):
+        """A fake scorer that fails on the first dataset's response."""
+        if kwargs["responses"] == [[("first response", "eos")]]:
+            raise RuntimeError("could not install a package")
+        return {"task": "library_usage", "n_total": 1}, [{"idx": 0}]
+
+    def test_failure_keeps_generations_and_carries_on(self, monkeypatch, tmp_path):
+        """The failed dataset's generations are saved, the next dataset still runs, and
+        the run then reports the failure."""
+        # each dataset's response is named after it, in the order they're generated
+        names = iter(["first", "second"])
+
+        def generate(**kwargs):
+            return [[(f"{next(names)} response", "eos")]]
+
+        with pytest.raises(RuntimeError, match=r"\['first'\]"):
+            self._evaluate(monkeypatch, tmp_path, generate, self._score)
+
+        # the failed dataset kept its generations for later, with no results
+        assert (tmp_path / "first.unscored.jsonl").exists()
+        assert not (tmp_path / "first.json").exists()
+        # the other dataset was scored as normal, replacing its unscored copy
+        assert (tmp_path / "second.json").exists()
+        assert not (tmp_path / "second.unscored.jsonl").exists()
+
+    def test_a_later_run_scores_the_saved_generations(self, monkeypatch, tmp_path):
+        """Saved generations are scored without generating them again."""
+        evaluate.save_unscored_generations(
+            [[("saved response", "eos")]],
+            tmp_path / "first.unscored.jsonl",
+        )
+        scored = []
+
+        def generate(**kwargs):
+            return [[("second response", "eos")]]
+
+        def score(**kwargs):
+            scored.append(kwargs["responses"])
+            return {"task": "library_usage", "n_total": 1}, [{"idx": 0}]
+
+        self._evaluate(monkeypatch, tmp_path, generate, score)
+
+        assert scored[0] == [[("saved response", "eos")]]
+        assert (tmp_path / "first.json").exists()
+        assert not (tmp_path / "first.unscored.jsonl").exists()
+
+
+def test_mismatched_saved_generations_are_ignored(tmp_path):
+    """Saved generations are only reused when they match the run's prompts and samples."""
+    path = tmp_path / "x.unscored.jsonl"
+    evaluate.save_unscored_generations([[("a", "eos")], [("b", "eos")]], path)
+
+    assert evaluate.load_unscored_generations(path, n_prompts=2, n_samples=1) == [
+        [("a", "eos")],
+        [("b", "eos")],
+    ]
+    assert evaluate.load_unscored_generations(path, n_prompts=3, n_samples=1) is None
+    assert evaluate.load_unscored_generations(path, n_prompts=2, n_samples=5) is None
+    assert evaluate.load_unscored_generations(tmp_path / "none.jsonl", 2, 1) is None

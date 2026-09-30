@@ -75,9 +75,11 @@ the resolved version of every installed distribution.
 - pass `--unsafe-installs` to skip the interactive confirmation gate and install automatically;
 - pass `--env env.txt` (one pip package per line) to pin the environment exactly and skip
   collection and confirmation;
-- if confirmation is declined, or a package fails to install, an editable `env.txt` is
-  written for you to correct (remove unwanted libraries, fix names, pin versions) and re-run with
-  `--env`.
+- if confirmation is declined, an editable `env.txt` is written for you to correct (remove
+  unwanted libraries, fix names, pin versions) and re-run with `--env`;
+- if a package fails to install (e.g. one that doesn't exist), the run carries on: responses
+  whose code imports it aren't run and count as not passed, and the results list them under
+  `not_run`. Pass `--stop-on-install-failure` to stop instead and get the editable `env.txt`.
 
 ```shell
 libreuseeval your_responses.jsonl --env env.txt
