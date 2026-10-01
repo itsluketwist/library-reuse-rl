@@ -59,3 +59,143 @@ qwen3-8b-ef47-epoch5:
     seed: 42
     library_prompt_style: base
     epoch: 5
+
+qwen3-8b-7405-epoch1:
+  base: Qwen/Qwen3-8B
+  path: /projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-7405/checkpoint-28
+  properties:
+    run_id: qwen3-8b-7405
+    base_model: qwen3-8b
+    dataset: data/train/library_usage
+    recipe: config/training.yaml
+    reward_profile: lu-v1
+    seed: 42
+    library_prompt_style: ext
+    learning_rate: 3.0e-06
+    epoch: 1
+
+qwen3-8b-7405-epoch2:
+  base: Qwen/Qwen3-8B
+  path: /projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-7405/checkpoint-56
+  properties:
+    run_id: qwen3-8b-7405
+    base_model: qwen3-8b
+    dataset: data/train/library_usage
+    recipe: config/training.yaml
+    reward_profile: lu-v1
+    seed: 42
+    library_prompt_style: ext
+    learning_rate: 3.0e-06
+    epoch: 2
+
+qwen3-8b-7405-epoch3:
+  base: Qwen/Qwen3-8B
+  path: /projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-7405/checkpoint-84
+  properties:
+    run_id: qwen3-8b-7405
+    base_model: qwen3-8b
+    dataset: data/train/library_usage
+    recipe: config/training.yaml
+    reward_profile: lu-v1
+    seed: 42
+    library_prompt_style: ext
+    learning_rate: 3.0e-06
+    epoch: 3
+
+qwen3-8b-7405-epoch4:
+  base: Qwen/Qwen3-8B
+  path: /projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-7405/checkpoint-112
+  properties:
+    run_id: qwen3-8b-7405
+    base_model: qwen3-8b
+    dataset: data/train/library_usage
+    recipe: config/training.yaml
+    reward_profile: lu-v1
+    seed: 42
+    library_prompt_style: ext
+    learning_rate: 3.0e-06
+    epoch: 4
+
+qwen3-8b-7405-epoch5:
+  base: Qwen/Qwen3-8B
+  path: /projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-7405/checkpoint-140
+  properties:
+    run_id: qwen3-8b-7405
+    base_model: qwen3-8b
+    dataset: data/train/library_usage
+    recipe: config/training.yaml
+    reward_profile: lu-v1
+    seed: 42
+    library_prompt_style: ext
+    learning_rate: 3.0e-06
+    epoch: 5
+
+qwen3-8b-4796-epoch1:
+  base: Qwen/Qwen3-8B
+  path: /projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4796/checkpoint-28
+  properties:
+    run_id: qwen3-8b-4796
+    base_model: qwen3-8b
+    dataset: data/train/library_usage
+    recipe: config/training.yaml
+    reward_profile: lu-v1
+    seed: 42
+    library_prompt_style: base
+    learning_rate: 3.0e-06
+    epoch: 1
+
+qwen3-8b-4796-epoch2:
+  base: Qwen/Qwen3-8B
+  path: /projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4796/checkpoint-56
+  properties:
+    run_id: qwen3-8b-4796
+    base_model: qwen3-8b
+    dataset: data/train/library_usage
+    recipe: config/training.yaml
+    reward_profile: lu-v1
+    seed: 42
+    library_prompt_style: base
+    learning_rate: 3.0e-06
+    epoch: 2
+
+qwen3-8b-4796-epoch3:
+  base: Qwen/Qwen3-8B
+  path: /projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4796/checkpoint-84
+  properties:
+    run_id: qwen3-8b-4796
+    base_model: qwen3-8b
+    dataset: data/train/library_usage
+    recipe: config/training.yaml
+    reward_profile: lu-v1
+    seed: 42
+    library_prompt_style: base
+    learning_rate: 3.0e-06
+    epoch: 3
+
+qwen3-8b-4796-epoch4:
+  base: Qwen/Qwen3-8B
+  path: /projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4796/checkpoint-112
+  properties:
+    run_id: qwen3-8b-4796
+    base_model: qwen3-8b
+    dataset: data/train/library_usage
+    recipe: config/training.yaml
+    reward_profile: lu-v1
+    seed: 42
+    library_prompt_style: base
+    learning_rate: 3.0e-06
+    epoch: 4
+
+qwen3-8b-4796-epoch5:
+  base: Qwen/Qwen3-8B
+  path: /projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4796/checkpoint-140
+  properties:
+    run_id: qwen3-8b-4796
+    base_model: qwen3-8b
+    dataset: data/train/library_usage
+    recipe: config/training.yaml
+    reward_profile: lu-v1
+    seed: 42
+    library_prompt_style: base
+    learning_rate: 3.0e-06
+    epoch: 5
