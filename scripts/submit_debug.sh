@@ -170,7 +170,7 @@ echo
 
 job_id=$(sbatch --parsable <<EOF
 #!/bin/bash -l
-#SBATCH --job-name=debug-${job_name}
+#SBATCH --job-name=reuse-debug-${job_name}
 #SBATCH --output=logs/debug/${job_name}-%j.out
 #SBATCH --account=${ACCOUNT}
 #SBATCH --partition=${PARTITION}

@@ -5,6 +5,9 @@ output/
     {base_model}/{run_id}/          everything from one training run of that base model:
         grpo/                       its training metrics (trainer_state.json, ...)
         epoch1/, epoch2/, ...       each epoch checkpoint's eval results
+    {iteration}/                    a numbered round of experiments (01/, 02/, ...), written
+        README.md                   up in its README - its runs are moved here from their
+        {run_id}/                   base model's folder, in the same layout
     debug/                          debug (--debug) eval results, in the same layout as above
 
 Eval results are two files per dataset (see src/eval/evaluate.py). The checkpoints
@@ -42,14 +45,19 @@ def baseline_dir(model: str) -> Path:
 def training_run_dir(
     base_model: str,
     run_id: str,
+    iteration: str | None = None,
 ) -> Path:
     """
     The folder everything from one training run goes in: its training metrics (grpo/)
-    and each epoch's eval results (epoch1/, epoch2/, ...), grouped under the base model
-    the run trained.
+    and each epoch's eval results (epoch1/, epoch2/, ...). A new run is grouped under the
+    base model it trained. Once it is written up as part of an iteration of experiments
+    (an "iteration" property in its registry entries), it lives in that iteration's folder.
 
-    Returns output/{base_model}/{run_id}.
+    Returns output/{iteration}/{run_id} for a run in an iteration, otherwise
+    output/{base_model}/{run_id}.
     """
+    if iteration:
+        return OUTPUT_DIR / iteration / run_id
     return OUTPUT_DIR / base_model / run_id
 
 
@@ -81,4 +89,9 @@ def model_output_dir(
             f"Can't tell which training run '{model_key}' belongs to - expected a "
             "'{run_id}-epoch{n}' key or run_id/base_model/epoch properties."
         )
-    return training_run_dir(base_model=base_model, run_id=run_id) / f"epoch{epoch}"
+    run_dir = training_run_dir(
+        base_model=base_model,
+        run_id=run_id,
+        iteration=properties.get("iteration"),
+    )
+    return run_dir / f"epoch{epoch}"

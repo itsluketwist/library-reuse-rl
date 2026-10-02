@@ -33,11 +33,11 @@ models=(
     # "vllm:domyn-small"
 )
 
-# training runs to evaluate, by run id (e.g. "qwen3-8b-ef47"). each is added to the models
+# training runs to evaluate, by run id (e.g. "qwen3-8b-4796"). each is added to the models
 # above as every epoch checkpoint that run registered (config/trained_models.yaml, or
 # config/debug_models.yaml for a debug run), so a run's epochs needn't be listed one by one
 training_runs=(
-    # "qwen3-8b-ef47"
+    # "qwen3-8b-4796"
 )
 
 # EVAL_MODELS replaces both lists above (a space-separated string of models), which is how
@@ -183,7 +183,7 @@ for model_entry in "${models[@]}"; do
 
             eval_job_id=$(sbatch --parsable <<EOF
 #!/bin/bash -l
-#SBATCH --job-name=eval-${model}-${decoding_profile}-${prompt_style}
+#SBATCH --job-name=reuse-eval-${model}-${decoding_profile}-${prompt_style}
 #SBATCH --output=${log_dir}/eval-${model}-${decoding_profile}-${prompt_style}-%j.out
 #SBATCH --account=${ACCOUNT}
 #SBATCH --partition=${PARTITION}

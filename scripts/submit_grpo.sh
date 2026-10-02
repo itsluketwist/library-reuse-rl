@@ -131,7 +131,7 @@ for model in "${models[@]}"; do
 
         train_job_id=$(sbatch --parsable <<EOF
 #!/bin/bash -l
-#SBATCH --job-name=${job_name}
+#SBATCH --job-name=reuse-${job_name}
 #SBATCH --output=${log_dir}/${job_name}-%j.out
 #SBATCH --account=${ACCOUNT}
 #SBATCH --partition=${PARTITION}

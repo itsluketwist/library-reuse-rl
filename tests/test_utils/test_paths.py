@@ -38,6 +38,23 @@ class TestModelOutputDir:
             "output/qwen3-8b/qwen3-8b-a1b2/epoch1"
         )
 
+    def test_an_epoch_of_a_written_up_run_goes_in_its_iterations_folder(self) -> None:
+        """Runs grouped into a numbered iteration live under output/{iteration}/."""
+        settings = {
+            "base": "Qwen/Qwen3-8B",
+            "path": "/checkpoints/qwen3-8b-a1b2/checkpoint-28",
+            "properties": {
+                "run_id": "qwen3-8b-a1b2",
+                "base_model": "qwen3-8b",
+                "epoch": 1,
+                "iteration": "01",
+            },
+        }
+
+        assert model_output_dir("qwen3-8b-a1b2-epoch1", settings) == Path(
+            "output/01/qwen3-8b-a1b2/epoch1"
+        )
+
     def test_an_older_entry_is_placed_from_its_key(self) -> None:
         """Entries registered before run_id/base_model were recorded still land right."""
         settings = {
