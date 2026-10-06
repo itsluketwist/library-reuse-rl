@@ -10,7 +10,7 @@ echo ">>> Submitting eval jobs to slurm >>>"
 ACCOUNT="brics.u6yb"
 PARTITION="workq"
 GPUS=1                           # evaluation generates with one vllm engine
-TIME="12:00:00"
+TIME="4:00:00"
 
 ###############################################################################
 #                          evaluation configuration                           #
@@ -25,12 +25,12 @@ TIME="12:00:00"
 models=(
     # "vllm:qwen3-debug"
     # "vllm:qwen3-4b"
-    # "vllm:qwen3-8b"
+    "vllm:qwen3-8b"
     # "vllm:qwen3-14b"
     # "vllm:qwen3-32b"
-    # "vllm:olmo3-7b"
-    # "vllm:qwen3.5-9b"
-    # "vllm:domyn-small"
+    "vllm:olmo3-7b"
+    "vllm:qwen3.5-9b"
+    "vllm:domyn-small"
 )
 
 # training runs to evaluate, by run id (e.g. "qwen3-8b-4796"). each is added to the models
@@ -48,11 +48,12 @@ training_runs=(
 # eval dataset names (config/eval_datasets.yaml). leave empty to evaluate every dataset in
 # that file. product_choice is gitignored and must have been built locally.
 datasets=(
-    "library_usage"
-    "library_usage_val"
+    # "library_usage"
+    # "library_usage_val"
     # "library_usage_train"
-    "libreusebench_test"
-    "libreusebench_control"
+    "library_usage_script_pilot"
+    # "libreusebench_test"
+    # "libreusebench_control"
 )
 
 # completions sampled per prompt (see --n-samples in src/run_eval.py); eval-only, unrelated
