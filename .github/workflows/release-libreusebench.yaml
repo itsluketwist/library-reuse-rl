@@ -76,3 +76,4 @@ jobs:
           uvx --from 'huggingface_hub>=1.19.0' hf upload itsluketwist/LibReuseBench libreusebench/data/CANARY.txt CANARY.txt --repo-type dataset
           uvx --from 'huggingface_hub>=1.19.0' hf upload itsluketwist/LibReuseBench libreusebench/data/test.jsonl data/test.jsonl --repo-type dataset
           uvx --from 'huggingface_hub>=1.19.0' hf upload itsluketwist/LibReuseBench libreusebench/data/dev.jsonl data/dev.jsonl --repo-type dataset
+          uvx --from 'huggingface_hub>=1.19.0' hf upload itsluketwist/LibReuseBench libreusebench/data/control.jsonl data/control.jsonl --repo-type dataset

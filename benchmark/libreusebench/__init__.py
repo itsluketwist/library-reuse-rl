@@ -21,7 +21,7 @@ from libreusebench.load import load_dataset, load_records
 
 
 # the single source of the package version (read by pyproject.toml when building)
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "__version__",
