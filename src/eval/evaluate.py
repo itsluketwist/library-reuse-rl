@@ -248,6 +248,17 @@ def evaluate_model(
             continue
         log(f"Scored {analysis['n_total']} responses ({analysis['task']})")
 
+        # which build of the dataset was scored (library-usage rows stamp their own
+        # dataset_version), so results are never mistaken for another build's - None for a
+        # dataset whose rows carry no version. the dataset is a huggingface Dataset, or a
+        # plain {column: values} dict in tests
+        columns = getattr(dataset, "column_names", None) or list(dataset)
+        dataset_version = (
+            sorted(set(dataset["dataset_version"]) - {None})
+            if "dataset_version" in columns
+            else None
+        )
+
         output = {
             "metadata": {
                 "base": base,
@@ -256,6 +267,7 @@ def evaluate_model(
                 "provider": "api" if api is not None else "vllm",
                 "dataset": name,
                 "dataset_file": dataset_file,
+                "dataset_version": dataset_version,
                 "evaluator": evaluator,
                 # the lure version that parsed and scored every response
                 "lure_version": lure.__version__,

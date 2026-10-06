@@ -33,20 +33,25 @@ exists but a model is tempted to hand-roll it. Reuse is detected programmaticall
 solution's imports, subtract the standard library and the repo's own modules (`local_modules`),
 and any remaining *used* import is genuine reuse (no labels, no execution). Each task is asked
 in 3 modes — set **in a python repo's context** (`repo`), as a **bare "how do I implement X"**
-(`simple`), or as a **stdin/stdout script** (`script`, reminiscent of the LibReuseBench eval
-benchmark's wording) — each from 2 sources, a deterministic template and a claude-generated
-wording, so every task has up to 6 rows. See `src/grpo/rewards/library_usage.py`.
+(`simple`), or as a **stdin/stdout script** (`script`, in the LibReuseBench eval benchmark's
+template) — each from 2 sources, a deterministic template and claude-generated wordings (one for
+`repo` and `simple`, three staged ones for `script`), so every task has up to 8 rows. See
+`src/grpo/rewards/library_usage.py`.
 
 **Ids.** Every row carries a unique `task_id` in the benchmark's style — `LRRL/U####` for
 `library_usage`, `LRRL/P####` for `product_choice`. Ids are assigned within the splits, numbered
 in test → train → val order, so they are contiguous per split and the test set starts at `…0000`.
 
 **Versioning.** Every `library_usage` row carries a `dataset_version`. **v1** was the
-deterministic, template-only build. **v2** (current) is the 3-mode (`repo`/`simple`/`script`) x
+deterministic, template-only build. **v2** is the 3-mode (`repo`/`simple`/`script`) x
 2-source (`template`/`claude`) build: every task gets one row per (mode, source) - 6 rows/task
 once the claude caches (`build/library/*_prompts.json`) are populated via `augment.py`'s CLI, 3
-rows/task (template-only) while a cache is still empty. Bump `DATASET_VERSION` in
-`build/library/build.py` when the construction method changes again.
+rows/task (template-only) while a cache is still empty. **v3** (current) replaces the one claude
+`script` wording with three staged ones in LibReuseBench's template (`outline` / `precise` /
+`benchmark`, recorded as `script_stage`), because the v2 wording gave almost no library-use
+signal - 8 rows/task, or 5 for a task that can't be posed as stdin/stdout. Bump
+`DATASET_VERSION` in `build/library/build.py` when the construction method changes again.
+Eval results record the `dataset_version` they scored, since a rebuild renumbers every id.
 
 **Splits.** Made by `build/split.py:split_disjoint_test`, with two deliberately different holdouts:
 
@@ -89,12 +94,15 @@ Shared helpers (used by both pipelines):
   build.py deterministically picks one per task.
 - **`repos/`** — committed repos we author (e.g. `pytoolbox`, a deliberately broad toolbox) used
   as repo-mode contexts, so every category has a plausible repo it could be added to.
-- **`augment.py`** — LLM seam that adds one claude-generated wording per task per mode; also the
-  CLI (`python data/build/library/augment.py --type simple|script|repo|all`) that regenerates
-  the caches offline (needs `ANTHROPIC_API_KEY`; build.py itself never calls an LLM).
-- **`simple_prompts.json` / `script_prompts.json` / `repo_prompts.json`** — committed caches of
-  claude-generated wordings the build folds in, one per mode (empty ⇒ templates only).
-- **`build.py`** — build the `library_usage` split → `train/library_usage/`.
+- **`augment.py`** — LLM seam that adds claude-generated wordings (one per task for `repo` and
+  `simple`, three staged ones for `script`); also the CLI (`python data/build/library/augment.py
+  --type simple|script|repo|all`) that regenerates the caches offline (needs `ANTHROPIC_API_KEY`;
+  build.py itself never calls an LLM).
+- **`simple_prompts.json` / `repo_prompts.json` / `script_stage_prompts.json`** — committed
+  caches of claude-generated wordings the build folds in (empty ⇒ templates only).
+  `script_prompts.json` holds the retired v2 script wordings, kept only for the script pilot.
+- **`build.py`** — build the `library_usage` split → `train/library_usage/`; with `--pilot N`,
+  the script pilot file instead (`pilot/script_pilot.jsonl`, see `docs/CONSTRUCTION.md`).
 - **`docs/`** — `CONSTRUCTION.md` (how this all fits together), `REPORT.md`, `PROMPT_COMPARISON.md`
   (sample prompts from each mode/source, for reviewing `augment.py`'s output by eye).
 

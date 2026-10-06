@@ -103,6 +103,10 @@ def _dataset_section(
     if any("phrasing_mode" in row for row in all_rows):
         by_mode = Counter(row.get("phrasing_mode", "?") for row in all_rows)
         lines.append(f"- **phrasing modes**: {dict(by_mode)}")
+    # from v3, script rows also record which wording stage they are (template, outline, ...)
+    stages = Counter(row["script_stage"] for row in all_rows if row.get("script_stage"))
+    if stages:
+        lines.append(f"- **script stages**: {dict(stages)}")
     lines.append("")
     lines.append("| category | rows |")
     lines.append("| --- | --- |")

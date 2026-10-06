@@ -9,22 +9,34 @@ library-reuse decision worded several ways. The reward is programmatic: any used
 import (after subtracting stdlib and the repo's own local_modules) counts as reuse, so no
 labels or execution are needed.
 
-The hybrid LLM layer (augment.py) adds one extra claude-generated wording per mode from the
-committed simple_prompts.json / script_prompts.json / repo_prompts.json caches when present;
-without them the template-only build is fully deterministic.
+The hybrid LLM layer (augment.py) adds claude-generated wordings from committed caches when
+present: one extra wording per task for repo and simple (repo_prompts.json / simple_prompts.json),
+and three staged wordings per task for script (script_stage_prompts.json, see SCRIPT_STAGES in
+augment.py). Without them the template-only build is fully deterministic.
 
-Usage: python data/build/library/build.py
+`--pilot N` instead writes the script pilot file: just the script rows of the pilot's N tasks,
+both the dataset-v2 wordings and the new staged ones, so a model's library use on each can be
+compared in a single eval run (library_usage_script_pilot in config/eval_datasets.yaml).
+
+Usage: python data/build/library/build.py [--pilot N]
 """
 
+import argparse
 import random
 import re
 from pathlib import Path
+from typing import Any
 
 import yaml
 from llm_cgr import save_jsonl
 
 from data.build.contexts import Context, build_contexts
-from data.build.library.augment import load_prompt_cache
+from data.build.library.augment import (
+    SCRIPT_STAGES,
+    load_prompt_cache,
+    load_script_stage_cache,
+    pilot_seed_tasks,
+)
 from data.build.paths import (
     LIBRARY_REPOS_DIR,
     LIBRARY_TAXONOMY_FILE,
@@ -45,12 +57,18 @@ VERSION = "2026-08"
 # how the dataset was constructed, stamped on every row. v1 was the deterministic template-only
 # build. v2 is the 3-mode (repo/simple/script) x 2-source (template/claude) restructure: every
 # task gets exactly one row per (mode, source) - 6 rows/task once the claude caches are
-# populated, 3 rows/task (template-only) while they're still empty.
-DATASET_VERSION = "v2"
+# populated, 3 rows/task (template-only) while they're still empty. v3 replaces the one claude
+# script wording with three staged ones in LibReuseBench's template (outline/precise/benchmark,
+# see augment.py) beside the template script row - 8 rows/task, or 5 for a task that can't be
+# posed honestly as stdin/stdout (it keeps only its template script row).
+DATASET_VERSION = "v3"
 
 _HERE = Path(__file__).parent
 TASKS_FILE = _HERE / "tasks.yaml"
 TEMPLATES_FILE = _HERE / "templates.yaml"
+
+# the script pilot's rows (see --pilot) - kept beside the build, away from the training splits
+PILOT_FILE = _HERE / "pilot" / "script_pilot.jsonl"
 
 
 def _task_lower(
@@ -137,8 +155,12 @@ def _row(
     context: Context | None,
     phrasing_mode: str,
     source: str,
+    script_stage: str | None = None,
 ) -> dict:
     """Assemble one library-usage row.
+
+    `script_stage` names which script wording a script row is ("template", or one of
+    SCRIPT_STAGES for the staged claude wordings); it is None for repo and simple rows.
 
     Returns the row dict.
     """
@@ -158,6 +180,7 @@ def _row(
         "local_modules": context.local_modules if context else [],
         "useful_libs": useful_libs,
         "phrasing_mode": phrasing_mode,
+        "script_stage": script_stage,
         "allowlist_version": VERSION,
         "dataset_version": DATASET_VERSION,
         "source": source,
@@ -170,12 +193,14 @@ def build_library_usage_rows(
     templates: dict[str, list[str]],
     contexts_by_id: dict[str, Context],
     prompt_caches: dict[str, dict[str, list[str]]],
+    stage_cache: dict[str, dict[str, Any]],
 ) -> list[dict]:
-    """Build library-usage rows: each task, in each of the 3 modes, from each of the 2 sources.
+    """Build library-usage rows: each task, in each of the 3 modes, from each source.
 
-    Every task gets exactly one template row and (once the cache has an entry) one claude row
-    per mode - 6 rows/task in steady state, 3 rows/task (template-only) while the claude caches
-    are still empty. Repo-mode rows are set in the one repo named by the task's category's
+    Every task gets one template row per mode. Repo and simple add one claude row each (once
+    `prompt_caches` has an entry); script adds one claude row per stage of the task's staged
+    wording (once `stage_cache` has an entry that fits stdin/stdout). That is 8 rows/task in
+    steady state. Repo-mode rows are set in the one repo named by the task's category's
     taxonomy.yaml repo_hint; simple- and script-mode rows carry no context.
 
     Returns the library-usage rows.
@@ -206,8 +231,26 @@ def build_library_usage_rows(
                         context,
                         phrasing_mode=mode,
                         source="template",
+                        script_stage="template" if mode == "script" else None,
                     )
                 )
+
+                if mode == "script":
+                    for stage, prompt in _staged_prompts(stage_cache, seed_task):
+                        rows.append(
+                            _row(
+                                prompt,
+                                cid,
+                                seed_task,
+                                task,
+                                useful_libs,
+                                context,
+                                phrasing_mode=mode,
+                                source="llm",
+                                script_stage=stage,
+                            )
+                        )
+                    continue
 
                 claude_prompt = _pick_one(
                     prompt_caches[mode].get(seed_task, []),
@@ -230,6 +273,80 @@ def build_library_usage_rows(
     return rows
 
 
+def _staged_prompts(
+    stage_cache: dict[str, dict[str, Any]],
+    seed_task: str,
+) -> list[tuple[str, str]]:
+    """List a task's staged script wordings, loosest first.
+
+    A task with no cache entry, or one the generator judged can't be posed honestly as
+    stdin/stdout (fits_stdio false), has none.
+
+    Returns (stage, prompt) pairs.
+    """
+    entry = stage_cache.get(seed_task)
+    if not entry or not entry.get("fits_stdio"):
+        return []
+    return [(stage, entry[stage]) for stage in SCRIPT_STAGES]
+
+
+def build_script_pilot_rows(
+    taxonomy: dict,
+    tasks: dict[str, dict[int, str]],
+    templates: dict[str, list[str]],
+    v2_script_cache: dict[str, list[str]],
+    stage_cache: dict[str, dict[str, Any]],
+    pilot_tasks: list[str],
+) -> list[dict]:
+    """Build the script pilot's rows: every script wording of each pilot task, old and new.
+
+    Per task: the template script row, the dataset-v2 claude script row (picked exactly as the
+    v2 build picked it, marked script_stage "v2"), and the new staged rows - so one eval run
+    scores old and new wordings of the same tasks side by side. Ids are "LRRL/S####".
+
+    Returns the pilot rows.
+    """
+    wanted = set(pilot_tasks)
+    rows = []
+    for entry in taxonomy.get("code", []):
+        cid = entry["id"]
+        for number, task in tasks.get(cid, {}).items():
+            seed_task = f"{cid}.{number}"
+            if seed_task not in wanted:
+                continue
+
+            # the template row and the v2 claude row, picked with the same seeds as before
+            template = _pick_one(templates["script"], seed_task, salt="script")
+            assert template is not None
+            wordings = [("template", "template", _render(template, task, None))]
+            v2_prompt = _pick_one(
+                v2_script_cache.get(seed_task, []),
+                seed_task,
+                salt="script-llm",
+            )
+            if v2_prompt is not None:
+                wordings.append(("llm", "v2", v2_prompt))
+            wordings += [
+                ("llm", stage, prompt)
+                for stage, prompt in _staged_prompts(stage_cache, seed_task)
+            ]
+
+            for source, stage, prompt in wordings:
+                row = _row(
+                    prompt,
+                    cid,
+                    seed_task,
+                    task,
+                    entry["seed_libraries"],
+                    None,
+                    phrasing_mode="script",
+                    source=source,
+                    script_stage=stage,
+                )
+                rows.append({"task_id": f"LRRL/S{len(rows):04d}", **row})
+    return rows
+
+
 def dedupe(
     rows: list[dict],
 ) -> list[dict]:
@@ -248,12 +365,46 @@ def dedupe(
 
 def main() -> None:
     """Build the library-usage dataset from the taxonomy, tasks, templates and cache."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--pilot",
+        type=int,
+        default=None,
+        help="write only the script pilot file, for the pilot's sample of N tasks",
+    )
+    args = parser.parse_args()
+
     taxonomy = yaml.safe_load(LIBRARY_TAXONOMY_FILE.read_text())
     tasks = yaml.safe_load(TASKS_FILE.read_text())
     templates = yaml.safe_load(TEMPLATES_FILE.read_text())
-    prompt_caches = {
-        mode: load_prompt_cache(mode) for mode in ("simple", "script", "repo")
-    }
+    stage_cache = load_script_stage_cache()
+
+    if args.pilot is not None:
+        pilot_tasks = pilot_seed_tasks(taxonomy, tasks, args.pilot)
+        missing = [
+            seed_task for seed_task in pilot_tasks if seed_task not in stage_cache
+        ]
+        if missing:
+            raise ValueError(
+                f"no staged wording cached for pilot task(s) {missing} - run "
+                f"`augment.py --type script --pilot {args.pilot}` first"
+            )
+        rows = build_script_pilot_rows(
+            taxonomy,
+            tasks,
+            templates,
+            v2_script_cache=load_prompt_cache("script"),
+            stage_cache=stage_cache,
+            pilot_tasks=pilot_tasks,
+        )
+        PILOT_FILE.parent.mkdir(parents=True, exist_ok=True)
+        save_jsonl(rows, str(PILOT_FILE))
+        print(
+            f"script pilot: {len(rows)} rows for {len(pilot_tasks)} tasks in {PILOT_FILE}"
+        )
+        return
+
+    prompt_caches = {mode: load_prompt_cache(mode) for mode in ("simple", "repo")}
     aligned_categories = {
         entry["id"]
         for entry in taxonomy.get("code", [])
@@ -282,8 +433,15 @@ def main() -> None:
 
     rows = dedupe(
         build_library_usage_rows(
-            taxonomy, tasks, templates, contexts_by_id, prompt_caches
+            taxonomy, tasks, templates, contexts_by_id, prompt_caches, stage_cache
         )
+    )
+    # a task without a cached staged wording silently gets no staged rows, so report coverage
+    n_tasks = sum(len(category_tasks) for category_tasks in tasks.values())
+    n_fit = sum(1 for entry in stage_cache.values() if entry.get("fits_stdio"))
+    print(
+        f"staged script wordings: {len(stage_cache)}/{n_tasks} tasks cached, "
+        f"{n_fit} posed as stdin/stdout"
     )
     # test holds out whole (unseen) tasks; val is an in-distribution, category-stratified
     # subset of the seen tasks - so val tracks learning and test tracks generalisation. the

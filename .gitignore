@@ -202,6 +202,8 @@ output/**/*.unscored.jsonl
 # results on the full training split (library_usage_train) - thousands of long responses, too
 # large to commit - copied down with `bash scripts/download_train_results.sh` instead
 output/**/library_usage_train-*
+# ... and on the script pilot (data/build/library/build.py --pilot), fetched the same way
+output/**/library_usage_script_pilot-*
 
 # debug runs' outputs (see src/utils/paths.py for the layout)
 output/debug/

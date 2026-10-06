@@ -33,6 +33,11 @@ library_usage_val:
 library_usage_train:
   path: "data/train/library_usage/train.jsonl"
   evaluator: library_usage
+# the script pilot (data/build/library/build.py --pilot): every script wording of a sample of
+# tasks, the dataset-v2 ones and the new staged ones, to compare the library use each draws
+library_usage_script_pilot:
+  path: "data/build/library/pilot/script_pilot.jsonl"
+  evaluator: library_usage
 
 # LibReuseBench: library-agnostic stdin/stdout problems with executable test cases
 libreusebench_test:

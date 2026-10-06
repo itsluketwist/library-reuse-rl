@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# copies the eval results on the full training split (library_usage_train) down from isambard.
-# they are too large to commit (thousands of long responses per model), so they are git-ignored
-# and fetched with this instead. run from the repo root on your own machine; existing files are
-# overwritten with the latest.
+# copies the eval results on the full training split (library_usage_train), and on the script
+# pilot (library_usage_script_pilot), down from isambard. they are too large to commit (thousands
+# of long responses per model), so they are git-ignored and fetched with this instead. run from
+# the repo root on your own machine; existing files are overwritten with the latest.
 #
 #   bash scripts/download_train_results.sh         # download (or refresh) the local copies
 #   bash scripts/download_train_results.sh clean   # delete the local copies (lists them and asks)
@@ -12,19 +12,31 @@ set -uo pipefail
 HOST="u6yb.aip2.isambard"  # see ~/.ssh/config_clifton - run `clifton auth` first if refused
 REMOTE_REPO="reuse"  # the repo's path on isambard, relative to the home directory
 
-# the training split's result files: the analysis (.json) and every response (.generations.jsonl)
-PATTERN="library_usage_train-*"
+# the result files to copy, each as the analysis (.json) and every response (.generations.jsonl):
+# the full training split's, and the script pilot's (see data/build/library/build.py --pilot)
+PATTERNS=("library_usage_train-*" "library_usage_script_pilot-*")
 
 mode="${1:-download}"
 
+# the patterns as rsync include rules, and as a find test matching any of them
+includes=()
+name_tests=()
+for pattern in "${PATTERNS[@]}"; do
+    includes+=(--include="$pattern")
+    if [ ${#name_tests[@]} -gt 0 ]; then
+        name_tests+=(-o)
+    fi
+    name_tests+=(-name "$pattern")
+done
+
 case "$mode" in
     download)
-        # walk every folder under output/ (--include='*/'), but copy only the training split's
-        # result files, skipping everything else (--exclude='*') and leaving out folders with
-        # none of them (--prune-empty-dirs) - wherever they are, e.g. output/baselines/{model}/
-        # or a training run's epoch{n}/
+        # walk every folder under output/ (--include='*/'), but copy only the matching result
+        # files, skipping everything else (--exclude='*') and leaving out folders with none of
+        # them (--prune-empty-dirs) - wherever they are, e.g. output/baselines/{model}/ or a
+        # training run's epoch{n}/
         rsync -av --prune-empty-dirs \
-            --include='*/' --include="$PATTERN" --exclude='*' \
+            --include='*/' "${includes[@]}" --exclude='*' \
             "$HOST:$REMOTE_REPO/output/" output/
         ;;
     clean)
@@ -32,10 +44,10 @@ case "$mode" in
         leftovers=()
         while IFS= read -r path; do
             leftovers+=("$path")
-        done < <(find output -type f -name "$PATTERN" 2>/dev/null | sort)
+        done < <(find output -type f \( "${name_tests[@]}" \) 2>/dev/null | sort)
 
         echo
-        echo "Local copies of the training split's results:"
+        echo "Local copies of the training split's and script pilot's results:"
         if [ ${#leftovers[@]} -eq 0 ]; then
             echo "  (no files)"
             exit 0
