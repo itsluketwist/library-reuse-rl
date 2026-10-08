@@ -57,20 +57,27 @@ def _file_tree(
 def _local_modules(
     repo_dir: Path,
 ) -> list[str]:
-    """The top-level python import names the repo defines (packages and modules).
+    """The python import names the repo defines - its packages and modules, at every depth.
 
-    A top-level directory containing any .py file is an importable package; a top-level
-    .py file is an importable module. These are what a solution would import to reach the
-    project's own code, so the reward subtracts them from "external library" detection.
+    A solution reaches the project's own code through its top-level package
+    (`from toolbox.utils import ...`), but one written as if it ran inside that package imports
+    the package's modules directly (`from utils import ...`). Both are the project's code, never
+    an external library, so the reward subtracts every name here. With only the top-level names,
+    a bare `from tasks import ...` earned the library reward - and GRPO training grew that from
+    0.3% to 3.6% of repo responses by epoch 5 of run 4796.
 
     Returns the sorted module names.
     """
     modules: set[str] = set()
-    for entry in repo_dir.iterdir():
-        if entry.is_dir() and any(entry.rglob("*.py")):
-            modules.add(entry.name)
-        elif entry.is_file() and entry.suffix == ".py":
-            modules.add(entry.stem)
+    for path in repo_dir.rglob("*.py"):
+        parts = path.relative_to(repo_dir).parts
+        # skip caches and hidden folders (e.g. .venv)
+        if any(part.startswith((".", "__pycache__")) for part in parts):
+            continue
+        # every package folder on the way down, then the module itself
+        modules.update(parts[:-1])
+        if path.stem not in ("__init__", "__main__"):
+            modules.add(path.stem)
     return sorted(modules)
 
 

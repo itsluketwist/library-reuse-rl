@@ -13,10 +13,17 @@
 # use) and {task_stdio} (the task reworded to drop its "...and return the result" ending, for
 # stdin/stdout framing). simple_prompts.json / repo_prompts.json layer one claude-generated
 # wording on top of their mode, and script_stage_prompts.json three staged ones on script.
+#
+# repo_project is not a mode's pick-one list: its one template is added to EVERY task as an
+# extra repo row (source "project"). it frames the task as something the user wants to add to
+# their own project, without showing any repo context.
 
 repo:
   - "{context}\n\nTask: {task}\n\nImplement this in Python."
   - "{context}\n\nWe need a new helper in this project: {task_lower}. Write it in Python."
+
+repo_project:
+  - "{task} Implement this in Python so that I can use it in my project."
 
 simple:
   - "How do I {task_lower} in Python?"

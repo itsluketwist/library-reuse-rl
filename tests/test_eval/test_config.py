@@ -21,11 +21,12 @@ def test_every_decoding_profile_declares_its_thinking_mode() -> None:
     assert all(isinstance(p.get("enable_thinking"), bool) for p in profiles.values())
 
 
-def test_training_uses_five_epochs_and_eight_rollouts() -> None:
-    """The main recipe retains the experiment's epoch and rollout counts."""
+def test_training_uses_three_epochs_and_eight_rollouts() -> None:
+    """The main recipe retains the experiment's epoch and rollout counts (3 epochs since run
+    4796's gains plateaued after epoch 2)."""
     training = load_full_yaml("config/training.yaml")
 
-    assert training["num_train_epochs"] == 5
+    assert training["num_train_epochs"] == 3
     assert training["num_generations"] == 8
 
 

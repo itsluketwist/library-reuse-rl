@@ -10,7 +10,7 @@ echo ">>> Submitting eval jobs to slurm >>>"
 ACCOUNT="brics.u6yb"
 PARTITION="workq"
 GPUS=1                           # evaluation generates with one vllm engine
-TIME="4:00:00"
+TIME="12:00:00"
 
 ###############################################################################
 #                          evaluation configuration                           #
@@ -28,9 +28,9 @@ models=(
     "vllm:qwen3-8b"
     # "vllm:qwen3-14b"
     # "vllm:qwen3-32b"
-    "vllm:olmo3-7b"
-    "vllm:qwen3.5-9b"
-    "vllm:domyn-small"
+    # "vllm:olmo3-7b"
+    # "vllm:qwen3.5-9b"
+    # "vllm:domyn-small"
 )
 
 # training runs to evaluate, by run id (e.g. "qwen3-8b-4796"). each is added to the models
@@ -42,16 +42,18 @@ training_runs=(
 
 # EVAL_MODELS replaces both lists above (a space-separated string of models), which is how
 # scripts/submit_grpo.sh queues a run's epochs before training has registered them;
-# EVAL_DEPENDENCY holds those jobs until training succeeds, and EVAL_LOG_DIR puts their
-# logs in the training run's log directory.
+# EVAL_DATASETS likewise replaces the datasets below, so a run's epochs are always scored on
+# the datasets submit_grpo.sh names, whatever this file is set up for; EVAL_DEPENDENCY holds
+# those jobs until training succeeds, and EVAL_LOG_DIR puts their logs in the training run's
+# log directory.
 
 # eval dataset names (config/eval_datasets.yaml). leave empty to evaluate every dataset in
 # that file. product_choice is gitignored and must have been built locally.
 datasets=(
-    # "library_usage"
-    # "library_usage_val"
-    # "library_usage_train"
-    "library_usage_script_pilot"
+    "library_usage"
+    "library_usage_val"
+    "library_usage_train"
+    # "library_usage_script_pilot"
     # "libreusebench_test"
     # "libreusebench_control"
 )
@@ -83,11 +85,16 @@ debug=false
 # false skips a model/dataset/decoding-profile/prompt-style combination whose result file
 # already exists under output/ (see src/utils/paths.py), so resubmitting only fills in
 # what is missing.
-update=false
+update=true
 
 ###############################################################################
 #                      submit jobs - do not edit below                        #
 ###############################################################################
+
+# EVAL_DATASETS names the datasets outright (see above)
+if [ -n "$EVAL_DATASETS" ]; then
+    read -ra datasets <<< "$EVAL_DATASETS"
+fi
 
 # build datasets flag string, joining the array into the comma-separated list run_eval
 # expects (-d)

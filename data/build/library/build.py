@@ -59,8 +59,9 @@ VERSION = "2026-08"
 # task gets exactly one row per (mode, source) - 6 rows/task once the claude caches are
 # populated, 3 rows/task (template-only) while they're still empty. v3 replaces the one claude
 # script wording with three staged ones in LibReuseBench's template (outline/precise/benchmark,
-# see augment.py) beside the template script row - 8 rows/task, or 5 for a task that can't be
-# posed honestly as stdin/stdout (it keeps only its template script row).
+# see augment.py) beside the template script row, and adds a project-framed repo row with no
+# repo context (source "project", templates.yaml's repo_project) - 9 rows/task, or 6 for a task
+# that can't be posed honestly as stdin/stdout (it keeps only its template script row).
 DATASET_VERSION = "v3"
 
 _HERE = Path(__file__).parent
@@ -197,10 +198,10 @@ def build_library_usage_rows(
 ) -> list[dict]:
     """Build library-usage rows: each task, in each of the 3 modes, from each source.
 
-    Every task gets one template row per mode. Repo and simple add one claude row each (once
-    `prompt_caches` has an entry); script adds one claude row per stage of the task's staged
-    wording (once `stage_cache` has an entry that fits stdin/stdout). That is 8 rows/task in
-    steady state. Repo-mode rows are set in the one repo named by the task's category's
+    Every task gets one template row per mode, plus a project-framed repo row with no repo
+    context (source "project"). Repo and simple add one claude row each (once `prompt_caches` has an entry);
+    script adds one claude row per stage of the task's staged wording (once `stage_cache` has
+    an entry that fits stdin/stdout). That is 9 rows/task in steady state. Repo-mode rows are set in the one repo named by the task's category's
     taxonomy.yaml repo_hint; simple- and script-mode rows carry no context.
 
     Returns the library-usage rows.
@@ -234,6 +235,23 @@ def build_library_usage_rows(
                         script_stage="template" if mode == "script" else None,
                     )
                 )
+
+                # every task also gets the project-framed repo row ("... so that I can use it
+                # in my project"), whichever repo template was picked above - the request alone,
+                # with no repo context (so no local modules either)
+                if mode == "repo":
+                    rows.append(
+                        _row(
+                            _render(templates["repo_project"][0], task, None),
+                            cid,
+                            seed_task,
+                            task,
+                            useful_libs,
+                            None,
+                            phrasing_mode=mode,
+                            source="project",
+                        )
+                    )
 
                 if mode == "script":
                     for stage, prompt in _staged_prompts(stage_cache, seed_task):

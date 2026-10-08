@@ -159,9 +159,7 @@ class TestGenerateScriptStages:
         bad = {**good, "precise": "Print the answer."}
         calls = self._fake_llm(monkeypatch, [bad, good])
 
-        entry = generate_script_stages(
-            "task", "Timezones", "manual offset maths", ["pytz"]
-        )
+        entry = generate_script_stages("task", ["pytz"])
 
         assert len(calls) == 2
         # the second attempt is told what was wrong with the first
@@ -183,7 +181,7 @@ class TestGenerateScriptStages:
         }
         self._fake_llm(monkeypatch, [reply])
 
-        entry = generate_script_stages("task", "Audio", "slicing raw bytes", [])
+        entry = generate_script_stages("task", [])
 
         assert entry is not None
         assert entry["fits_stdio"] is False
@@ -197,7 +195,7 @@ class TestGenerateScriptStages:
         }
         calls = self._fake_llm(monkeypatch, [bad, bad])
 
-        assert generate_script_stages("task", "c", "d", [], max_attempts=2) is None
+        assert generate_script_stages("task", [], max_attempts=2) is None
         assert len(calls) == 2
 
 
@@ -215,6 +213,7 @@ _TAXONOMY = {
 _TASKS = {"timezones": {1: "Convert a timestamp to UTC.", 2: "Play a sound file."}}
 _TEMPLATES = {
     "repo": ["{context}\n\nTask: {task}"],
+    "repo_project": ["{task} Use it in my project."],
     "simple": ["How do I {task_lower} in Python?"],
     "script": ["Write a script that reads standard input to {task_stdio}."],
 }
@@ -260,9 +259,24 @@ class TestBuildRows:
             ("llm", "benchmark"),
         ]
         assert script_rows("timezones.2") == [("template", "template")]
-        # repo and simple rows are untouched, and carry no script stage
+        # repo and simple rows carry no script stage; repo has the picked template row and
+        # the project-framed one
         other = [row for row in rows if row["phrasing_mode"] != "script"]
-        assert len(other) == 4
+        assert len(other) == 6
+        assert sorted(r["source"] for r in other if r["phrasing_mode"] == "repo") == [
+            "project",
+            "project",
+            "template",
+            "template",
+        ]
+        # the project row is the request alone - no repo context, so no local modules
+        project = [r for r in other if r["source"] == "project"]
+        assert all(
+            r["context_id"] == "none" and r["local_modules"] == [] for r in project
+        )
+        assert (
+            project[0]["prompt"] == "Convert a timestamp to UTC. Use it in my project."
+        )
         assert all(row["script_stage"] is None for row in other)
 
     def test_pilot_rows_hold_old_and_new_wordings(self):
@@ -341,3 +355,24 @@ def test_resume_skips_only_entries_from_the_current_prompt(
     augment.regenerate_script_stage_cache(taxonomy, _TASKS, model="m", skip_cached=True)
 
     assert generated == [_TASKS["timezones"][2]]
+
+
+def test_parallel_workers_generate_every_task(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+):
+    """With several workers every task is still generated once and cached, and a task whose
+    generation raises is left uncached rather than stopping the run."""
+    monkeypatch.setattr(augment, "SCRIPT_STAGE_CACHE_FILE", tmp_path / "cache.json")
+
+    def fake_generate(task: str, **kwargs: Any) -> dict[str, Any]:
+        if task == _TASKS["timezones"][2]:
+            raise TimeoutError("the api timed out")
+        return {**_stage_entry(), "prompt_version": augment.SCRIPT_STAGE_PROMPT_VERSION}
+
+    monkeypatch.setattr(augment, "generate_script_stages", fake_generate)
+    taxonomy = {"code": [{"id": "timezones", "seed_libraries": ["pytz"]}]}
+
+    augment.regenerate_script_stage_cache(taxonomy, _TASKS, model="m", workers=2)
+
+    assert sorted(augment.load_script_stage_cache()) == ["timezones.1"]

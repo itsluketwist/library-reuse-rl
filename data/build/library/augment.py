@@ -14,7 +14,7 @@ deliberate, one-off offline step that needs ANTHROPIC_API_KEY. Until a cache is 
 build.py produces the template-only rows for that mode without it.
 
 Usage: python data/build/library/augment.py [--type simple|script|repo|all] [--n N]
-       [--model M] [--limit N] [--pilot N] [--skip-cached]
+       [--model M] [--limit N] [--pilot N] [--skip-cached] [--workers N]
 """
 
 import argparse
@@ -22,6 +22,7 @@ import hashlib
 import json
 import random
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
@@ -36,17 +37,17 @@ _HERE = Path(__file__).parent
 TASKS_FILE = _HERE / "tasks.yaml"
 
 # the committed caches the build folds in - {seed_task ("<category_id>.<number>", from
-# tasks.yaml): [claude-generated prompts]}. "script" is the dataset-v2 script wording, kept only
-# so the script pilot (build.py --pilot) can score it beside the new staged wordings - it is
-# retired once the staged cache below is fully generated
+# tasks.yaml): [claude-generated prompts]}. "script" is the retired dataset-v2 script wording -
+# the v3 build doesn't use it, but it is kept as the record of v2 and so the script pilot
+# (build.py --pilot) can score it beside the staged wordings below
 CACHE_FILES: dict[str, Path] = {
     "simple": _HERE / "simple_prompts.json",
     "script": _HERE / "script_prompts.json",
     "repo": _HERE / "repo_prompts.json",
 }
 
-# the staged script wordings - {seed_task: {fits_stdio, reason, exercise, outline, precise,
-# benchmark, model, prompt_version}}, see generate_script_stages
+# the staged script wordings - {seed_task: {fits_stdio, reason, solution, exercise, outline,
+# precise, benchmark, model, prompt_version}}, see generate_script_stages
 SCRIPT_STAGE_CACHE_FILE = _HERE / "script_stage_prompts.json"
 
 # seed for picking the pilot's sample of tasks (see pilot_seed_tasks)
@@ -243,20 +244,20 @@ def generate_simple_prompts(
 SCRIPT_STAGES = ("outline", "precise", "benchmark")
 
 # character-length bounds per stage, checked by check_script_stage. LibReuseBench's test prompts
-# run from 880 to 2,060 characters (10-90%, median 1,353, 95% 2,425), so the benchmark stage may
-# reach its 95th percentile and the looser stages sit below it. the generation prompt asks for
-# somewhat less (_SCRIPT_STAGE_TARGETS), since the model tends to overshoot
+# run from 880 to 2,060 characters (10-90%, median 1,353, 75% 1,779), so the stages climb from a
+# short statement to about its 75th percentile. the generation prompt asks for somewhat less
+# (_SCRIPT_STAGE_TARGETS), since the model tends to overshoot
 SCRIPT_STAGE_LENGTHS: dict[str, tuple[int, int]] = {
-    "outline": (350, 1300),
-    "precise": (600, 1900),
-    "benchmark": (850, 2500),
+    "outline": (250, 950),
+    "precise": (500, 1550),
+    "benchmark": (800, 2300),
 }
 
 # the most characters the generation prompt asks for, per stage
 _SCRIPT_STAGE_TARGETS = {
-    "outline": 1000,
-    "precise": 1500,
-    "benchmark": 2000,
+    "outline": 700,
+    "precise": 1200,
+    "benchmark": 1800,
 }
 
 # library names that are also the standard name of a data format or concept, or a plain english
@@ -410,17 +411,15 @@ def check_script_stage(
 
 
 _SCRIPT_STAGE_SYSTEM = (
-    "You write stdin/stdout programming-exercise statements for a research dataset about when a "
-    "model reuses an existing library instead of hand-rolling the same logic. The statements must "
-    "read exactly like those of an existing benchmark, and must never name, suggest or mention "
-    "any library. Reply with JSON only."
+    "You reword coding tasks into self-contained stdin/stdout exercises for a benchmark that "
+    "measures whether a model reuses libraries when it is free to. Reply with JSON only."
 )
 
-# two real LibReuseBench statements, embedded to calibrate the "benchmark" stage's tone, precision
-# and length. both come from its dev split (benchmark/libreusebench/data/dev.jsonl), never test,
-# so no evaluated prompt leaks into training data. LRB/D007 keeps a raw document as its input and
-# describes what to print without narrating how; LRB/D005 shows the section layout and the
-# rounding/validation precision. neither is related to the tasks we generate for
+# two real LibReuseBench statements, embedded as style examples. both come from its dev split
+# (benchmark/libreusebench/data/dev.jsonl), never test, so no evaluated prompt leaks into
+# training data. both describe what to print, and how to treat odd input, without explaining
+# how to compute the result - LRB/D005 was used before, and its line-by-line definitions of
+# sum/mean/min/max were copied into statements. neither is related to our tasks
 _SCRIPT_STAGE_EXAMPLES = """\
 <example>
 Write a program that reads an XML document (as a single block of text) from standard input, extracts tabular data from it, and prints the result as CSV to standard output.
@@ -447,120 +446,77 @@ Jane,30
 </example>
 
 <example>
-Write a program that reads stock-price records from standard input and reports summary statistics for one chosen field.
+Write a program that reads log text from standard input, one log entry per line, and converts it into CSV data printed to standard output.
 
-Standard input format:
-- Line 1: the name of the column to analyze. It must be exactly one of: Open, High, Low, Close, Volume.
-- Line 2: a non-negative integer N, the number of data rows that follow.
-- The next N lines each describe one day of trading data as six whitespace-separated tokens, in this fixed order: a date token (any string with no whitespace), then the Open, High, Low, Close, and Volume values. Each of these five values is either a number (integer or decimal) or the literal token "nan" meaning the value is missing for that day.
+Each valid log line has the form:
+TYPE: [TIMESTAMP] - MESSAGE
+where TYPE is either "ERROR" or "INFO", TIMESTAMP is enclosed in square brackets and must look like "YYYY-MM-DD HH:MM:SS" (optionally with extra leading/trailing spaces inside the brackets), and MESSAGE is the rest of the line after " - " (leading/trailing whitespace in the message should be stripped).
 
-Validation rules:
-- If the column name given on line 1 is not one of the five allowed names, print exactly:
-Invalid column name
-and stop.
-- If, after that check passes, any data row does not have exactly six tokens, or one of its five numeric tokens is neither a valid number nor the literal "nan", print exactly:
-Invalid data
-and stop.
+Lines that do not match this overall pattern (missing TYPE, missing brackets, wrong TYPE keyword, etc.) should simply be ignored and skipped.
 
-Otherwise, using only the values found in the requested column across all N rows (ignoring the date and the other four columns), compute:
-- sum: the total of all non-missing values in that column (0 if N is 0 or if every value is missing),
-- mean: the average of all non-missing values (undefined if there are no non-missing values),
-- min: the smallest non-missing value (undefined if there are no non-missing values),
-- max: the largest non-missing value (undefined if there are no non-missing values).
+For every line that does match the pattern, validate the timestamp: it must represent a real, valid calendar date and time in the exact format "YYYY-MM-DD HH:MM:SS" (e.g., month 00 or day 32 are invalid, hour 25 is invalid, etc.). As soon as you encounter a matching line whose timestamp is not valid, stop processing and print exactly:
+Invalid timestamp format: TIMESTAMP
+(where TIMESTAMP is the raw timestamp text taken from that line), then terminate — do not print any CSV data.
 
-"nan" tokens must be excluded when computing mean, min, and max, but they do not affect the sum (missing values simply contribute nothing to the sum).
+If every matching line has a valid timestamp, collect all matching lines in the order they appear in the input, and print them as CSV to standard output: the first line must be the header "Type,Timestamp,Message", followed by one line per collected entry with the type, timestamp, and message separated by commas, in the same order as they were found in the input.
 
-Print exactly four lines, in this order: sum, mean, min, max. Each value must be printed as a fixed-point number with exactly 6 digits after the decimal point; any statistic that is undefined (because there are no non-missing values, including the case N = 0) must be printed as the literal text "nan" (without decimals).
+If, after scanning all input lines, no line matched the required pattern at all, print exactly:
+No valid log entries found.
+and nothing else.
+
+The program's output is fully determined by its input; there is no randomness, file access, or use of the system clock.
 
 Example:
 Input:
-Open
-3
-2022-01-01 100 105 95 102 10000
-2022-01-02 102 108 100 105 15000
-2022-01-03 105 110 103 108 20000
+ERROR: [2023-03-23 15:00:00] - Sample error message
+INFO: [2023-03-23 15:05:00] - Sample info message
 
 Output:
-307.000000
-102.333333
-100.000000
-105.000000
+Type,Timestamp,Message
+ERROR,2023-03-23 15:00:00,Sample error message
+INFO,2023-03-23 15:05:00,Sample info message
 </example>"""
 
 _SCRIPT_STAGE_PROMPT = """\
-Here is a coding task from the "{category}" category:
+Here is a coding task:
 {task}
 
-The usual way to hand-roll it is: {diy_temptation}. That hand-rolled part is the work a mature
-third-party library (not the Python standard library) would save, so the exercise you write must
-keep it - the solver has to deal with it properly, rather than having it removed or pre-digested
-by the input format.
+First, in "solution", write a short Python program that does this task as a stdin/stdout program,
+using a suitable, well-known third-party library. It is only for you, to pin down exactly what the
+program reads and prints - the solver never sees it. If the task cannot be done as a deterministic
+text-in, text-out program without turning it into a different task, set "fits_stdio" to false,
+explain why in "reason", and leave the other fields empty.
 
-Step 1 - decide whether this task can be posed honestly as a text-in, text-out program: all input
-read from standard input as text, all output printed to standard output as text, and the output
-a deterministic function of the input (no files, network, clock, randomness, environment
-variables, command-line arguments, running other programs or commands, binary data or interactive
-terminal behaviour). If posing it
-that way would turn it into a different, trivial task (for example, replacing an audio file with
-a list of integers), set "fits_stdio" to false, explain why in "reason", and leave the other
-fields empty.
+Then reword the task as a statement of that program's behaviour, such that:
+- the program reads ALL of its input from standard input and prints its result to standard output;
+- it names NO specific library, module, import, class, or function - describe only WHAT to compute
+  and the input/output behaviour, leaving the solver free to choose HOW (do not narrate a
+  step-by-step algorithm or hint at a particular implementation approach);
+- it specifies the input format and the output format, with any rules needed to make the output
+  unambiguous (ordering, tie-breaking, rounding), so that each input has exactly one correct output:
+  the one your solution prints, which a solver could also produce without the library;
+- it refers to standard concepts by their usual names (e.g. "EAN-13", "population variance",
+  "Markdown") and never defines them with formulas, tables or conversion rules;
+- it is a deterministic pure function of its input (no network, no clock, no reading or writing
+  files, no randomness).
 
-Step 2 - otherwise, set "fits_stdio" to true, invent ONE concrete exercise for this task,
-summarise it in one sentence in "exercise", and write it as three statements: "outline",
-"precise" and "benchmark".
+Write it like the benchmark statements below - natural-language prose and "-" bullets, no code: an
+opening sentence "Write a program that reads ... from standard input and prints ...", an "Input
+format:" section, an "Output format:" section, and exactly one "Example:" with an "Input:" block
+and then an "Output:" block.
 
-Rules for the exercise:
-- Keep the input in its natural, real-world text form - e.g. timestamps with UTC offsets or IANA
-  time zone names, HTML, XML, JSON or YAML documents, URLs, phone numbers, cron expressions -
-  never pre-parsed into plain numbers or tokens that remove the hard part.
-- Lay the input out the way the task naturally implies. Like most of the benchmark's exercises,
-  prefer simple line-based input - e.g. a count followed by one record per line, or
-  whitespace-separated fields. Use CSV only when the task itself is about CSV or spreadsheet data.
-- Of the ways to pose this task, choose the one where a correct hand-rolled solution takes the
-  most work, while a careful solver could still write one with the Python standard library alone.
-  Never require output that only one particular library's quirks would produce, and fix every
-  floating-point output to a stated number of decimal places.
-- Keep the required output conventional - standard formats and simple rounding - so that a
-  solution built on a well-known library's usual behaviour needs little extra formatting. Do not
-  invent bespoke typing, conversion or formatting rules that force custom code whichever approach
-  the solver takes.
-- Keep the example small: a few short lines of input, enough to show the format.
-- Refer to standard formats and concepts by their usual names (e.g. "ISO 8601", "IANA time zone",
-  "Welch's t-test", "Levenshtein distance") instead of redefining them.
-- Describe only WHAT to read and print, never HOW: do not describe an algorithm, a formula or the
-  steps of the core computation, and do not hint at an implementation approach.
-- Never name or allude to any library, package, module, import, class or function - not even to
-  allow or forbid one - and avoid library-specific terms such as "DataFrame" or "ndarray".
-- Plain prose and "-" bullet lists only, no code. Do not mention this dataset, benchmarks, or why
-  the exercise exists.
+Give the same exercise at three levels of detail, all with the same formats and example. The extra
+detail is only ever about the input, the output and edge cases - never about how to compute the
+result:
+- "outline": the behaviour and the formats, briefly. At most {outline_max} characters.
+- "precise": adds the output rules a solver needs, such as rounding and ordering, and how to
+  treat empty or invalid input. At most {precise_max} characters.
+- "benchmark": as long and formal as the benchmark statements below, covering every edge case
+  and validation rule. At most {benchmark_max} characters.
+The limits count every character, including the example. Also give "exercise": one sentence
+summarising the exercise.
 
-Every statement must follow the benchmark's template, in this order:
-1. An opening sentence that starts "Write a program that reads" (or "You are given") and says what
-   is read from standard input and what is printed to standard output.
-2. A section headed "Input format:" with "-" bullets giving exactly what appears on standard
-   input.
-3. A section headed "Output format:" with "-" bullets giving exactly what to print.
-4. Optionally (mainly in "benchmark"), further sections such as "Validation rules:" or
-   "Processing rules:" covering input checks and edge-case behaviour - never the core
-   computation.
-5. Exactly one section headed "Example:", containing an "Input:" block and then an "Output:"
-   block, where the output is exactly what a correct program prints for that input.
-
-The three statements describe the SAME exercise, with the same input and output formats and the
-same example, and differ only in how much they spell out:
-- "outline": the job in the task's own domain terms, the exact input layout, and an output format
-  just tight enough to be unambiguous - nothing more. At most {outline_max} characters.
-- "precise": everything in "outline", plus the rules needed to match the output exactly:
-  ordering and tie-breaking, rounding, and how to handle empty, missing or malformed input (with
-  the exact messages to print). At most {precise_max} characters.
-- "benchmark": the same exercise in the full register of the benchmark statements below, with
-  every term precisely defined and the edge cases and validation behaviour covered. At most
-  {benchmark_max} characters.
-These limits count every character, including the example, and are strict: a statement over its
-limit is rejected. Say each rule once, plainly, rather than restating it.
-
-Two real statements from the benchmark, to calibrate the tone, precision and length of the
-"benchmark" statement (they are unrelated to your task):
+Two real statements from the benchmark (unrelated to your task):
 
 {examples}
 {feedback}"""
@@ -577,12 +533,21 @@ _SCRIPT_STAGE_SCHEMA = {
     "properties": {
         "fits_stdio": {"type": "boolean"},
         "reason": {"type": "string"},
+        "solution": {"type": "string"},
         "exercise": {"type": "string"},
         "outline": {"type": "string"},
         "precise": {"type": "string"},
         "benchmark": {"type": "string"},
     },
-    "required": ["fits_stdio", "reason", "exercise", "outline", "precise", "benchmark"],
+    "required": [
+        "fits_stdio",
+        "reason",
+        "solution",
+        "exercise",
+        "outline",
+        "precise",
+        "benchmark",
+    ],
     "additionalProperties": False,
 }
 
@@ -604,16 +569,15 @@ SCRIPT_STAGE_PROMPT_VERSION = hashlib.sha256(
 
 def build_script_stage_prompt(
     task: str,
-    category: str,
-    diy_temptation: str,
     problems: list[str] | None = None,
 ) -> str:
     """Build the LLM prompt asking for one exercise for `task`, as three staged statements.
 
-    `category` is the task's category name and `diy_temptation` how the task is usually
-    hand-rolled (both from taxonomy.yaml) - the library names are deliberately left out, so the
-    model can't shape the exercise around one library's output. `problems` are a previous
-    attempt's check failures, fed back so the next attempt can fix them.
+    The prompt mirrors the rewrite prompt LibReuseBench itself was built with
+    (benchmark/pipeline/03_rewrite.py): the model pins the behaviour down with a reference
+    solution that uses a library, then describes that behaviour without naming the library - so
+    the exercise can be solved either way, like the benchmark's own tasks. `problems` are a
+    previous attempt's check failures, fed back so the next attempt can fix them.
 
     Returns the prompt string.
     """
@@ -626,8 +590,6 @@ def build_script_stage_prompt(
     )
     return _SCRIPT_STAGE_PROMPT.format(
         task=task,
-        category=category,
-        diy_temptation=diy_temptation.rstrip("."),
         examples=_SCRIPT_STAGE_EXAMPLES,
         feedback=feedback,
         **{
@@ -639,8 +601,6 @@ def build_script_stage_prompt(
 
 def generate_script_stages(
     task: str,
-    category: str,
-    diy_temptation: str,
     banned_terms: list[str],
     model: str = llm.DEFAULT_GEN_MODEL,
     max_attempts: int = 3,
@@ -654,13 +614,14 @@ def generate_script_stages(
     honestly as text in, text out comes back with fits_stdio false and empty statements, so the
     build gives it no staged rows.
 
-    Returns the cache entry ({fits_stdio, reason, exercise, outline, precise, benchmark, model,
-    prompt_version}), or None if every attempt failed.
+    Returns the cache entry ({fits_stdio, reason, solution, exercise, outline, precise,
+    benchmark, model, prompt_version}), or None if every attempt failed. The solution is the
+    model's private reference program, kept to show which library each exercise was shaped by.
     """
     problems: list[str] = []
     for attempt in range(1, max_attempts + 1):
         data, resolved_model = llm.complete_json(
-            prompt=build_script_stage_prompt(task, category, diy_temptation, problems),
+            prompt=build_script_stage_prompt(task, problems),
             schema=_SCRIPT_STAGE_SCHEMA,
             system=_SCRIPT_STAGE_SYSTEM,
             model=model,
@@ -675,6 +636,7 @@ def generate_script_stages(
         entry: dict[str, Any] = {
             "fits_stdio": bool(data.get("fits_stdio")),
             "reason": str(data.get("reason", "")).strip(),
+            "solution": str(data.get("solution", "")).strip(),
             "exercise": str(data.get("exercise", "")).strip(),
             **{stage: str(data.get(stage, "")).strip() for stage in SCRIPT_STAGES},
             "model": resolved_model,
@@ -747,13 +709,15 @@ def regenerate_script_stage_cache(
     only: set[str] | None = None,
     limit: int | None = None,
     skip_cached: bool = False,
+    workers: int = 1,
 ) -> None:
     """Generate the staged script wordings, writing the cache after every task.
 
     Covers every task, or just the `only` subset (e.g. the pilot's), optionally skipping tasks
     already cached with the current prompt (SCRIPT_STAGE_PROMPT_VERSION) and stopping after
     `limit` tasks. Writing after each task means an interrupted run loses nothing - rerun with
-    `skip_cached` to pick up where it stopped.
+    `skip_cached` to pick up where it stopped. `workers` tasks are generated at once (each call
+    takes minutes); only this thread writes the cache, as each task finishes.
     """
     cache = load_script_stage_cache()
     todo = [
@@ -774,23 +738,39 @@ def regenerate_script_stage_cache(
     if limit is not None:
         todo = todo[:limit]
 
-    for i, (entry, seed_task, task) in enumerate(todo, start=1):
-        result = generate_script_stages(
-            task=task,
-            category=entry["name"],
-            diy_temptation=entry["diy_temptation"],
-            banned_terms=entry["seed_libraries"],
-            model=model,
-        )
-        if result is None:
-            print(
-                f"script: {i}/{len(todo)} | {seed_task} -> every attempt failed, not cached"
+    def generate(
+        item: tuple[dict, str, str],
+    ) -> tuple[str, dict[str, Any] | None]:
+        """Generate one task's staged wordings, in a worker thread.
+
+        Returns the task's seed id and its cache entry (None if it failed).
+        """
+        entry, seed_task, task = item
+        try:
+            result = generate_script_stages(
+                task=task,
+                banned_terms=entry["seed_libraries"],
+                model=model,
             )
-            continue
-        cache[seed_task] = result
-        write_script_stage_cache(cache)
-        status = "staged" if result["fits_stdio"] else f"not stdio: {result['reason']}"
-        print(f"script: {i}/{len(todo)} | {seed_task} -> {status}")
+        except Exception as error:
+            # e.g. an api timeout - the task stays uncached, so a --skip-cached rerun retries it
+            print(f"  {seed_task}: {type(error).__name__}: {error}")
+            result = None
+        return seed_task, result
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(generate, item) for item in todo]
+        for i, future in enumerate(as_completed(futures), start=1):
+            seed_task, result = future.result()
+            if result is None:
+                print(f"script: {i}/{len(todo)} | {seed_task} -> failed, not cached")
+                continue
+            cache[seed_task] = result
+            write_script_stage_cache(cache)
+            status = (
+                "staged" if result["fits_stdio"] else f"not stdio: {result['reason']}"
+            )
+            print(f"script: {i}/{len(todo)} | {seed_task} -> {status}")
     print(f"script: {len(cache)} cached task(s) in {SCRIPT_STAGE_CACHE_FILE}")
 
 
@@ -960,6 +940,12 @@ def main() -> None:
         action="store_true",
         help="script only: skip tasks already cached with the current prompt (to resume a run)",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="script only: tasks to generate at once (each call takes minutes)",
+    )
     args = parser.parse_args()
 
     taxonomy = yaml.safe_load(LIBRARY_TAXONOMY_FILE.read_text())
@@ -983,6 +969,7 @@ def main() -> None:
                 ),
                 limit=args.limit,
                 skip_cached=args.skip_cached,
+                workers=args.workers,
             )
             continue
 

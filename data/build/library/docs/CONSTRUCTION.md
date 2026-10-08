@@ -41,28 +41,30 @@ Alongside each mode's template, claude-generated wordings are cached offline - o
   hint at a library). If two attempts both leak a library name, it retries without asking for a
   signature at all - some tasks' library name is also the natural English verb for the task
   (e.g. `slugify`), and dropping the signature ask is what actually fixes that, not rewording.
-- **`script`** (dataset v3) - one concrete stdin/stdout exercise per task, written three times in
-  LibReuseBench's template (an opening "Write a program that reads ... from standard input",
-  `Input format:` and `Output format:` sections, and exactly one `Example:`), at increasing
-  detail: `outline` (the job and the formats, just unambiguous), `precise` (plus every output and
-  edge-case rule) and `benchmark` (the benchmark's full register). Each row records its stage as
-  `script_stage`. The generator is told to keep the library's job in the problem without ever
-  naming or hinting at a library: real-world text input (timestamps with zone names, HTML/XML/YAML
-  documents, URLs, ...) rather than pre-parsed numbers, laid out line by line like most of the
-  benchmark's inputs (CSV only when the task is about tabular data - an early pilot that listed
-  CSV among its example formats got CSV input on 73% of benchmark-aligned tasks, against 11% in
-  the benchmark), the variant of the task where hand-rolling takes the most work, standard
-  concepts by their usual names ("ISO 8601", "Welch's t-test"), and never a description of the
-  core computation. It sees the category's
-  `diy_temptation` but not its libraries, and two real benchmark statements from the *dev*
-  split (never test) as style anchors. A task that can't honestly be posed as text in, text out
-  (binary media, files, network, running commands, a terminal UI, ...) is marked
-  `fits_stdio: false` and keeps only
-  its template script row. Every statement passes a deterministic template check
-  (`check_script_stage`), with a failed attempt retried with its problems fed back.
-  This replaced the v2 wording - one statement against a benchmark *test* example, which
-  pre-digested the input until no library was useful (e.g. an audio clip became a list of
-  integers) and gave almost no library-use signal.
+- **`script`** (dataset v3) - one stdin/stdout exercise per task, in LibReuseBench's template (an
+  opening "Write a program that reads ... from standard input", `Input format:` and `Output
+  format:` sections, and exactly one `Example:`), written at three levels of detail: `outline`
+  (the behaviour and the formats, briefly), `precise` (plus output rules such as rounding, and how
+  to treat empty or invalid input) and `benchmark` (as long and formal as the benchmark). Each row
+  records its stage as `script_stage`. The generation prompt deliberately mirrors the one the
+  benchmark itself was built with (`benchmark/pipeline/03_rewrite.py`): the model first writes a
+  short private solution that uses a suitable third-party library (kept in the cache as
+  `solution`), then describes that program's behaviour - what it reads and prints - without naming
+  the library, describing an algorithm, or defining standard concepts (it names them instead:
+  "EAN-13", "population variance"). So, as in the benchmark, a library's natural output is a
+  correct answer, but the task can be solved with or without one, leaving the model free to
+  choose. Two dev-split benchmark statements (never test) are style examples. A task that can't be
+  a deterministic text-in, text-out program (binary output, network, randomness, spawning
+  processes, ...) is marked `fits_stdio: false` and keeps only its template script row. Every
+  statement passes a deterministic check (`check_script_stage`: template shape, no library names
+  or talk of libraries, no code, length), with a failed attempt retried with its problems fed
+  back.
+  How it got here (worth knowing before changing it): the v2 wording pre-digested inputs until no
+  library helped (an audio clip became a list of integers) and gave almost no library signal. A
+  first v3 pilot with many more rules - keep the "hand-rolled part", choose the variant that's the
+  most work by hand - produced long, exacting statements; models ran out of tokens on them and,
+  when an exact output wasn't what a library produces, hand-rolled. Library use fell as the
+  statements got more specific, so the simpler, behaviour-only prompt replaced it.
 - **`repo`** - a natural in-project request, grounded in a real file: the model picks one file
   from the chosen repo's layout, and its actual current content is read off disk and embedded
   before the request, so the row shows genuine surrounding code, not just an abstract project
@@ -102,8 +104,10 @@ notebook 02 with `SIGNAL_DATASET=library_usage_script_pilot` to read the result.
 ## Build and split
 
 `build.py` combines the four inputs and the caches: every task gets one template row per mode,
-one claude row each for `repo` and `simple` (when cached), and three staged claude rows for
-`script` (when cached and posed as stdin/stdout) - up to 8 rows, 3 guaranteed. `split.py`'s
+a second `repo` row from a fixed project-framed template with no repo context ("<task>
+Implement this in Python so that I can use it in my project.", `source: "project"`), one claude row each for `repo` and `simple`
+(when cached), and three staged claude rows for `script` (when cached and posed as
+stdin/stdout) - up to 9 rows, 4 guaranteed. `split.py`'s
 `split_disjoint_test` then makes two different holdouts:
 
 - **test** removes whole tasks (every wording) so it measures generalisation to unseen tasks -
@@ -145,4 +149,9 @@ python data/build/audit.py           # -> REPORT.md (this dir - other datasets g
 `task_id` is unique per row (assigned after splitting). `seed_task` + `task` identify what the
 row is a wording of; `useful_libs` is what the reward checks the response's imports against;
 `context_id`/`local_modules` are set for `repo`-mode rows (the reward subtracts local modules so
-a project's own code is never mistaken for reuse).
+a project's own code is never mistaken for reuse). `local_modules` lists every package and module
+in the repo, at any depth (pytoolbox: `cli`, `tasks`, `toolbox`, `utils`): a solution written as
+if it ran inside the package imports its modules bare (`from utils import ...`), and when only the
+top-level names were listed, those imports earned the library reward - GRPO training grew that
+from 0.3% to 3.6% of repo responses by epoch 5 of run 4796. The project-framed `repo` rows show no
+repo, so they have no local modules.

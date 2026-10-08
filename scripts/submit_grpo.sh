@@ -37,8 +37,17 @@ training_jobs=(
     "data/train/library_usage|lu-v1|base|3e-6"
     # with the fixed system prompt nudging towards third-party libraries (see src/prompts.py) -
     # its epochs are still evaluated as submit_eval.sh sets (base prompt)
-    "data/train/library_usage|lu-v1|ext|3e-6"
+    # "data/train/library_usage|lu-v1|ext|3e-6"
     # "data/train/skywork|full|lib"
+)
+
+# the eval datasets (config/eval_datasets.yaml) each epoch checkpoint is scored on. every other
+# eval setting (samples, decoding, prompt style) comes from submit_eval.sh
+eval_datasets=(
+    "library_usage"
+    "library_usage_val"
+    "libreusebench_test"
+    "libreusebench_control"
 )
 
 # grpo training recipe - hyperparameters, including the decoding settings used to
@@ -97,6 +106,7 @@ echo "Training ${#models[@]} models x ${#training_jobs[@]} dataset configuration
 echo "  Recipe: $recipe_config"
 echo "  Sharding: $accelerate_config (${GPUS} gpus)"
 echo "  Seed: $seed"
+echo "  Epoch eval datasets: ${eval_datasets[*]}"
 echo "  Checkpoints: $OUTPUT_BASE"
 
 # one timestamped directory per invocation, holding the training logs and the logs of the
@@ -170,8 +180,8 @@ EOF
         echo "    tail -f ${log_dir}/${job_name}-${train_job_id}.out"
 
         # queue one single-gpu eval job per epoch checkpoint, held until training succeeds.
-        # submit_eval.sh owns the eval settings (datasets, samples, decoding, prompt style),
-        # so they are configured in one place only.
+        # submit_eval.sh owns the other eval settings (samples, decoding, prompt style), so
+        # they are configured in one place only; the datasets are eval_datasets above.
         if [ "$debug" != true ]; then
             eval_models=""
             for epoch in $(seq 1 "$epochs"); do
@@ -179,6 +189,7 @@ EOF
             done
             echo "  Queueing eval jobs for $epochs epoch checkpoints (after $train_job_id)"
             EVAL_MODELS="$eval_models" \
+                EVAL_DATASETS="${eval_datasets[*]}" \
                 EVAL_DEPENDENCY="afterok:${train_job_id}" \
                 EVAL_LOG_DIR="$log_dir" \
                 bash scripts/submit_eval.sh

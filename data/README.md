@@ -35,7 +35,8 @@ and any remaining *used* import is genuine reuse (no labels, no execution). Each
 in 3 modes — set **in a python repo's context** (`repo`), as a **bare "how do I implement X"**
 (`simple`), or as a **stdin/stdout script** (`script`, in the LibReuseBench eval benchmark's
 template) — each from 2 sources, a deterministic template and claude-generated wordings (one for
-`repo` and `simple`, three staged ones for `script`), so every task has up to 8 rows. See
+`repo` and `simple`, three staged ones for `script`) - plus a project-framed `repo` template
+row with no repo context (`source: "project"`), so every task has up to 9 rows. See
 `src/grpo/rewards/library_usage.py`.
 
 **Ids.** Every row carries a unique `task_id` in the benchmark's style — `LRRL/U####` for
@@ -49,7 +50,9 @@ once the claude caches (`build/library/*_prompts.json`) are populated via `augme
 rows/task (template-only) while a cache is still empty. **v3** (current) replaces the one claude
 `script` wording with three staged ones in LibReuseBench's template (`outline` / `precise` /
 `benchmark`, recorded as `script_stage`), because the v2 wording gave almost no library-use
-signal - 8 rows/task, or 5 for a task that can't be posed as stdin/stdout. Bump
+signal, and adds a project-framed `repo` row with no repo context ("... so that I can use it in my
+project") -
+9 rows/task, or 6 for a task that can't be posed as stdin/stdout. Bump
 `DATASET_VERSION` in `build/library/build.py` when the construction method changes again.
 Eval results record the `dataset_version` they scored, since a rebuild renumbers every id.
 

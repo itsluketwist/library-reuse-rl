@@ -7,7 +7,7 @@
 
 # libraries_requirements_file: setup/requirements/v1.txt  # libraries listed in the system prompt, see src/prompts.py
 
-num_train_epochs: 5
+num_train_epochs: 3
 
 num_generations: 8  # rollouts sampled per prompt - the group grpo scores against each other
 num_iterations: 1  # grpo's mu: optimizer passes that reuse each rollout batch before resampling
