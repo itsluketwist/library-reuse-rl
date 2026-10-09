@@ -1,0 +1,27 @@
+{
+  "train_runtime": 55892.427,
+  "train_samples_per_second": 0.073,
+  "train_steps_per_second": 0.002,
+  "total_flos": 0.0,
+  "train_loss": 0.21102806899903548,
+  "epoch": 3.0,
+  "train_samples": 1362,
+  "reward_profile": {
+    "name": "lu-v1",
+    "weights": {
+      "correct_format": 0.25,
+      "passes_syntax_check": 0.25,
+      "external_lib_imported": 0.5,
+      "external_lib_used": 1.0,
+      "appropriate_lib_used": 0
+    }
+  },
+  "reward_kind": "library_usage",
+  "learning_rate": 3e-06,
+  "lure_version": "0.1.2",
+  "epoch_checkpoints": {
+    "1": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-e650/checkpoint-42",
+    "2": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-e650/checkpoint-84",
+    "3": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-e650/checkpoint-126"
+  }
+}
