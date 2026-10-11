@@ -50,3 +50,13 @@ libreusebench_control:
   path: "benchmark/libreusebench/data/control.jsonl"
   evaluator: libreusebench
   environment_root: ".libreuseeval-venvs"
+# the function-style pilot (benchmark/pipeline/function_pilot/): the same tasks reworded as a
+# request for one named function, tested by calling it on each case's arguments
+libreusebench_function_test:
+  path: "benchmark/pipeline/function_pilot/test.jsonl"
+  evaluator: libreusebench_function
+  environment_root: ".libreuseeval-venvs"
+libreusebench_function_control:
+  path: "benchmark/pipeline/function_pilot/control.jsonl"
+  evaluator: libreusebench_function
+  environment_root: ".libreuseeval-venvs"

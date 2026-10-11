@@ -25,8 +25,7 @@ TIME="12:00:00"
 models=(
     # "vllm:qwen3-debug"
     # "vllm:qwen3-4b"
-    # "vllm:qwen3-8b"
-    "vllm:qwen3-8b-e650-epoch3"
+    "vllm:qwen3-8b"
     # "vllm:qwen3-14b"
     # "vllm:qwen3-32b"
     # "vllm:olmo3-7b"
@@ -38,7 +37,8 @@ models=(
 # above as every epoch checkpoint that run registered (config/trained_models.yaml, or
 # config/debug_models.yaml for a debug run), so a run's epochs needn't be listed one by one
 training_runs=(
-    # "qwen3-8b-4796"
+    "qwen3-8b-4796"
+    "qwen3-8b-e650"
 )
 
 # EVAL_MODELS replaces both lists above (a space-separated string of models), which is how
@@ -53,10 +53,12 @@ training_runs=(
 datasets=(
     # "library_usage"
     # "library_usage_val"
-    "library_usage_train"
+    # "library_usage_train"
     # "library_usage_script_pilot"
     # "libreusebench_test"
     # "libreusebench_control"
+    "libreusebench_function_test"
+    "libreusebench_function_control"
 )
 
 # completions sampled per prompt (see --n-samples in src/run_eval.py); eval-only, unrelated

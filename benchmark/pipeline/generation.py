@@ -52,30 +52,47 @@ def complete_json(
     system: str | None = None,
     model: str = DEFAULT_GEN_MODEL,
     max_tokens: int = 4096,
+    effort: str | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Prompt the model with a structured-output schema and return the parsed object + model.
 
     Uses the API's structured outputs (`output_config.format`), so the reply is guaranteed to
-    match `schema` - no fenced-code or prose parsing needed. The returned model id is the exact
-    resolved snapshot the API served (not the alias requested), for provenance.
+    match `schema` - no fenced-code or prose parsing needed. `effort` ("low" to "max") sets how
+    much the model thinks; left as None, the model's own default applies. The returned model id
+    is the exact resolved snapshot the API served (not the alias requested), for provenance.
 
     Returns a (parsed object, resolved model id) tuple; the object is empty if it could not be
     read (e.g. a refusal).
     """
+    output_config: dict[str, Any] = {
+        "format": {"type": "json_schema", "schema": schema}
+    }
+    if effort is not None:
+        output_config["effort"] = effort
     kwargs: dict[str, Any] = {
         "model": model,
         "max_tokens": max_tokens,
         "messages": [{"role": "user", "content": prompt}],
-        "output_config": {"format": {"type": "json_schema", "schema": schema}},
+        "output_config": output_config,
     }
     if system is not None:
         kwargs["system"] = system
 
-    message = _client.messages.create(**kwargs)
+    # streamed, then gathered into one message: a reply with a large max_tokens (thinking
+    # included) can take longer than a single non-streaming request is allowed to
+    with _client.messages.stream(**kwargs) as stream:
+        message = stream.get_final_message()
     text = "".join(block.text for block in message.content if block.type == "text")
     try:
-        parsed = json.loads(text)
+        # strict=False lets a raw control character (e.g. a tab inside generated code) stand
+        # inside a json string - the default rejects the whole reply
+        parsed = json.loads(text, strict=False)
         data = parsed if isinstance(parsed, dict) else {}
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as error:
+        # say why, so an unreadable reply can be told apart from a refusal or a truncation
+        print(
+            f"unreadable reply: stop_reason={message.stop_reason}, "
+            f"{len(text)} characters, {error}"
+        )
         data = {}
     return data, message.model

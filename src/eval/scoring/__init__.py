@@ -11,6 +11,7 @@ from typing import Iterable
 
 from src.eval.scoring.library_usage import score_library_usage
 from src.eval.scoring.libreusebench import score_libreusebench
+from src.eval.scoring.libreusebench_function import score_libreusebench_function
 from src.eval.scoring.product_choice import score_product_choice
 from src.eval.scoring.tested import score_tested
 
@@ -24,6 +25,7 @@ _SINGLE_SAMPLE_SCORERS = {
 _MULTI_SAMPLE_SCORERS = {
     "library_usage": score_library_usage,
     "libreusebench": score_libreusebench,
+    "libreusebench_function": score_libreusebench_function,
 }
 _SCORERS = {**_SINGLE_SAMPLE_SCORERS, **_MULTI_SAMPLE_SCORERS}
 

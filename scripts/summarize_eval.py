@@ -30,6 +30,11 @@ _TASK_METRICS: dict[str, dict[str, tuple[str, ...]]] = {
         "pass@1": ("pass@1",),
         "lib_used_rate": ("library_use", "used", "per_task", "using_lib_rate"),
     },
+    # the function-style pilot reports the same summary fields as the stdin/stdout benchmark
+    "libreusebench_function": {
+        "pass@1": ("pass@1",),
+        "lib_used_rate": ("library_use", "used", "per_task", "using_lib_rate"),
+    },
 }
 
 
