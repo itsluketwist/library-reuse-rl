@@ -1,0 +1,121 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4796/checkpoint-56",
+    "provider": "vllm",
+    "dataset": "libreusebench_function_test",
+    "dataset_file": "benchmark/pipeline/function_pilot/test.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench_function",
+    "lure_version": "0.1.2",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 8192,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "libreusebench_function",
+    "n_total": 885,
+    "n_tasks": 177,
+    "n_responses": 885,
+    "k": 5,
+    "pass@1": 0.7649717514124295,
+    "pass@k": 0.8983050847457628,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.062146892655367235,
+          "avg_extlibs": 0.07909604519774012,
+          "library_counts": {
+            "pytz": 5,
+            "scipy": 2,
+            "numpy": 2,
+            "dateutil": 2,
+            "bs4": 1,
+            "nltk": 1,
+            "sklearn": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.0384180790960452,
+          "avg_extlibs": 0.04519774011299435,
+          "library_counts": {
+            "pytz": 15,
+            "dateutil": 9,
+            "bs4": 5,
+            "scipy": 5,
+            "nltk": 3,
+            "numpy": 2,
+            "sklearn": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.062146892655367235,
+          "avg_extlibs": 0.06779661016949153,
+          "library_counts": {
+            "pytz": 5,
+            "scipy": 2,
+            "dateutil": 2,
+            "bs4": 1,
+            "nltk": 1,
+            "sklearn": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.0384180790960452,
+          "avg_extlibs": 0.04293785310734463,
+          "library_counts": {
+            "pytz": 15,
+            "dateutil": 9,
+            "bs4": 5,
+            "scipy": 5,
+            "nltk": 3,
+            "sklearn": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 763,
+        "avg_lloc": 16.698558322411532,
+        "avg_maintainability_index": 85.20289731444073
+      },
+      "passed": {
+        "n_measured": 677,
+        "avg_lloc": 16.89512555391433,
+        "avg_maintainability_index": 84.38647955334011
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "environment": {
+      "installed_packages": [
+        "beautifulsoup4",
+        "nltk",
+        "numpy",
+        "python-dateutil",
+        "pytz",
+        "scikit-learn",
+        "scipy"
+      ],
+      "failed_packages": []
+    }
+  }
+}
