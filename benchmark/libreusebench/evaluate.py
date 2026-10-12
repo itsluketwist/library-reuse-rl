@@ -1,13 +1,18 @@
 """Evaluate model responses against LibReuseBench: parse, install, run, and aggregate.
 
 The flow is: parse every response and work out the union of third-party packages they import;
-create the venv, install those packages, and run each response against its task's stdin/stdout
-tests. Reporting gives correctness (pass rate) and library reuse on the same problems - the
-signal this benchmark exists to provide - tracked at two strengths: how often a solution imported
-an external library, and the stricter how often it actually called or accessed one. Alongside
+create the venv, install those packages, and run each response against its task's tests. A task
+whose record has a `function_name` is a function task, tested by calling that function on each
+case's arguments (see functions.py); any other task is a stdin/stdout program.
+
+Reporting gives correctness (pass rate) and library reuse on the same problems - the signal this
+benchmark exists to provide - tracked at two strengths: how often a solution imported an
+external library, and the stricter how often it actually called or accessed one. Alongside
 these, radon measures each solution's size (logical lines of code) and maintainability index, to
-see whether reuse makes code shorter or easier to maintain. The installed package plan is saved
-with the results for debugging and reproducibility.
+see whether reuse makes code shorter or easier to maintain. Where tasks carry a `reuse_value`
+(the lines of code a library saves, see reuse_tier), pass rate and library use are also reported
+per tier of it. The installed package plan is saved with the results for debugging and
+reproducibility.
 
 Since responses can name arbitrary third-party packages, installation is confirmed on stdin by
 default (`confirm_packages`) - pass `confirm=None` to install automatically instead, for unattended
@@ -38,6 +43,28 @@ from libreusebench.load import load_dataset, load_records
 from llm_cgr import save_json
 from radon.metrics import mi_visit
 from radon.raw import analyze
+
+
+# a task's reuse value is how many logical lines of code its library solution saves over its
+# standard-library solution. tasks are grouped into three tiers by it, and these are the fewest
+# lines saved that put a task in each of the upper two (anything lower is "low")
+REUSE_TIER_MEDIUM = 5
+REUSE_TIER_HIGH = 15
+REUSE_TIERS = ("low", "medium", "high")
+
+
+def reuse_tier(
+    reuse_value: float,
+) -> str:
+    """Name the tier a reuse value (logical lines saved by using a library) falls in.
+
+    Returns "low", "medium" or "high".
+    """
+    if reuse_value >= REUSE_TIER_HIGH:
+        return "high"
+    if reuse_value >= REUSE_TIER_MEDIUM:
+        return "medium"
+    return "low"
 
 
 def _benchmark_by_id() -> dict[str, dict]:
@@ -204,6 +231,8 @@ def _score_response(
 ) -> dict[str, Any]:
     """Run one response against its task's tests and score it (packages already installed).
 
+    A record with a `function_name` is a function task; any other is a stdin/stdout program.
+
     Tracks library reuse at two strengths: `external_libs` is every third-party library the
     response imports, `used_external_libs` is the subset it actually calls or accesses - an
     unused import inflates the former without showing real reuse. Also records the code's
@@ -254,12 +283,23 @@ def _score_response(
             "reason": f"not run: could not install {', '.join(missing)}",
         }
 
-    passed, message = env.evaluate(
-        program=code,
-        inputs=record["test_inputs"],
-        expected_outputs=record["expected_outputs"],
-        timeout_seconds=timeout_seconds,
-    )
+    if record.get("function_name"):
+        # a function task: call the named function on each case's arguments
+        passed, message = env.evaluate_function(
+            code=code,
+            function_name=record["function_name"],
+            test_inputs=record["test_inputs"],
+            expected_outputs=record["expected_outputs"],
+            timeout_seconds=timeout_seconds,
+        )
+    else:
+        # a stdin/stdout task: run the code as a program on each case's input
+        passed, message = env.evaluate(
+            program=code,
+            inputs=record["test_inputs"],
+            expected_outputs=record["expected_outputs"],
+            timeout_seconds=timeout_seconds,
+        )
     return {
         "passed": passed,
         **details,
@@ -344,6 +384,51 @@ def _code_stats(
     }
 
 
+def _reuse_stats(
+    per_response: list[dict],
+) -> dict:
+    """Pass rate and library use per reuse tier, over the results that carry a `reuse_value`.
+
+    Each tier reports its number of tasks, its pass@1, and `library_use`: the fraction of its
+    responses that actually used a library (the "used", per-response measure of _aggregate).
+    Tiers with no tasks are left out. `high_value_library_use` repeats the high tier's library
+    use as the headline number - library use where a library is worth using - and is None
+    when there are no high-tier tasks.
+
+    Returns {tiers: {tier: {n_tasks, pass@1, library_use}}, high_value_library_use}.
+    """
+    # the rows of each tier, and within it whether each task's responses passed
+    rows_by_tier: dict[str, list[dict]] = defaultdict(list)
+    for row in per_response:
+        if row.get("reuse_value") is not None:
+            rows_by_tier[reuse_tier(row["reuse_value"])].append(row)
+
+    tiers: dict[str, dict] = {}
+    for tier in REUSE_TIERS:
+        rows = rows_by_tier[tier]
+        if not rows:
+            continue
+        passed_by_task: dict[str, list[bool]] = defaultdict(list)
+        for row in rows:
+            passed_by_task[row["task_id"]].append(row["passed"])
+        tiers[tier] = {
+            "n_tasks": len(passed_by_task),
+            "pass@1": _mean(
+                sum(passed) / len(passed) for passed in passed_by_task.values()
+            ),
+            "library_use": _mean(
+                1.0 if row.get("used_external_libs") else 0.0 for row in rows
+            ),
+        }
+
+    return {
+        "tiers": tiers,
+        "high_value_library_use": tiers["high"]["library_use"]
+        if "high" in tiers
+        else None,
+    }
+
+
 def _aggregate(
     per_response: list[dict],
     k: int | None = None,
@@ -358,7 +443,8 @@ def _aggregate(
     Code size and maintainability are averaged per response, over all responses and over just
     the passing ones - failing code can be short simply because it is broken or unfinished.
     Responses that weren't run because a package they import failed to install count as not
-    passed, and are listed under "not_run".
+    passed, and are listed under "not_run". When results carry a `reuse_value`, a "reuse_value"
+    block breaks the pass rate and library use down by reuse tier (see _reuse_stats).
 
     Returns the results dict (without the per-response detail, which the caller attaches).
     """
@@ -383,7 +469,7 @@ def _aggregate(
     samples_min = min((t["n"] for t in values), default=0)
     k = samples_min if k is None else min(k, samples_min)
 
-    return {
+    results = {
         "n_tasks": len(values),
         "n_responses": len(per_response),
         "k": k,
@@ -409,6 +495,9 @@ def _aggregate(
         },
         "not_run": _not_run(per_response),
     }
+    if any(row.get("reuse_value") is not None for row in per_response):
+        results["reuse_value"] = _reuse_stats(per_response)
+    return results
 
 
 def _not_run(
@@ -468,6 +557,9 @@ def score_responses(
                 timeout_seconds=timeout_seconds,
                 install_failed=failed,
             )
+            # the task's reuse value goes on each result, so results can be grouped by it
+            if record.get("reuse_value") is not None:
+                result["reuse_value"] = record["reuse_value"]
             per_response.append({"task_id": task_id, "idx": idx, **result})
 
     return _aggregate(per_response, k) | {"results": per_response}
@@ -483,8 +575,12 @@ def evaluate_responses(
     k: int | None = None,
     confirm: Callable[[dict[str, set[str]]], bool] | None = confirm_packages,
     stop_on_install_failure: bool = False,
+    records: list[dict] | None = None,
 ) -> dict:
     """Evaluate in-memory responses to LibReuseBench and save the results.
+
+    The responses are scored against the bundled splits, or against `records` when given -
+    task records in the benchmark's format, e.g. an unreleased split or an archived version.
 
     This is the complete workflow (unlike score_responses' scoring-only half): it plans,
     confirms, and installs the venv itself before scoring. For responses kept in a .json
@@ -521,7 +617,11 @@ def evaluate_responses(
     print(
         f"Evaluating {n_responses} LibReuseBench response(s) across {len(responses)} task(s)"
     )
-    benchmark = _benchmark_by_id()
+    benchmark = (
+        _benchmark_by_id()
+        if records is None
+        else {record["task_id"]: record for record in records}
+    )
 
     unknown = set(responses) - set(benchmark)
     if unknown:

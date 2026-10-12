@@ -1,4 +1,6 @@
 files: '.*'
+# the archived first version of the benchmark is frozen, so it is not linted
+exclude: '^benchmark/v1/'
 
 repos:
 # pre-commit

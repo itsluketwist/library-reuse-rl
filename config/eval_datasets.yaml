@@ -39,24 +39,26 @@ library_usage_script_pilot:
   path: "data/build/library/pilot/script_pilot.jsonl"
   evaluator: library_usage
 
-# LibReuseBench: library-agnostic stdin/stdout problems with executable test cases
+# LibReuseBench v1 (archived in benchmark/v1/, see its README): library-agnostic stdin/stdout
+# problems with executable test cases. the names are kept, as existing results use them
 libreusebench_test:
-  path: "benchmark/libreusebench/data/test.jsonl"
+  path: "benchmark/v1/data/test.jsonl"
   evaluator: libreusebench
   environment_root: ".libreuseeval-venvs"
 # no-reuse-expected counterpart to the test split above - BigCodeBench seeds whose
 # reference solution used no external library (see benchmark/libreusebench/load.py)
 libreusebench_control:
-  path: "benchmark/libreusebench/data/control.jsonl"
+  path: "benchmark/v1/data/control.jsonl"
   evaluator: libreusebench
   environment_root: ".libreuseeval-venvs"
-# the function-style pilot (benchmark/pipeline/function_pilot/): the same tasks reworded as a
-# request for one named function, tested by calling it on each case's arguments
+# the function-style pilot (benchmark/v1/pipeline/function_pilot/): the same tasks reworded as
+# a request for one named function, tested by calling it on each case's arguments. the
+# evaluator scores a row as a function task when it has a function_name
 libreusebench_function_test:
-  path: "benchmark/pipeline/function_pilot/test.jsonl"
-  evaluator: libreusebench_function
+  path: "benchmark/v1/pipeline/function_pilot/test.jsonl"
+  evaluator: libreusebench
   environment_root: ".libreuseeval-venvs"
 libreusebench_function_control:
-  path: "benchmark/pipeline/function_pilot/control.jsonl"
-  evaluator: libreusebench_function
+  path: "benchmark/v1/pipeline/function_pilot/control.jsonl"
+  evaluator: libreusebench
   environment_root: ".libreuseeval-venvs"

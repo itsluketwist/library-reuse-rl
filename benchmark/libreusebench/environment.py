@@ -385,3 +385,27 @@ class Environment:
             python_executable=self.python,
             timeout_seconds=timeout_seconds,
         )
+
+    def evaluate_function(
+        self,
+        code: str,
+        function_name: str,
+        test_inputs: list[str],
+        expected_outputs: list[str],
+        timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
+    ) -> tuple[bool, str]:
+        """Call a solution's function on a function task's tests using this environment's interpreter.
+
+        Returns a (passed, empty string or the failure message) tuple.
+        """
+        # imported here, not at the top of the file, because functions.py imports this module
+        from libreusebench.functions import evaluate_function_record
+
+        return evaluate_function_record(
+            code=code,
+            function_name=function_name,
+            test_inputs=test_inputs,
+            expected_outputs=expected_outputs,
+            python_executable=self.python,
+            timeout_seconds=timeout_seconds,
+        )

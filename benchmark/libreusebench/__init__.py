@@ -10,6 +10,12 @@ from libreusebench.evaluate import (
     evaluate_responses,
     evaluate_responses_file,
     load_responses,
+    reuse_tier,
+)
+from libreusebench.functions import (
+    build_test_program,
+    evaluate_function_record,
+    results_match,
 )
 from libreusebench.libraries import (
     extract_code,
@@ -21,7 +27,7 @@ from libreusebench.load import load_dataset, load_records
 
 
 # the single source of the package version (read by pyproject.toml when building)
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 __all__ = [
     "__version__",
@@ -33,6 +39,10 @@ __all__ = [
     "Environment",
     "run_program",
     "evaluate_record",
+    "evaluate_function_record",
+    "build_test_program",
+    "results_match",
+    "reuse_tier",
     "temporary_packages",
     "extract_code",
     "imported_libraries",

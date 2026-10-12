@@ -416,7 +416,7 @@ _SCRIPT_STAGE_SYSTEM = (
 )
 
 # two real LibReuseBench statements, embedded as style examples. both come from its dev split
-# (benchmark/libreusebench/data/dev.jsonl), never test, so no evaluated prompt leaks into
+# (benchmark/v1/data/dev.jsonl), never test, so no evaluated prompt leaks into
 # training data. both describe what to print, and how to treat odd input, without explaining
 # how to compute the result - LRB/D005 was used before, and its line-by-line definitions of
 # sum/mean/min/max were copied into statements. neither is related to our tasks
@@ -574,7 +574,7 @@ def build_script_stage_prompt(
     """Build the LLM prompt asking for one exercise for `task`, as three staged statements.
 
     The prompt mirrors the rewrite prompt LibReuseBench itself was built with
-    (benchmark/pipeline/03_rewrite.py): the model pins the behaviour down with a reference
+    (benchmark/v1/pipeline/03_rewrite.py): the model pins the behaviour down with a reference
     solution that uses a library, then describes that behaviour without naming the library - so
     the exercise can be solved either way, like the benchmark's own tasks. `problems` are a
     previous attempt's check failures, fed back so the next attempt can fix them.

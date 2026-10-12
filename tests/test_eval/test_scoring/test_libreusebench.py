@@ -24,7 +24,9 @@ class TestScoreLibReuseBench:
             env_root,
             confirm,
             stop_on_install_failure,
+            records,
         ):
+            seen["records"] = records
             seen["responses"] = responses
             seen["output_dir"] = output_dir
             seen["env_dir"] = env_dir
@@ -82,6 +84,8 @@ class TestScoreLibReuseBench:
         assert seen["responses"] == {
             "LRB/T000": ["```python\nimport pandas as pd\nprint(1)\n```"],
         }
+        # the rows are what gets scored against, not the splits bundled with the package
+        assert seen["records"] == dataset
         assert seen["env_root"] == str(tmp_path / "env")
         # no cache dir, so the evaluator builds a disposable venv it deletes afterwards
         assert seen["env_dir"] is None
@@ -103,7 +107,13 @@ class TestScoreLibReuseBench:
         seen = {}
 
         def fake_evaluate_responses(
-            responses, output_dir, env_dir, env_root, confirm, stop_on_install_failure
+            responses,
+            output_dir,
+            env_dir,
+            env_root,
+            confirm,
+            stop_on_install_failure,
+            records,
         ):
             seen["responses"] = responses
             return {

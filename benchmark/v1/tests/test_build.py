@@ -3,6 +3,7 @@
 from build import (
     ARTEFACTS_DIR,
     artefact_path,
+    hard_exclude_reason,
     latest_records,
     succeeded_ids,
     track_artefact_path,
@@ -57,3 +58,16 @@ class TestTrackArtefactPath:
             track_artefact_path("02_candidates.jsonl", "control")
             == ARTEFACTS_DIR / "02_candidates_control.jsonl"
         )
+
+
+class TestHardExcludeReason:
+    """The build hard-exclude keeps most problems and drops only the impossible ones."""
+
+    def test_network_dropped(self) -> None:
+        assert hard_exclude_reason(["requests"]) == "network"
+
+    def test_plot_dropped(self) -> None:
+        assert hard_exclude_reason(["matplotlib", "numpy"]) == "plot-gui"
+
+    def test_ordinary_libs_kept(self) -> None:
+        assert hard_exclude_reason(["pandas", "numpy"]) is None

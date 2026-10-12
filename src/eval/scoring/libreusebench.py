@@ -19,6 +19,10 @@ def score_libreusebench(
     n_samples); every sample is submitted for the task, so the official evaluator's
     pass@k (see benchmark/libreusebench/evaluate.py's _pass_at_k) reflects them.
 
+    The rows themselves are passed as the records to score against, so this scores any
+    file of LibReuseBench-format tasks - stdin/stdout or function tasks, bundled with the
+    installed package or not (e.g. the archived benchmark/v1 splits).
+
     The official evaluator discovers packages from the responses, installs them into
     its cached environment, executes the selected code, and aggregates the results.
     Eval runs are unattended (including on HPC/Slurm), so this passes `confirm=None`
@@ -53,6 +57,7 @@ def score_libreusebench(
             env_root=environment_root,
             confirm=None,
             stop_on_install_failure=False,
+            records=rows,
         )
 
     if not official:

@@ -140,6 +140,11 @@ extra-paths = [
     "reward",
 ]
 
+# the archived first version of the benchmark is frozen, and no longer runs in place (see
+# benchmark/v1/README.md), so it is not type-checked - as it is not linted by pre-commit
+[tool.ty.src]
+exclude = ["benchmark/v1"]
+
 # these files import the GPU stack from the [hpc] extra (torch, transformers, trl, unsloth,
 # vllm), which only installs on linux - ignore just the missing imports when checking locally
 [[tool.ty.overrides]]

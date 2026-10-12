@@ -1,16 +1,11 @@
-"""Tests for scoring the function-style LibReuseBench pilot: lenient matching and running tests."""
+"""Tests for scoring function tasks in libreusebench/functions.py: lenient matching and running tests."""
 
 import sys
-from pathlib import Path
+from decimal import Decimal
+from fractions import Fraction
 
 import pytest
-
-from src.eval.scoring import score_dataset
-from src.eval.scoring.libreusebench_function import (
-    RAISES,
-    results_match,
-    run_function_tests,
-)
+from libreusebench.functions import RAISES, evaluate_function_record, results_match
 
 
 class _ArrayLike:
@@ -24,6 +19,35 @@ class _ArrayLike:
 
     def tolist(self) -> list:
         return self.values
+
+
+class _SeriesLike:
+    """A stand-in for a pandas or polars series: it converts with to_dict and to_list."""
+
+    def __init__(
+        self,
+        data: dict,
+    ) -> None:
+        self.data = data
+
+    def to_dict(self) -> dict:
+        return dict(self.data)
+
+    def to_list(self) -> list:
+        return list(self.data.values())
+
+
+class _ScalarLike:
+    """A stand-in for a numpy number: the plain python number comes out of its item method."""
+
+    def __init__(
+        self,
+        value: float,
+    ) -> None:
+        self.value = value
+
+    def item(self) -> float:
+        return self.value
 
 
 class TestResultsMatch:
@@ -47,6 +71,58 @@ class TestResultsMatch:
     )
     def test_equivalent_values_match(self, got: object, expected: object) -> None:
         assert results_match(got, expected)
+
+    @pytest.mark.parametrize(
+        ("got", "expected"),
+        [
+            # a dict is expected: to_dict if the value has it, else dict()
+            (_SeriesLike({"a": 1, "b": 2}), {"a": 1, "b": 2}),
+            ([("a", 1), ("b", 2)], {"a": 1, "b": 2}),
+            # a list, tuple or set is expected: tolist / to_list, else list() of an iterable
+            (_SeriesLike({"a": 1, "b": 2}), [1, 2]),
+            (range(1, 3), [1, 2]),
+            ({"a": 1, "b": 2}.values(), (1, 2)),
+            (_ArrayLike([2, 1]), {1, 2}),
+            # a number is expected: item if the value has it, else float()
+            (_ScalarLike(5), 5),
+            (Decimal("0.3"), 0.3),
+            (Fraction(1, 2), 0.5),
+            # and the same at every level of nesting
+            ({"a": _ArrayLike([1, 2])}, {"a": [1, 2]}),
+            ([_ScalarLike(1.5), Decimal("2")], [1.5, 2]),
+            (_SeriesLike({"a": _ScalarLike(1)}), {"a": 1}),
+            ({_ScalarLike(2020), _ScalarLike(2021)}, [2021, 2020]),
+        ],
+    )
+    def test_library_values_are_converted_to_the_expected_type(
+        self,
+        got: object,
+        expected: object,
+    ) -> None:
+        assert results_match(got, expected)
+
+    @pytest.mark.parametrize(
+        ("got", "expected"),
+        [
+            # a string is never a number, and a string, bytes or dict is never a list
+            ("1.5", 1.5),
+            ("ab", ["a", "b"]),
+            (b"ab", [97, 98]),
+            ({"a": 1}, ["a"]),
+            # converting doesn't hide a wrong value
+            (_SeriesLike({"a": 1}), {"a": 2}),
+            (_ScalarLike(5), 6),
+            # a value that can't be compared simply doesn't match
+            (_ArrayLike([1, 2]), None),
+            (_ArrayLike([1, 2]), 1),
+        ],
+    )
+    def test_conversion_is_not_too_lenient(
+        self,
+        got: object,
+        expected: object,
+    ) -> None:
+        assert not results_match(got, expected)
 
     @pytest.mark.parametrize("rel_tol", [1e-3, 1e-2])
     def test_neighbouring_numeric_keys_are_not_confused(self, rel_tol: float) -> None:
@@ -93,7 +169,7 @@ def _run(
     test_inputs: list[str] | None = None,
 ) -> tuple[bool, str]:
     """Run `code`'s `double` function against cases, with this test's own python."""
-    return run_function_tests(
+    return evaluate_function_record(
         code=code,
         function_name="double",
         test_inputs=test_inputs or ["[1]", "[2.5]"],
@@ -102,7 +178,7 @@ def _run(
     )
 
 
-class TestRunFunctionTests:
+class TestEvaluateFunctionRecord:
     """A response passes only if its named function returns a matching value for every case."""
 
     def test_correct_function_passes(self) -> None:
@@ -138,66 +214,3 @@ class TestRunFunctionTests:
             test_inputs=["[1]", "[-1]"],
         )
         assert not passed and "expected an exception" in message
-
-
-class _FakeEnvironment:
-    """A stand-in for the benchmark's venv: runs code with this test's own python."""
-
-    def __init__(
-        self,
-        cache_dir: str | None = None,
-        scratch_root: str | None = None,
-    ) -> None:
-        self.python = Path(sys.executable)
-
-    def __enter__(self) -> "_FakeEnvironment":
-        return self
-
-    def __exit__(self, *exc_info: object) -> None:
-        pass
-
-    def ensure_packages(
-        self,
-        packages: set[str],
-    ) -> set[str]:
-        return set()
-
-
-class TestScoreLibReuseBenchFunction:
-    """Every sample is tested, and the summary has the official evaluator's fields."""
-
-    def test_samples_are_scored_and_aggregated(self, monkeypatch, tmp_path) -> None:
-        monkeypatch.setattr(
-            "src.eval.scoring.libreusebench_function.Environment",
-            _FakeEnvironment,
-        )
-        dataset = [
-            {
-                "idx": 0,
-                "task_id": "LRB/T000",
-                "function_name": "double",
-                "test_inputs": ["[1]", "[3]"],
-                "expected_outputs": ["2", "6"],
-            }
-        ]
-        responses = [
-            [
-                ("```python\ndef double(x):\n    return 2 * x\n```", "stop"),
-                ("```python\ndef double(x):\n    return x + 1\n```", "stop"),
-                ("no code here", "stop"),
-            ]
-        ]
-
-        analysis, results = score_dataset(
-            dataset,
-            responses,
-            evaluator="libreusebench_function",
-            environment_root=str(tmp_path),
-        )
-
-        assert analysis["task"] == "libreusebench_function"
-        assert analysis["n_total"] == 3
-        assert analysis["pass@1"] == pytest.approx(1 / 3)
-        assert [result["passed"] for result in results] == [True, False, False]
-        assert results[2]["reason"] == "no code"
-        assert "wrong result on test 2" in results[1]["reason"]

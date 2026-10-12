@@ -1,6 +1,5 @@
-"""Tests for the shared library analysis in libreusebench.libraries (and the build hard-exclude)."""
+"""Tests for the shared library analysis in libreusebench.libraries."""
 
-from build import hard_exclude_reason
 from libreusebench.libraries import (
     analyse_source,
     extract_code,
@@ -89,16 +88,3 @@ class TestFindNamedLibraries:
         assert (
             find_named_libraries("Read integers from stdin and print their sum.") == []
         )
-
-
-class TestHardExcludeReason:
-    """The build hard-exclude keeps most problems and drops only the impossible ones."""
-
-    def test_network_dropped(self) -> None:
-        assert hard_exclude_reason(["requests"]) == "network"
-
-    def test_plot_dropped(self) -> None:
-        assert hard_exclude_reason(["matplotlib", "numpy"]) == "plot-gui"
-
-    def test_ordinary_libs_kept(self) -> None:
-        assert hard_exclude_reason(["pandas", "numpy"]) is None

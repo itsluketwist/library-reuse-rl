@@ -5,9 +5,12 @@ gate is declined, or a fake benchmark is injected).
 """
 
 import json
+import sys
+from pathlib import Path
 
 import pytest
 from libreusebench import evaluate
+from libreusebench.environment import Environment
 
 from src.utils.io import save_jsonl
 
@@ -557,3 +560,174 @@ class TestInstallFailures:
         )
 
         assert result == {}
+
+
+class _LocalEnv(Environment):
+    """The real Environment's test running, with this test's own python instead of a built venv."""
+
+    def __init__(self) -> None:
+        pass
+
+    @property
+    def python(self) -> Path:
+        return Path(sys.executable)
+
+
+# one task in each format: a function task (it has a function_name) and a stdin/stdout task
+_FUNCTION_RECORD = {
+    "task_id": "LRB2/T000",
+    "function_name": "double",
+    "test_inputs": ["[1]", "[3]"],
+    "expected_outputs": ["2", "6"],
+    "reuse_value": 20,
+}
+_PROGRAM_RECORD = {
+    "task_id": "LRB/T000",
+    "test_inputs": ["1\n"],
+    "expected_outputs": ["2"],
+}
+
+
+class TestFunctionTasks:
+    """A record with a function_name is tested by calling the function, any other as a program."""
+
+    def test_each_record_is_scored_in_its_own_format(self) -> None:
+        function_answer = "```python\ndef double(x):\n    return 2 * x\n```"
+        program_answer = "```python\nprint(int(input()) * 2)\n```"
+        result = evaluate.score_responses(
+            responses={
+                # the right function, then a program that never defines it
+                "LRB2/T000": [function_answer, "```python\nprint(2)\n```"],
+                # the right program, then a function that prints nothing
+                "LRB/T000": [program_answer, function_answer],
+            },
+            benchmark={
+                "LRB2/T000": _FUNCTION_RECORD,
+                "LRB/T000": _PROGRAM_RECORD,
+            },
+            env=_LocalEnv(),
+        )
+
+        rows = result["results"]
+        assert [row["passed"] for row in rows] == [True, False, True, False]
+        assert "function not defined: double" in rows[1]["reason"]
+        assert "test 1: expected '2'" in rows[3]["reason"]
+
+        # the function task's reuse value is copied onto its results, and summarised
+        assert rows[0]["reuse_value"] == 20
+        assert "reuse_value" not in rows[2]
+        assert result["reuse_value"] == {
+            "tiers": {"high": {"n_tasks": 1, "pass@1": 0.5, "library_use": 0.0}},
+            "high_value_library_use": 0.0,
+        }
+
+
+class TestRecordsArgument:
+    """evaluate_responses scores against the records it is given, not the bundled splits."""
+
+    _RECORDS = [
+        {
+            "task_id": "MINE/000",
+            "test_inputs": ["1\n"],
+            "expected_outputs": ["1"],
+        }
+    ]
+
+    def test_given_records_replace_the_bundled_splits(
+        self,
+        tmp_path,
+        monkeypatch,
+    ) -> None:
+        def _fail_if_called() -> dict:
+            raise AssertionError("the bundled splits are not needed with records")
+
+        monkeypatch.setattr(evaluate, "load_dataset", _fail_if_called)
+        monkeypatch.setattr(evaluate, "Environment", _FakeEnv)
+
+        result = evaluate.evaluate_responses(
+            responses={"MINE/000": ["```python\nprint(1)\n```"]},
+            output_dir=str(tmp_path),
+            confirm=None,
+            records=self._RECORDS,
+        )
+
+        assert result["n_tasks"] == 1
+        assert result["pass@1"] == 1.0
+        assert result["results"][0]["task_id"] == "MINE/000"
+
+    def test_a_task_missing_from_the_records_errors(
+        self,
+        tmp_path,
+        monkeypatch,
+    ) -> None:
+        # LRB/T000 is in the (fake) bundled splits, but not in the records given
+        monkeypatch.setattr(evaluate, "load_dataset", lambda: _FAKE_BENCHMARK)
+        with pytest.raises(ValueError, match="unknown task ids"):
+            evaluate.evaluate_responses(
+                responses={"LRB/T000": ["```python\nprint(1)\n```"]},
+                output_dir=str(tmp_path),
+                confirm=None,
+                records=self._RECORDS,
+            )
+
+
+class TestReuseValue:
+    """Results that carry a reuse value are also summarised per reuse tier."""
+
+    def test_tier_bounds(self) -> None:
+        tiers = [evaluate.reuse_tier(value) for value in (-3, 4, 5, 14, 15, 80)]
+        assert tiers == ["low", "low", "medium", "medium", "high", "high"]
+
+    def test_pass_rate_and_library_use_per_tier(self) -> None:
+        per_response = [
+            # a high-value task: both responses pass, and one of them uses a library
+            {
+                "task_id": "A",
+                "passed": True,
+                "used_external_libs": ["bs4"],
+                "reuse_value": 55,
+            },
+            {
+                "task_id": "A",
+                "passed": True,
+                "used_external_libs": [],
+                "reuse_value": 55,
+            },
+            # a second high-value task: its one response fails, without a library
+            {
+                "task_id": "B",
+                "passed": False,
+                "used_external_libs": [],
+                "reuse_value": 15,
+            },
+            # a low-value task, where the library solution is the longer one
+            {
+                "task_id": "C",
+                "passed": True,
+                "used_external_libs": [],
+                "reuse_value": -2,
+            },
+            # a control task has no reuse value, so it is in no tier
+            {
+                "task_id": "D",
+                "passed": True,
+                "used_external_libs": ["numpy"],
+            },
+        ]
+
+        block = evaluate._aggregate(per_response)["reuse_value"]
+
+        # high: tasks A (2 of 2 passed) and B (0 of 1), and 1 of their 3 responses used a library
+        assert block["tiers"] == {
+            "low": {"n_tasks": 1, "pass@1": 1.0, "library_use": 0.0},
+            "high": {
+                "n_tasks": 2,
+                "pass@1": 0.5,
+                "library_use": pytest.approx(1 / 3),
+            },
+        }
+        assert block["high_value_library_use"] == pytest.approx(1 / 3)
+
+    def test_no_block_without_reuse_values(self) -> None:
+        results = evaluate._aggregate([{"task_id": "A", "passed": True}])
+        assert "reuse_value" not in results
