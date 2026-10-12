@@ -7,6 +7,7 @@ libraries into (arbitrary, dynamic) before running it, so each answer is evaluat
 the third-party packages it reached for.
 """
 
+import os
 import platform
 import shutil
 import subprocess
@@ -28,7 +29,20 @@ except ImportError:  # pragma: no cover - windows
 # generous enough for heavy scientific libraries (sklearn/scipy/statsmodels import slowly), so a
 # genuinely dual-solvable task is not dropped just for import latency under a tight cap
 _DEFAULT_TIMEOUT_SECONDS = 30.0
-_DEFAULT_MEMORY_MB = 1024
+# a cap on the address space the child may reserve, which is far more than the memory it really
+# uses: importing a scientific library alone reserves hundreds of megabytes. so the cap is set
+# well above what a correct solution needs, and only stops a runaway one
+_DEFAULT_MEMORY_MB = 4096
+
+# numeric libraries start one worker thread per cpu core by default, and each thread reserves
+# its own memory. on a many-core cluster node that alone went over the memory cap, so correct
+# library solutions failed with "OpenBLAS error: Memory allocation still failed". one thread is
+# plenty for benchmark-sized inputs, and makes a run behave the same on a laptop and a cluster
+_SINGLE_THREAD_ENV = {
+    "OPENBLAS_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+}
 
 # the interpreter used for build-time oracle runs (the project venv, which already has the
 # reference solutions' libraries); the harness overrides this with its own venv's python
@@ -56,6 +70,8 @@ def execute(
 ) -> tuple[bool, str]:
     """Run python source in a sandboxed subprocess with time and memory limits.
 
+    Numeric libraries are held to a single thread (see _SINGLE_THREAD_ENV).
+
     Returns a (success, captured stdout or an error message) tuple.
     """
     try:
@@ -68,6 +84,7 @@ def execute(
                 timeout=timeout_seconds,
                 preexec_fn=lambda: _set_memory_limit(memory_mb),
                 cwd=tmp_dir,
+                env={**os.environ, **_SINGLE_THREAD_ENV},
             )
     except subprocess.TimeoutExpired:
         return False, f"timeout after {timeout_seconds}s"

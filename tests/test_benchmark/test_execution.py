@@ -48,6 +48,17 @@ def stub_venv(monkeypatch):
     monkeypatch.setattr(venv.EnvBuilder, "create", _create)
 
 
+def test_numeric_libraries_are_held_to_one_thread() -> None:
+    """Each thread of a numeric library reserves memory, which broke the memory cap on a cluster."""
+    names = ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS")
+    ok, out = run_program(
+        f"import os\nprint(*(os.environ[name] for name in {names!r}))",
+        stdin="",
+    )
+    assert ok
+    assert out == "1 1 1"
+
+
 class TestEnvironmentLifecycle:
     """Environment is disposable by default, and reused only when the caller names it."""
 
