@@ -61,13 +61,14 @@ datasets=(
     # "libreusebench_function_control"
     # "libreusebench_v2_pilot"
     # "libreusebench_v2_pilot_control"
-    "libreusebench_v2_pilot2"
-    "libreusebench_v2_pilot3"
+    # "libreusebench_v2_pilot2"
+    # "libreusebench_v2_pilot3"
+    "libreusebench_v2_pilot3_25"
 )
 
 # completions sampled per prompt (see --n-samples in src/run_eval.py); eval-only, unrelated
 # to training rollouts. leave blank to use the default of 1.
-n_samples=5
+n_samples=25
 
 # decoding profiles to evaluate with (eval_decoding_profiles in config/training.yaml)
 decoding_profiles=(

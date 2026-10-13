@@ -90,3 +90,10 @@ libreusebench_v2_pilot3:
   path: "benchmark/artefacts/pilot_3/test.jsonl"
   evaluator: libreusebench
   environment_root: ".libreuseeval-venvs"
+# the third pilot again, for a run with 25 samples a prompt: at 5 samples the base model gave
+# only 4-5 responses a task, too few to compare with the trained runs. results are named by
+# dataset, so the second name keeps them beside the 5-sample ones instead of replacing them
+libreusebench_v2_pilot3_25:
+  path: "benchmark/artefacts/pilot_3/test.jsonl"
+  evaluator: libreusebench
+  environment_root: ".libreuseeval-venvs"
