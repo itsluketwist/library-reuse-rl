@@ -1,0 +1,184 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4796/checkpoint-28",
+    "provider": "vllm",
+    "dataset": "libreusebench_v2_pilot2",
+    "dataset_file": "benchmark/artefacts/pilot_2/test.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.1.2",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 55,
+    "n_tasks": 11,
+    "n_responses": 55,
+    "k": 5,
+    "pass@1": 0.8363636363636363,
+    "pass@k": 0.9090909090909091,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.6363636363636364,
+          "avg_extlibs": 0.7272727272727273,
+          "library_counts": {
+            "scipy": 4,
+            "numpy": 2,
+            "bs4": 1,
+            "pandas": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.6363636363636364,
+          "avg_extlibs": 0.6545454545454545,
+          "library_counts": {
+            "scipy": 20,
+            "numpy": 10,
+            "bs4": 5,
+            "pandas": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.6363636363636364,
+          "avg_extlibs": 0.7272727272727273,
+          "library_counts": {
+            "scipy": 4,
+            "numpy": 2,
+            "bs4": 1,
+            "pandas": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.6363636363636364,
+          "avg_extlibs": 0.6545454545454545,
+          "library_counts": {
+            "scipy": 20,
+            "numpy": 10,
+            "bs4": 5,
+            "pandas": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 55,
+        "avg_lloc": 21.618181818181817,
+        "avg_maintainability_index": 83.4978449921618
+      },
+      "passed": {
+        "n_measured": 46,
+        "avg_lloc": 20.5,
+        "avg_maintainability_index": 83.81856398083694
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "reuse_value": {
+      "tiers": {
+        "low": {
+          "n_tasks": 3,
+          "pass@1": 0.9333333333333332,
+          "library_use": 0.0
+        },
+        "medium": {
+          "n_tasks": 2,
+          "pass@1": 1.0,
+          "library_use": 0.5
+        },
+        "high": {
+          "n_tasks": 6,
+          "pass@1": 0.7333333333333334,
+          "library_use": 1.0
+        }
+      },
+      "high_value_library_use": 1.0
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-hdbmz9oc",
+      "source": "response_imports",
+      "installed_packages": [
+        "beautifulsoup4",
+        "lxml",
+        "numpy",
+        "pandas",
+        "scikit-learn",
+        "scipy",
+        "statsmodels"
+      ],
+      "install_failed": [],
+      "task_packages": [
+        "beautifulsoup4",
+        "lxml",
+        "numpy",
+        "pandas",
+        "scikit-learn",
+        "scipy",
+        "statsmodels"
+      ],
+      "installed_package_versions": {
+        "beautifulsoup4": "4.15.0",
+        "cloudpickle": "3.1.2",
+        "formulaic": "1.2.2",
+        "interface-meta": "2.0.1",
+        "joblib": "1.6.0",
+        "lxml": "6.1.3",
+        "narwhals": "2.27.1",
+        "numpy": "2.5.4",
+        "packaging": "26.3",
+        "pandas": "3.0.6",
+        "patsy": "1.0.3",
+        "pip": "25.0.1",
+        "python-dateutil": "2.9.0.post0",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "six": "1.17.0",
+        "soupsieve": "3.0.3",
+        "statsmodels": "0.15.0",
+        "threadpoolctl": "3.7.0",
+        "typing-extensions": "4.16.0",
+        "wrapt": "2.5.0"
+      },
+      "package_imports": {
+        "beautifulsoup4": [
+          "beautifulsoup4",
+          "bs4"
+        ],
+        "lxml": [],
+        "numpy": [
+          "numpy"
+        ],
+        "pandas": [
+          "pandas"
+        ],
+        "scikit-learn": [],
+        "scipy": [
+          "scipy"
+        ],
+        "statsmodels": []
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-zrrvdnlq/libreusebench_eval_2026-10-13T14:40:42.205644.json"
+  }
+}
