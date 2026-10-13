@@ -250,6 +250,7 @@ class TestInstallationPlan:
             "source": "response_imports",
             "installed_packages": ["scikit-learn"],
             "install_failed": [],
+            "task_packages": [],
             "installed_package_versions": {"scikit-learn": "1.2.3"},
             "package_imports": {"scikit-learn": ["sklearn"]},
         }
@@ -654,6 +655,36 @@ class TestRecordsArgument:
         assert result["n_tasks"] == 1
         assert result["pass@1"] == 1.0
         assert result["results"][0]["task_id"] == "MINE/000"
+
+    def test_a_tasks_own_packages_are_installed_too(
+        self,
+        tmp_path,
+        monkeypatch,
+    ) -> None:
+        """A response may need a package it never imports, such as a parser loaded behind the
+        scenes. The task's library solution names it, so it is installed (unpinned)."""
+        monkeypatch.setattr(evaluate, "Environment", _FakeEnv)
+        records = [
+            self._RECORDS[0]
+            | {
+                "ground_truth": {
+                    "gold_extlib_packages": ["lxml==6.1.3", "pandas==3.0.6"]
+                }
+            }
+        ]
+
+        result = evaluate.evaluate_responses(
+            responses={"MINE/000": ["```python\nimport numpy\nprint(1)\n```"]},
+            output_dir=str(tmp_path),
+            confirm=None,
+            records=records,
+        )
+
+        environment = result["environment"]
+        assert environment["installed_packages"] == ["lxml", "numpy", "pandas"]
+        assert environment["task_packages"] == ["lxml", "pandas"]
+        # only the response's own import is recorded as coming from a response
+        assert environment["package_imports"]["numpy"] == ["numpy"]
 
     def test_a_task_missing_from_the_records_errors(
         self,

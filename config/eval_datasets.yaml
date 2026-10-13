@@ -62,15 +62,23 @@ libreusebench_function_control:
   path: "benchmark/v1/pipeline/function_pilot/control.jsonl"
   evaluator: libreusebench
   environment_root: ".libreuseeval-venvs"
-# the LibReuseBench v2 pilot (benchmark/pipeline/05_build.py --pilot): new function tasks
-# generated from 60 pilot seeds, before the full run - every task the agent review kept. the
-# first is the reuse tasks, each with a reuse value (the lines of code a library saves), and
-# the second is the control tasks, where no library should help
+# the first LibReuseBench v2 pilot (archived in benchmark/artefacts/pilot_1/, with the records
+# it was built from): new function tasks generated from 60 pilot seeds - every task the agent
+# review kept. the first is the reuse tasks, each with a reuse value (the lines of code a
+# library saves), and the second is the control tasks, where no library should help. the
+# request asked for tasks where a library saves a lot of code, which made them long and hard
 libreusebench_v2_pilot:
-  path: "benchmark/artefacts/pilot/test.jsonl"
+  path: "benchmark/artefacts/pilot_1/test.jsonl"
   evaluator: libreusebench
   environment_root: ".libreuseeval-venvs"
 libreusebench_v2_pilot_control:
-  path: "benchmark/artefacts/pilot/control.jsonl"
+  path: "benchmark/artefacts/pilot_1/control.jsonl"
+  evaluator: libreusebench
+  environment_root: ".libreuseeval-venvs"
+# the second LibReuseBench v2 pilot (benchmark/artefacts/pilot_2/): 11 tasks from 20 seeds, each
+# a short, library-agnostic rewording of its BigCodeBench seed. the request set no target for
+# how much code a library saves, so the tasks span the low, medium and high reuse tiers
+libreusebench_v2_pilot2:
+  path: "benchmark/artefacts/pilot_2/test.jsonl"
   evaluator: libreusebench
   environment_root: ".libreuseeval-venvs"

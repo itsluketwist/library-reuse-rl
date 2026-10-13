@@ -1,9 +1,10 @@
-"""Stage 02: generate one new function task per BigCodeBench seed, and check it by running it.
+"""Stage 02: reword each BigCodeBench seed as a short function task, and check it by running it.
 
-One model call per seed writes everything a task needs: the request for one named function, a
-solution that uses a third-party library, a solution that uses only the standard library, and a
-set of test inputs. The task is NEW, inspired by the seed, not a rewording of it - the aim is a
-task where a library does substantial work that takes far more code by hand.
+One model call per seed rewords the seed's task as a short, library-agnostic request for one
+named function, and writes what the task needs beside it: a solution that uses the seed's
+libraries, a solution that uses only the standard library, and a set of test inputs. The task
+stays the seed's own - nothing is added to make a library more useful, or less. Many seeds don't
+suit a short function task, and the model is told to skip those.
 
 Nothing is taken on trust. Each reply is checked, and a failed check is fed back to the model with
 its own reply, for up to MAX_ATTEMPTS attempts:
@@ -14,20 +15,23 @@ its own reply, for up to MAX_ATTEMPTS attempts:
    must be plain python values, and the same both times;
 3. the standard-library solution must pass every test, scored exactly as the benchmark scores a
    model's answer;
-4. the example in the text must hold;
+4. the example in the text must show exactly what the function returns;
 5. the tests must tell answers apart: no one result covers more than half of them, and at most
-   MAX_RAISES expect an exception;
-6. the reuse value (the logical lines of code the library saves) is measured, and sets the
-   task's tier. A task that comes out in the low tier gets one more try at giving the library a
-   substantial job.
+   MAX_RAISES expect an exception.
+
+A task's reuse value (the logical lines of code the library saves) is then measured from its two
+solutions, and sets its tier. It is only measured: the request never mentions it, so that the
+solutions are not written to a target.
 
 --track reuse (the default) uses the seeds whose reference solution uses a library. --track
-control uses the standard-library-only seeds, and asks for a task where no library would help: it
-has no library solution, so its expected values come from the standard-library solution.
+control uses the standard-library-only seeds, for tasks where no library would help: these have
+no library solution, so their expected values come from the standard-library solution.
 
 Records are appended to benchmark/artefacts/02_generated.jsonl (02_generated_control.jsonl for
-the control track), one per seed, and a seed's last record is its current state. Generated code
-only ever runs in the build venv (benchmark/pipeline/setup_build_venv.sh).
+the control track), one per seed, and a seed's last record is its current state. Each carries the
+fingerprint of the request it came from (PROMPT_VERSION), so tasks from an earlier wording of the
+request can be told apart, and --skip-done only skips seeds done with the current one. Generated
+code only ever runs in the build venv (benchmark/pipeline/setup_build_venv.sh).
 
 Usage: python benchmark/pipeline/02_generate.py [--track reuse|control] [--seeds ID,ID]
        [--limit N] [--skip-done] [--workers N] [--model M] [--effort E]
@@ -35,6 +39,7 @@ Usage: python benchmark/pipeline/02_generate.py [--track reuse|control] [--seeds
 
 import argparse
 import ast
+import hashlib
 import json
 import re
 import sys
@@ -58,28 +63,29 @@ from build import (
 )
 from generation import DEFAULT_EFFORT, DEFAULT_MODEL, complete_json, usage_summary
 from libreusebench.environment import execute, temporary_packages
-from libreusebench.functions import (
-    ABS_TOL,
-    RAISES,
-    REL_TOL,
-    evaluate_function_record,
-    results_match,
-)
+from libreusebench.functions import RAISES, evaluate_function_record, results_match
 from libreusebench.libraries import analyse_source, find_named_libraries
 from lure import analyse_code, pip_package
 
 from src.utils.io import append_jsonl, load_jsonl
 
 
-# the most attempts one seed gets, counting the extra try a low-tier task is given
+# the most attempts one seed gets
 MAX_ATTEMPTS = 3
 
-# the longest task text accepted, in characters - it should read as a short request
-MAX_PROMPT_CHARS = 1500
+# the longest task text accepted, in characters - it should read as a short request. three in
+# four of the v1 function tasks, whose wording this stage follows, were within it
+MAX_PROMPT_CHARS = 900
 
 # the fewest test cases a task needs, and the most of them that may expect an exception
 MIN_TESTS = 10
 MAX_RAISES = 3
+
+# how closely the example in the text must match what the function returns. it is far tighter
+# than the tolerance tests are scored with: a rounded number in an example reads as a request to
+# round, and a solver who rounds then fails the tests
+EXAMPLE_REL_TOL = 1e-9
+EXAMPLE_ABS_TOL = 1e-12
 
 # the fixed list of domains a task is filed under
 DOMAINS = [
@@ -100,7 +106,7 @@ DOMAINS = [
 # names too generic to say what a function does
 _GENERIC_NAMES = {"task_func", "solve", "solution", "main", "func", "function", "f"}
 
-# the two or three worked examples shown in every reuse-track request (copied from the v1
+# a few task texts shown in every request as examples of the wording wanted (copied from the v1
 # function pilot, see benchmark/v1/)
 _EXAMPLES_FILE = artefact_path("02_worked_examples.json")
 
@@ -112,49 +118,29 @@ _INSTALL_LOCK = threading.Lock()
 # --- the request --------------------------------------------------------------------------------
 
 _SYSTEM = (
-    "You write programming tasks, with reference solutions and tests, for a benchmark that "
-    "measures whether a coding model reuses libraries. Reply with JSON only."
+    "You reword coding benchmark problems as short, library-agnostic function-writing tasks, "
+    "with reference solutions and tests to match. Reply with JSON only."
 )
 
-# what the benchmark is for, and what makes a task useful to it
+# what the benchmark is, and what is being asked for
 _INTRO = {
     "reuse": """\
 We are building a benchmark that measures whether a coding model reaches for a third-party
-library when it is free to choose. Each task asks for one Python function, and names no library.
-Every task must be solvable both with a library and with the standard library alone.
+library when it is free to choose. Each task is a short request for one Python function. It names
+no library, and it can be solved either with a library or with the standard library alone.
 
-## What we have learnt
-
-An earlier version of this benchmark showed what makes a task useful:
-- A good task is one where a mature library does substantial work that takes far more code by
-  hand, yet a careful standard-library solution still exists. Models reach for a library on such
-  tasks, and not on others.
-- We measure this as the logical lines of code the library saves. Models only reached for a
-  library where it saved more than about 20 lines. So aim for a task where an idiomatic
-  standard-library solution is at least 20 lines longer than the library solution, and at least
-  twice its length. Never get there by padding: choose a task where the library really replaces
-  that much work.
-- Lines saved are not enough on their own. What draws a library is a specialised job that is
-  hard to get right by hand: parsing a markup or data format, a statistical test, fitting a
-  model, a cryptographic primitive. Tasks that only standardise, rescale, filter, group or
-  reshape numbers and tables drew no library use at all, even where a library saved about 25
-  lines: models simply write the loops.
-- Convenience use is not a library job. Taking a mean or a sum, or building a table just to add a
-  column, saves almost no code, so it gives no reason to use the library.
-- The standard-library solution may be long and complex. That is fine, and good.
-- The two solutions have to agree on every test. A hand-written solution can't reproduce a
-  library's internal heuristics or data tables (a stemmer's rules, a tokeniser, a sentiment
-  lexicon), so choose a job whose result is fully defined by a standard, a format or a formula.
-  Where a result is only defined up to a sign or an order (principal components, eigenvectors,
-  cluster labels), fix a convention in the text, or ask for something that doesn't depend on it.
+Below is a task from BigCodeBench, whose reference solution uses particular libraries. Reword it
+as one of our tasks, if it suits. Many seeds don't suit, and skipping those is expected.
 """,
     "control": """\
 We are building a benchmark that measures whether a coding model reaches for a third-party
-library when it is free to choose. Each task asks for one Python function, and names no library.
+library when it is free to choose. Each task is a short request for one Python function, and
+names no library.
 
-This task is for the benchmark's CONTROL split: tasks where no third-party library would help,
-so that a good solution uses only the standard library. They show whether a model reaches for a
-library even where there is no reason to.
+Below is a task from BigCodeBench whose reference solution uses only the standard library.
+Reword it as a task for the benchmark's CONTROL split: tasks where no third-party library would
+help, which show whether a model reaches for one anyway. Many seeds don't suit, and skipping
+those is expected.
 """,
 }
 
@@ -175,86 +161,62 @@ Its tests:
 """
 
 _EXAMPLES_HEADER = """
-## Worked examples
+## The wording we want
 
-These are tasks from an earlier version of the benchmark, with their two solutions.
+These task texts are from an earlier version of the benchmark. Each is a short, plain request
+that names no library.
 """
 
-_GOOD_EXAMPLE = """
-### Example {number}: a good task
-
-The library ({library}) does the heavy lifting: its solution is {extlib_lloc} logical lines of
-code, against {stdlib_lloc} by hand.
-
-The task text:
+_EXAMPLE = """
+Example {number}:
 {prompt}
-
-The library solution:
-```python
-{extlib_solution}
-```
-
-The standard-library solution:
-```python
-{stdlib_solution}
-```
 """
 
-_TRIVIAL_EXAMPLE = """
-### Example {number}: a task to avoid
-
-The library ({library}) does almost nothing here: its solution is {extlib_lloc} logical lines of
-code, against {stdlib_lloc} by hand. A task like this gives no reason to use a library.
-
-The task text:
-{prompt}
-
-The library solution:
-```python
-{extlib_solution}
-```
+# the adaptations a self-contained function needs, shared by both tracks
+_ADAPTATIONS = """\
+- where the seed generates data at random or reads it from a file, pass the data in as arguments;
+- where the seed writes a file or draws a plot, return the values it would have written or drawn.
+Don't make the task harder or more elaborate than the seed, and don't add requirements of your
+own.
 """
 
 _WHAT_TO_WRITE = {
     "reuse": """
 ## What to write
 
-Write a NEW task inspired by the seed. Do not reword the seed.
-- Stay in the seed's domain, with the seed's library (or a library of the same family) doing the
-  heavy lifting in the library solution. Change the details, the inputs and the scale as needed,
-  so that the library's job is substantial.
-- Keep everything outside the library's job simple. The library should do most of the work, so
-  that the library solution stays short (about 25 logical lines at most). Don't add rules that
-  both solutions then have to implement by hand: they make the task longer without giving any
-  more reason to use the library.
-- Where the seed draws a plot, ask for the computed data that the plot would show.
-- Where the seed generates random data, pass that data in as arguments.
-- Where the seed reads or writes files, pass their contents in as strings or bytes, and return
-  what would have been written.
-
-Reply with verdict "skip", and say why in reason, if the task:
-- needs the network, the operating system or a GUI;
-- can't be made deterministic;
-- would need a data asset written out by hand (a word list, a pretrained model), not code, to
-  solve without the library;
-- can't be given a substantial library job.
+Reword the seed as a short request for ONE Python function. Keep it the seed's task: the same
+computation, with the seed's libraries doing the same job in the library solution. Change only
+what a self-contained function needs:
+"""
+    + _ADAPTATIONS
+    + """
+Reply with verdict "skip", and say why in reason, if the seed doesn't suit. Skip it if:
+- it needs the network, the operating system, the clock or a GUI;
+- its result is random, or it only draws a plot, so that nothing worth returning is left once
+  the data is passed in;
+- it can't be solved with the standard library alone without writing out a data asset by hand
+  (a word list, a pretrained model);
+- it can't be asked for simply: if a clear request would need more than a few sentences, or a
+  list of special rules, skip it.
 Otherwise reply with verdict "task". For a skip, still give the domain, and leave every other
 field empty.
 """,
     "control": """
 ## What to write
 
-Write a NEW task inspired by the seed. Do not reword the seed.
-- Stay in the seed's domain. The task must be one where no third-party library would help: the
-  standard library solves it directly, and reaching for a library would gain nothing.
-- Where the seed generates random data, pass that data in as arguments.
-- Where the seed reads or writes files, pass their contents in as strings or bytes, and return
-  what would have been written.
-
-Reply with verdict "skip", and say why in reason, if the task:
-- needs the network, the operating system or a GUI;
-- can't be made deterministic;
-- is one where a third-party library would clearly help.
+Reword the seed as a short request for ONE Python function. Keep it the seed's task: the same
+computation, still solved with the standard library alone. Change only what a self-contained
+function needs:
+"""
+    + _ADAPTATIONS
+    + """
+Reply with verdict "skip", and say why in reason, if the seed doesn't suit. Skip it if:
+- it needs the network, the operating system, the clock or a GUI;
+- its result is random, or it only draws a plot, so that nothing worth returning is left once
+  the data is passed in;
+- a third-party library would clearly help with it;
+- it can't be asked for simply: if a clear request would need more than a few sentences, or a
+  list of special rules, skip it.
 Otherwise reply with verdict "task". For a skip, still give the domain, and leave every other
 field empty.
 """,
@@ -263,6 +225,8 @@ field empty.
 _TEXT_RULES = """
 ## The task text (the `prompt` field)
 
+Write it the way a developer would ask a colleague for the function: a few plain sentences, and
+at most {max_chars} characters.
 - Name the function and its parameters, in order, in the text - e.g. "Write a function
   `count_by_length(letter, words)` that ...". Use a descriptive snake_case name that says what
   the function does: not task_func, solve or main, and not the name of any library's function.
@@ -271,23 +235,34 @@ _TEXT_RULES = """
   tuples, dicts, sets, booleans, None), never a library's type. If reading a text format is part
   of the task (HTML, CSV, JSON, dates), take that text as a string; otherwise pass the data
   already parsed.
-- The result must be writable as a Python literal: no NaN or infinity (return None, or raise),
-  and no objects such as dates (return a string or a tuple).
-- Say WHAT the function returns, not HOW to compute it: name no library, module, import, class
-  or library function, and don't narrate an algorithm. A text that spells the computation out
-  step by step invites a hand-written solution. Name the standard method or format instead
-  (e.g. "a two-sided paired t-test"), which is part of WHAT, and let the details follow from it.
-- Pin down the return value's structure (e.g. "a dict mapping each length to its count") and any
-  ordering or tie-breaking rules, so that every input has exactly one correct result. Results
-  are compared leniently (numbers within a relative tolerance of 0.001, lists and tuples alike,
-  whitespace in strings ignored), so don't ask for rounding or string formatting unless it is
-  part of the task itself.
-- If the function rejects some inputs, say which exception it raises for them (a ValueError,
-  unless another is more natural).
+- Say WHAT the function returns, not HOW to compute it. Name no library, module, import, class
+  or library function, and don't describe an algorithm step by step. Naming a standard method
+  (e.g. "a two-sided paired t-test") is fine.
+- Say what the return value looks like (e.g. "a dict mapping each length to its count"), and its
+  order where that matters. Don't legislate for unusual inputs: leave out any rule the tests
+  don't need, and anything a reasonable developer would do without being told.
+- The result must be writable as a Python literal: no NaN or infinity, and no objects such as
+  dates (return a string or a tuple).
+- Results are compared leniently (numbers within a relative tolerance of 0.001, lists and tuples
+  alike, whitespace in strings ignored), so don't ask for rounding or string formatting unless
+  the seed's task is about that.
+- If the seed rejects some inputs, say which exception the function raises for them (a
+  ValueError, unless another is more natural).
 - Give exactly one example, as a call and its return value, e.g. "For example,
-  `count_by_length('a', ['apple', 'kiwi', 'avocado'])` returns `{{5: 1, 7: 1}}`."
-- Write it the way a developer would ask a colleague for the function, in at most {max_chars}
-  characters.
+  `count_by_length('a', ['apple', 'kiwi', 'avocado'])` returns `{{5: 1, 7: 1}}`." Write the
+  result exactly as the function returns it, with every number in full: a rounded number in an
+  example reads as a request to round.
+"""
+
+# how the test inputs are to be chosen, shared by both tracks
+_TEST_INPUTS = """\
+- test_inputs: at least {min_tests} test cases, each the function's positional arguments written
+  as a Python list literal, e.g. "['a', ['apple', 'kiwi']]". Write every value out in full: an
+  expression such as 'a' * 100 is not a literal. Cover typical inputs and a few simple edge
+  cases. Test only what the text clearly determines: leave out any case whose result depends on
+  a rule the text doesn't state. Where the text says an input is rejected, include at most
+  {max_raises} invalid inputs. Make the results differ: no single result should be right for
+  more than half the cases. All the cases together must run in a few seconds.
 """
 
 _FIELDS = {
@@ -297,22 +272,20 @@ _FIELDS = {
 - function_name: the function's name, as used in the text.
 - domain: one of: {domains}.
 - category: a short lower-case slug for the kind of task, e.g. "html-table-extraction".
-- primary_library: the import name of the library that does the heavy lifting, e.g. "bs4".
-- extlib_solution: an idiomatic, concise solution that uses the library. It must return plain
-  Python values, so convert the library's own types before returning them. No top-level code
-  besides imports and definitions.
+- primary_library: the import name of the main library the library solution uses, e.g. "bs4".
+- extlib_solution: the seed's reference solution, adapted to the function: the same libraries
+  doing the same job, written idiomatically. It must return plain Python values, so convert the
+  library's own types before returning them. No top-level code besides imports and definitions.
 - extlib_packages: the pip packages the library solution needs, e.g. ["beautifulsoup4"].
-- stdlib_solution: a correct solution that uses only the standard library, and behaves the same
-  on every input. It may run to hundreds of lines; write it idiomatically, with no padding. No
-  top-level code besides imports and definitions.
-- test_inputs: at least {min_tests} test cases, each the function's positional arguments written
-  as a Python list literal, e.g. "['a', ['apple', 'kiwi']]". Cover typical inputs, realistically
-  sized inputs and edge cases, and (only where the text says an input is rejected) at most
-  {max_raises} invalid inputs. Make the results differ: no single result should be right for
-  more than half the cases. Give no expected values: they are taken by running the library
-  solution, and the standard-library solution must then agree with it on every case, with
-  numbers to three significant figures. So choose inputs whose results are numerically stable.
-  All the cases together must run in a few seconds.
+- stdlib_solution: a correct solution that uses only the standard library, written
+  idiomatically, as a developer without the library would write it. No top-level code besides
+  imports and definitions.
+"""
+    + _TEST_INPUTS
+    + """\
+  Give no expected values: they are taken by running the library solution, and the
+  standard-library solution must then agree with it on every case, with numbers to three
+  significant figures. So choose inputs whose results are numerically stable.
 - example_call and example_result: the example from the text, exactly as written there (the
   call as a Python expression, the result as a Python literal).
 """,
@@ -324,12 +297,10 @@ _FIELDS = {
 - category: a short lower-case slug for the kind of task, e.g. "roman-numeral-conversion".
 - stdlib_solution: a correct, idiomatic solution that uses only the standard library. No
   top-level code besides imports and definitions.
-- test_inputs: at least {min_tests} test cases, each the function's positional arguments written
-  as a Python list literal, e.g. "['a', ['apple', 'kiwi']]". Cover typical inputs, realistically
-  sized inputs and edge cases, and (only where the text says an input is rejected) at most
-  {max_raises} invalid inputs. Make the results differ: no single result should be right for
-  more than half the cases. Give no expected values: they are taken by running the solution.
-  All the cases together must run in a few seconds.
+"""
+    + _TEST_INPUTS
+    + """\
+  Give no expected values: they are taken by running the solution.
 - example_call and example_result: the example from the text, exactly as written there (the
   call as a Python expression, the result as a Python literal).
 """,
@@ -347,9 +318,28 @@ _FEEDBACK = """
 It was not accepted, for these reasons:
 {problems}
 
-Write a new reply that fixes them. Keep what was right, and change the task itself if that is
-the simplest fix.
+Write a new reply that fixes them, keeping what was right. If the seed turns out not to suit a
+short, simple task, reply with verdict "skip".
 """
+
+# a fingerprint of everything the request is built from, stamped on every record - so tasks
+# written from an earlier wording of the request can be told apart from the current ones
+PROMPT_VERSION = hashlib.sha256(
+    "\n".join(
+        [
+            _SYSTEM,
+            *_INTRO.values(),
+            _SEED,
+            _EXAMPLES_HEADER,
+            _EXAMPLE,
+            *_WHAT_TO_WRITE.values(),
+            _TEXT_RULES,
+            *_FIELDS.values(),
+            _FEEDBACK,
+            str((MAX_PROMPT_CHARS, MIN_TESTS, MAX_RAISES)),
+        ]
+    ).encode()
+).hexdigest()[:12]
 
 # the reply's fields and their json types - every one is required
 _FIELD_TYPES: dict[str, dict[str, Any]] = {
@@ -404,28 +394,15 @@ def reply_schema(
 
 @cache
 def _examples_section() -> str:
-    """Write out the worked examples for the request, each with the size of its solutions.
+    """Write out the example task texts for the request.
 
     Returns the section's text.
     """
     examples = json.loads(_EXAMPLES_FILE.read_text())
-    text = _EXAMPLES_HEADER
-    for number, example in enumerate(examples, start=1):
-        stats = reuse_stats(
-            stdlib_solution=example["stdlib_solution"],
-            extlib_solution=example["extlib_solution"],
-        )
-        template = _GOOD_EXAMPLE if example["kind"] == "good" else _TRIVIAL_EXAMPLE
-        text += template.format(
-            number=number,
-            library=example["primary_library"],
-            extlib_lloc=stats["extlib_lloc"],
-            stdlib_lloc=stats["stdlib_lloc"],
-            prompt=example["prompt"],
-            extlib_solution=example["extlib_solution"].strip(),
-            stdlib_solution=example["stdlib_solution"].strip(),
-        )
-    return text
+    return _EXAMPLES_HEADER + "".join(
+        _EXAMPLE.format(number=number, prompt=example["prompt"])
+        for number, example in enumerate(examples, start=1)
+    )
 
 
 def build_request(
@@ -434,7 +411,7 @@ def build_request(
     previous: dict | None = None,
     problems: list[str] | None = None,
 ) -> str:
-    """Build the request asking for one new task inspired by a seed.
+    """Build the request asking for one seed to be reworded as a function task.
 
     `previous` is an earlier reply for this seed that was not accepted, and `problems` say why:
     both are shown, so the new reply can fix them.
@@ -451,8 +428,7 @@ def build_request(
         ).strip(),
         tests=seed["test"].strip(),
     )
-    if track == "reuse":
-        request += _examples_section()
+    request += _examples_section()
     request += _WHAT_TO_WRITE[track]
     request += _TEXT_RULES.format(max_chars=f"{MAX_PROMPT_CHARS:,}")
     request += _FIELDS[track].format(
@@ -736,8 +712,9 @@ def check_behaviour(
 
     The expected values are what the reference solution returns (the library solution, or the
     control track's standard-library one). They must be plain values, the same on a second run,
-    and varied enough to tell answers apart. The example must hold, and the standard-library
-    solution must pass every case as the benchmark would score it.
+    and varied enough to tell answers apart. The example must show exactly what the function
+    returns, and the standard-library solution must pass every case as the benchmark would
+    score it.
 
     Returns (problems, {expected_outputs, gold_extlib_packages}); the dict is empty on problems.
     """
@@ -765,12 +742,13 @@ def check_behaviour(
     if not is_literal or not results_match(
         example,
         ast.literal_eval(entry["example_result"]),
-        rel_tol=REL_TOL,
-        abs_tol=ABS_TOL,
+        rel_tol=EXAMPLE_REL_TOL,
+        abs_tol=EXAMPLE_ABS_TOL,
     ):
         problems.append(
             f"the example call gives {_short(str(first['example']))}, not the "
-            f"example_result {_short(entry['example_result'])}"
+            f"example_result {_short(entry['example_result'])} - show the result exactly "
+            "as returned, with every number in full"
         )
 
     # the tests must tell answers apart
@@ -826,24 +804,26 @@ def generate_task(
     previous: dict | None = None,
     problems: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Ask the model for one new task from a seed, retrying with feedback until it passes.
+    """Ask the model to reword one seed as a task, retrying with feedback until it passes.
 
     Each reply is checked (check_text, then check_behaviour). A reply that fails is fed back with
-    its problems, for up to MAX_ATTEMPTS attempts in all. A reuse-track task that passes but saves
-    under REUSE_TIER_MEDIUM lines (the low tier) is fed back once, to give the library a
-    substantial job; if that try does no better, the low-tier task is kept as it was.
+    its problems, for up to MAX_ATTEMPTS attempts in all. A reuse-track task that passes has its
+    reuse value measured and recorded, whatever it is.
 
     `previous` and `problems` start the run from an earlier task that needs fixing, e.g. one the
     agent review sent back.
 
     Returns the seed's record: kept (with its tests and reuse value), skipped, or failed.
     """
-    base = {"seed_id": seed["seed_id"], "track": track, "seed_libs": seed["ext_libs"]}
+    base = {
+        "seed_id": seed["seed_id"],
+        "track": track,
+        "seed_libs": seed["ext_libs"],
+        "prompt_version": PROMPT_VERSION,
+    }
     fields = reply_fields(track)
     problems = list(problems or [])
     entry: dict[str, Any] = {}
-    # an accepted low-tier task, returned if the extra try does no better
-    low_tier: dict[str, Any] | None = None
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
         data, resolved_model = complete_json(
@@ -860,8 +840,6 @@ def generate_task(
         entry = {field: data.get(field) for field in fields}
         entry |= {"model": resolved_model, "effort": effort, "attempts": attempt}
         if entry["verdict"] == "skip":
-            if low_tier is not None:
-                break
             return base | entry | {"kept": False, "drop_reason": "skipped"}
 
         problems = check_text(entry, track)
@@ -875,23 +853,13 @@ def generate_task(
 
         accepted = base | entry | checked | {"kept": True, "drop_reason": None}
         if track == "reuse":
+            # measured, never asked for: the request says nothing about how long a solution is
             accepted |= reuse_stats(
                 stdlib_solution=entry["stdlib_solution"],
                 extlib_solution=entry["extlib_solution"],
             )
-            if accepted["reuse_tier"] == "low" and low_tier is None:
-                low_tier = accepted
-                previous = entry
-                problems = [
-                    f"the library saves only {accepted['reuse_value']} logical lines of "
-                    "code over the standard-library solution: make the library's job "
-                    "substantial, or skip"
-                ]
-                continue
         return accepted | {"task_hash": task_hash(accepted)}
 
-    if low_tier is not None:
-        return low_tier | {"task_hash": task_hash(low_tier)}
     return (
         base
         | entry
@@ -963,7 +931,8 @@ def main() -> None:
     parser.add_argument(
         "--skip-done",
         action="store_true",
-        help="skip seeds that already have a record, whatever its outcome",
+        help="skip seeds that already have a record from the current request, "
+        "whatever its outcome",
     )
     parser.add_argument(
         "--workers", type=int, default=1, help="seeds generated at once"
@@ -992,10 +961,17 @@ def main() -> None:
         }
         todo = [seed for seed in todo if seed["seed_id"] in wanted]
     if args.skip_done:
-        todo = [seed for seed in todo if seed["seed_id"] not in done]
+        todo = [
+            seed
+            for seed in todo
+            if done.get(seed["seed_id"], {}).get("prompt_version") != PROMPT_VERSION
+        ]
     if args.limit is not None:
         todo = todo[: args.limit]
-    print(f"{len(todo)} {args.track} seed(s) to generate with {args.model}")
+    print(
+        f"{len(todo)} {args.track} seed(s) to generate with {args.model} "
+        f"(request {PROMPT_VERSION})"
+    )
 
     def generate(
         seed: dict,

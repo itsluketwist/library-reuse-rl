@@ -141,16 +141,28 @@ def _run_locally(monkeypatch) -> None:
 class TestBuildRequest:
     """The request shows the seed, and an earlier reply with what was wrong with it."""
 
-    def test_the_reuse_request_has_the_seed_and_the_worked_examples(self) -> None:
+    def test_the_reuse_request_has_the_seed_and_the_example_texts(self) -> None:
         request = generate.build_request(_SEED, "reuse")
         assert "Parse a date string." in request
         assert "which uses dateutil" in request
-        assert "a good task" in request and "a task to avoid" in request
+        assert "Reword the seed" in request and "## The wording we want" in request
+
+    def test_the_request_sets_no_target_for_the_solutions(self) -> None:
+        """How much code a library saves is measured afterwards, never asked for."""
+        for track in ("reuse", "control"):
+            request = generate.build_request(_SEED, track).lower()
+            for word in (
+                "lines of code",
+                "logical lines",
+                "reuse value",
+                "longer than",
+            ):
+                assert word not in request, word
 
     def test_the_control_request_asks_for_no_library(self) -> None:
         request = generate.build_request(_SEED | {"ext_libs": []}, "control")
         assert "which uses only the standard library" in request
-        assert "no third-party library would help" in request
+        assert "no third-party library would\nhelp" in request
         assert "extlib_solution" not in request
 
     def test_feedback_shows_the_earlier_reply_and_its_problems(self) -> None:
@@ -178,7 +190,7 @@ class TestCheckText:
             ({"function_name": "task_func"}, "not a descriptive snake_case name"),
             ({"example_result": "(2024, 3, 6)"}, "example_result doesn't appear"),
             ({"example_call": "read('2024-03-05')"}, "example_call doesn't call"),
-            ({"prompt": _entry()["prompt"] + " x" * 800}, "over the 1,500 limit"),
+            ({"prompt": _entry()["prompt"] + " x" * 400}, "over the 900 limit"),
             # a library from the benchmark's blocklist, and the task's own library
             ({"prompt": _entry()["prompt"] + " Use pandas."}, "libraries: pandas"),
             ({"prompt": _entry()["prompt"] + " Use dateutil."}, "libraries: dateutil"),
@@ -239,6 +251,19 @@ class TestCheckBehaviour:
                 "stdlib_solution disagrees with extlib_solution",
             ),
             ({"example_result": "(2024, 3, 6)"}, "the example call gives (2024, 3, 5)"),
+            # an example whose number is rounded, where the function returns it in full
+            (
+                {
+                    "extlib_solution": (
+                        "def parse_date_parts(text):\n    return len(text) / 3\n"
+                    ),
+                    "stdlib_solution": (
+                        "def parse_date_parts(text):\n    return len(text) / 3\n"
+                    ),
+                    "example_result": "3.333",
+                },
+                "show the result exactly as returned",
+            ),
             # a result that can't be written as a literal: the datetime itself
             (
                 {
@@ -330,20 +355,6 @@ def _stub_model(
     return requests
 
 
-def _stub_tier(
-    monkeypatch,
-    tiers: list[str],
-) -> None:
-    """Give each accepted task the next of `tiers`, in place of measuring its solutions."""
-    remaining = list(tiers)
-
-    def fake_reuse_stats(**kwargs: Any) -> dict:
-        tier = remaining.pop(0)
-        return {"reuse_value": 30 if tier == "high" else 1, "reuse_tier": tier}
-
-    monkeypatch.setattr(generate, "reuse_stats", fake_reuse_stats)
-
-
 class TestGenerateTask:
     """A reply that fails a check is fed back, and every seed ends with one record."""
 
@@ -353,7 +364,6 @@ class TestGenerateTask:
     ) -> None:
         leaking = _entry(prompt=_entry()["prompt"] + " Use pandas.")
         requests = _stub_model(monkeypatch, [leaking, _entry()])
-        _stub_tier(monkeypatch, ["high"])
 
         record = generate.generate_task(_SEED)
 
@@ -363,9 +373,20 @@ class TestGenerateTask:
         assert record["kept"] and record["drop_reason"] is None
         assert record["attempts"] == 2
         assert record["expected_outputs"] == _EXPECTED_OUTPUTS
-        assert record["reuse_tier"] == "high"
         assert record["task_hash"] == build.task_hash(record)
+        assert record["prompt_version"] == generate.PROMPT_VERSION
         assert record["seed_id"] == "BigCodeBench/1"
+
+    def test_a_low_reuse_value_is_recorded_not_sent_back(self, monkeypatch) -> None:
+        """The two date solutions are about as long as each other, and that is kept as it is."""
+        requests = _stub_model(monkeypatch, [_entry()])
+
+        record = generate.generate_task(_SEED)
+
+        assert len(requests) == 1
+        assert record["kept"]
+        assert record["reuse_tier"] == "low"
+        assert record["reuse_value"] == record["stdlib_lloc"] - record["extlib_lloc"]
 
     def test_a_skip_is_recorded_with_its_reason(self, monkeypatch) -> None:
         skip = _entry(verdict="skip", reason="needs the network")
@@ -393,41 +414,6 @@ class TestGenerateTask:
         _stub_model(monkeypatch, [{}] * generate.MAX_ATTEMPTS)
         record = generate.generate_task(_SEED)
         assert record["drop_reason"] == "no usable reply"
-
-    def test_a_low_tier_task_gets_one_more_try(self, monkeypatch) -> None:
-        better = _entry(category="date-parsing-harder")
-        requests = _stub_model(monkeypatch, [_entry(), better])
-        _stub_tier(monkeypatch, ["low", "high"])
-
-        record = generate.generate_task(_SEED)
-
-        assert len(requests) == 2
-        assert "the library saves only 1 logical lines" in requests[1]
-        assert record["reuse_tier"] == "high"
-        assert record["category"] == "date-parsing-harder"
-
-    @pytest.mark.parametrize(
-        "second_reply",
-        [
-            _entry(verdict="skip", reason="can't be made substantial"),
-            _entry(prompt="broken"),
-        ],
-    )
-    def test_the_low_tier_task_is_kept_if_the_retry_does_no_better(
-        self,
-        monkeypatch,
-        second_reply: dict,
-    ) -> None:
-        # a retry that skips ends the run; one that fails its checks is tried once more
-        requests = _stub_model(monkeypatch, [_entry(), second_reply, second_reply])
-        _stub_tier(monkeypatch, ["low"])
-
-        record = generate.generate_task(_SEED)
-
-        assert len(requests) in (2, 3)
-        assert record["kept"]
-        assert record["reuse_tier"] == "low"
-        assert record["attempts"] == 1
 
     def test_the_control_track_has_no_reuse_value(self, monkeypatch) -> None:
         _stub_model(monkeypatch, [_control_entry()])

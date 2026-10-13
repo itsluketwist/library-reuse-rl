@@ -59,8 +59,9 @@ datasets=(
     # "libreusebench_control"
     # "libreusebench_function_test"
     # "libreusebench_function_control"
-    "libreusebench_v2_pilot"
-    "libreusebench_v2_pilot_control"
+    # "libreusebench_v2_pilot"
+    # "libreusebench_v2_pilot_control"
+    "libreusebench_v2_pilot2"
 )
 
 # completions sampled per prompt (see --n-samples in src/run_eval.py); eval-only, unrelated

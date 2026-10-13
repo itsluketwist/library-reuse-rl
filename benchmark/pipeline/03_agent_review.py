@@ -8,7 +8,9 @@ that with fresh model calls, none of which sees how the task was generated:
    other is free to choose. Both are run on the task's tests. A failure usually means the text is
    unclear or the tests are unfair.
 2. a rubric call, which sees the text, the tests, the gold solutions and how the blind solves
-   did. It answers six yes/no questions, and gives a verdict - keep, fix or reject - with a note.
+   did. It answers a few yes/no questions, and gives a verdict - keep, fix or reject - with a
+   note. It judges whether the task is clear, fair and simply worded. It does not judge how much
+   code the library saves: that is measured from the solutions, and decides a task's split.
 
 One record per task is appended to benchmark/artefacts/03_agent_reviews.jsonl
 (03_agent_reviews_control.jsonl for the control track), with the fingerprint of the task it
@@ -161,10 +163,11 @@ _RUBRIC_SYSTEM = (
 
 _RUBRIC = """\
 You are reviewing one task for a benchmark that measures whether a coding model reaches for a
-third-party library when it is free to choose. A task asks for one Python function, and names no
-library. {track_note}
+third-party library when it is free to choose. A task is a short, plain request for one Python
+function, and names no library. {track_note}
 
-Be strict: a task is only useful if a developer could solve it from its text alone.
+Be strict: a task is only useful if a developer could solve it from its text alone, and if the
+text reads like a simple request, not a specification.
 
 ## The task text
 
@@ -195,7 +198,9 @@ Answer each with true or false:
 - tests_fair: do the tests check only what the text asks for, with no requirement that is missing
   from the text?
 - no_library_leak: is the text free of any hint at a particular library, module or function?
-- library_job_substantial: {library_question}
+- library_fit: {library_question}
+- text_simple: is the text short and plain, with no list of special rules, and no step-by-step
+  account of how to compute the result?
 - request_natural: does the text read like a request a developer would really make?
 
 Then give a verdict:
@@ -205,13 +210,14 @@ Then give a verdict:
 
 In the note, say in a few sentences what is wrong, and for a "fix" exactly what must change. A
 failed blind attempt usually means the text is unclear or the tests are unfair: work out which,
-and say so. Leave the note empty for a clean "keep".
+and say so. Where a test needs a rule the text doesn't state, the fix is to drop that test, not
+to add the rule to the text. Don't judge how much work the library does: a task where it does
+little is still wanted. Leave the note empty for a clean "keep".
 """
 
 _TRACK_NOTES = {
     "reuse": (
-        "It must be solvable both with a library and with the standard library alone, and "
-        "the library must be doing substantial work."
+        "It must be solvable both with a library and with the standard library alone."
     ),
     "control": (
         "This one is a control task: one where no third-party library should help."
@@ -220,9 +226,8 @@ _TRACK_NOTES = {
 
 _LIBRARY_QUESTIONS = {
     "reuse": (
-        "does the library do a specialised job in its reference solution, which takes far "
-        "more code by hand (and not a convenience, such as a mean, a sum, or rescaling "
-        "or filtering a table)?"
+        "does the library solution use its library the way a developer who knew that "
+        "library would, however small the library's part is?"
     ),
     "control": "is this a task where no third-party library would help?",
 }
@@ -240,7 +245,8 @@ RUBRIC_QUESTIONS = [
     "example_consistent",
     "tests_fair",
     "no_library_leak",
-    "library_job_substantial",
+    "library_fit",
+    "text_simple",
     "request_natural",
 ]
 

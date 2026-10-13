@@ -592,7 +592,10 @@ def evaluate_responses(
 
     The environment is decided one of two ways. With `env_file`, that file is the definitive list
     of packages to install. Otherwise the responses are parsed and the collected packages are
-    confirmed (by default, on stdin via `confirm_packages`) before installing. Pass `confirm=None`
+    confirmed (by default, on stdin via `confirm_packages`) before installing. The packages each
+    task's own library solution needs (its `gold_extlib_packages`) are installed with them, at
+    their latest versions: they come from the benchmark, not from a response, so they are not
+    part of what is confirmed. Pass `confirm=None`
     to install automatically without asking - only do this in unattended contexts, since responses
     can name arbitrary third-party packages. If confirmation declines, an editable environment
     file is written for the caller to fix up and pass back with `env_file` - and the run stops.
@@ -628,6 +631,17 @@ def evaluate_responses(
         raise ValueError(f"responses reference unknown task ids: {sorted(unknown)}")
 
     plan = plan_installs(responses)
+    # the packages each task's own library solution needs. they are installed as well, so that
+    # a response taking the same route has everything, even a package its code never imports
+    # (e.g. the parser that a table-reading call loads behind the scenes)
+    task_packages = {
+        spec.split("==")[0]
+        for task_id in responses
+        for spec in (benchmark[task_id].get("ground_truth") or {}).get(
+            "gold_extlib_packages"
+        )
+        or []
+    }
 
     if env_file is not None:
         # the supplied file is the validated environment - use it as-is
@@ -642,7 +656,9 @@ def evaluate_responses(
                 f"env_file={path} (or --env-file {path} via the libreuseeval CLI)"
             )
             return {}
-        packages = set(plan)
+        packages = set(plan) | task_packages
+        if task_packages:
+            print(f"also installing the tasks' own packages: {sorted(task_packages)}")
 
     # only now create the venv and install the chosen packages in one batch. the context
     # manager deletes it on the way out unless the caller named an env_dir to reuse.
@@ -686,6 +702,8 @@ def evaluate_responses(
             "source": str(env_file) if env_file is not None else "response_imports",
             "installed_packages": sorted(packages - install_failed),
             "install_failed": sorted(install_failed),
+            # the packages the tasks' own library solutions need (not used with an env_file)
+            "task_packages": sorted(task_packages) if env_file is None else [],
             "installed_package_versions": env.installed_distributions(),
             "package_imports": {
                 package: sorted(plan.get(package, set()))
