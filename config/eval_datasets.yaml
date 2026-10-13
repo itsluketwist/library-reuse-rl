@@ -82,3 +82,11 @@ libreusebench_v2_pilot2:
   path: "benchmark/artefacts/pilot_2/test.jsonl"
   evaluator: libreusebench
   environment_root: ".libreuseeval-venvs"
+# the third LibReuseBench v2 pilot (benchmark/artefacts/pilot_3/): 13 tasks from 40 seeds (the
+# second pilot's 20, and 20 more drawn at random). the request asked for CONTESTED tasks - ones
+# a developer might reasonably solve with a library or by hand - allowed a small change to a
+# seed to get one, and skipped the rest
+libreusebench_v2_pilot3:
+  path: "benchmark/artefacts/pilot_3/test.jsonl"
+  evaluator: libreusebench
+  environment_root: ".libreuseeval-venvs"

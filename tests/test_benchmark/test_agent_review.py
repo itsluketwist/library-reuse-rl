@@ -36,6 +36,7 @@ _KEEP = {
     "tests_fair": True,
     "no_library_leak": True,
     "library_fit": True,
+    "feasible_by_hand": True,
     "text_simple": True,
     "request_natural": True,
     "verdict": "keep",

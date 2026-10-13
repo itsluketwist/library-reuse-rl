@@ -45,6 +45,15 @@ eval_decoding_profiles:
     top_k: 0  # disabled
     max_new_tokens: 8192
     enable_thinking: true
+  # the default profile with twice the room. on the first LibReuseBench v2 pilots, 15-81% of
+  # responses used all 8192 tokens reasoning and never reached their code. evaluation only:
+  # training rollouts keep the default profile (see rollout_decoding_profile above)
+  default_16k:
+    temperature: 1.0
+    top_p: 1.0
+    top_k: 0  # disabled
+    max_new_tokens: 16384
+    enable_thinking: true
   greedy:
     temperature: 0.0
     top_p: 1.0

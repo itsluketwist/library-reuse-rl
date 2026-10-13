@@ -37,6 +37,7 @@ class _FakeEnv:
     ) -> None:
         self.cache_dir = cache_dir or "<disposable>"
         self.installed: set[str] = set()
+        self.warmed: set[str] = set()
         self.closed = False
 
     def __enter__(self) -> "_FakeEnv":
@@ -48,6 +49,9 @@ class _FakeEnv:
     def ensure_packages(self, packages: set[str]) -> set[str]:
         self.installed |= set(packages)
         return set()  # nothing fails to install
+
+    def warm_up(self, import_names: set[str]) -> None:
+        self.warmed |= set(import_names)
 
     def installed_distributions(self) -> dict[str, str]:
         """Return deterministic installed versions for result-recording tests."""
@@ -245,6 +249,8 @@ class TestInstallationPlan:
 
         assert result["pass@1"] == 1.0
         assert environments[0].installed == {"scikit-learn"}
+        # the library is imported once before scoring, so no response pays for its first import
+        assert environments[0].warmed == {"sklearn"}
         assert result["environment"] == {
             "directory": str(tmp_path / "venv"),
             "source": "response_imports",

@@ -62,6 +62,7 @@ datasets=(
     # "libreusebench_v2_pilot"
     # "libreusebench_v2_pilot_control"
     "libreusebench_v2_pilot2"
+    "libreusebench_v2_pilot3"
 )
 
 # completions sampled per prompt (see --n-samples in src/run_eval.py); eval-only, unrelated
@@ -71,7 +72,8 @@ n_samples=5
 # decoding profiles to evaluate with (eval_decoding_profiles in config/training.yaml)
 decoding_profiles=(
     # "greedy"
-    "default"
+    # "default"
+    "default_16k"
     # "qwen3"
 )
 

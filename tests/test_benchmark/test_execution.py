@@ -11,6 +11,7 @@ from libreusebench.environment import (
     evaluate_record,
     run_program,
     temporary_packages,
+    warm_up_imports,
 )
 
 
@@ -57,6 +58,11 @@ def test_numeric_libraries_are_held_to_one_thread() -> None:
     )
     assert ok
     assert out == "1 1 1"
+
+
+def test_warming_up_skips_a_module_that_cannot_be_imported() -> None:
+    """A missing module must not stop the warm-up: the solution that needs it reports it."""
+    warm_up_imports({"json", "no_such_module_for_this_test"})
 
 
 class TestEnvironmentLifecycle:

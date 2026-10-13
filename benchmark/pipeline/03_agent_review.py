@@ -9,8 +9,9 @@ that with fresh model calls, none of which sees how the task was generated:
    unclear or the tests are unfair.
 2. a rubric call, which sees the text, the tests, the gold solutions and how the blind solves
    did. It answers a few yes/no questions, and gives a verdict - keep, fix or reject - with a
-   note. It judges whether the task is clear, fair and simply worded. It does not judge how much
-   code the library saves: that is measured from the solutions, and decides a task's split.
+   note. It judges whether the task is clear, fair and simply worded, and whether both ways of
+   solving it are realistic. It does not judge how much code the library saves: that is measured
+   from the solutions, and decides a task's split.
 
 One record per task is appended to benchmark/artefacts/03_agent_reviews.jsonl
 (03_agent_reviews_control.jsonl for the control track), with the fingerprint of the task it
@@ -44,7 +45,7 @@ from build import (
     track_artefact_path,
 )
 from generation import DEFAULT_EFFORT, DEFAULT_MODEL, complete_json, usage_summary
-from libreusebench.environment import temporary_packages
+from libreusebench.environment import temporary_packages, warm_up_imports
 from libreusebench.functions import RAISES, evaluate_function_record
 from libreusebench.libraries import analyse_source
 from lure import pip_package
@@ -113,6 +114,11 @@ def run_solution(
     with _INSTALL_LOCK, temporary_packages(BUILD_PYTHON, packages) as install:
         if install.failed:
             return False, f"could not install {sorted(install.failed)}"
+        # a library's first import after installing is slow, and must not count against the run
+        warm_up_imports(
+            set(analyse_source(solution)[1]),
+            python_executable=BUILD_PYTHON,
+        )
         return run()
 
 
@@ -162,12 +168,18 @@ _RUBRIC_SYSTEM = (
 )
 
 _RUBRIC = """\
-You are reviewing one task for a benchmark that measures whether a coding model reaches for a
-third-party library when it is free to choose. A task is a short, plain request for one Python
-function, and names no library. {track_note}
+You are reviewing one task for a benchmark that measures a choice. A coding model is asked for
+a function, and is free to write it however it likes: does it reach for a third-party library, or
+write the code itself?
 
-Be strict: a task is only useful if a developer could solve it from its text alone, and if the
-text reads like a simple request, not a specification.
+{track_note}
+
+The wording matters just as much, because it must leave the choice open. A task is a short,
+plain request for one Python function, the way one developer would ask another. It names no
+library, and it does not spell out an algorithm or a list of rules: a specification reads like an
+exercise, and pushes a model towards writing everything by hand.
+
+Be strict: a task is only useful if a developer could solve it from its text alone.
 
 ## The task text
 
@@ -199,6 +211,9 @@ Answer each with true or false:
   from the text?
 - no_library_leak: is the text free of any hint at a particular library, module or function?
 - library_fit: {library_question}
+- feasible_by_hand: could a developer reasonably write this by hand, with the standard library
+  alone, without implementing a substantial algorithm from scratch (a statistical distribution,
+  a matrix decomposition, a cipher, a parser for a whole format)?
 - text_simple: is the text short and plain, with no list of special rules, and no step-by-step
   account of how to compute the result?
 - request_natural: does the text read like a request a developer would really make?
@@ -211,23 +226,32 @@ Then give a verdict:
 In the note, say in a few sentences what is wrong, and for a "fix" exactly what must change. A
 failed blind attempt usually means the text is unclear or the tests are unfair: work out which,
 and say so. Where a test needs a rule the text doesn't state, the fix is to drop that test, not
-to add the rule to the text. Don't judge how much work the library does: a task where it does
-little is still wanted. Leave the note empty for a clean "keep".
+to add the rule to the text. Reject a task that is not feasible by hand, or that the library has
+no real job in: neither can be fixed by rewording. A task where the library saves only a little
+is still wanted, as long as using it is natural. Leave the note empty for a clean "keep".
 """
 
 _TRACK_NOTES = {
     "reuse": (
-        "It must be solvable both with a library and with the standard library alone."
+        "A task can only measure that choice if both answers are realistic: a developer "
+        "might reasonably use a library for it, and might just as reasonably write it by "
+        "hand, with the standard library alone. We call such a task CONTESTED, and "
+        "contested tasks are what the benchmark wants. A task so complicated that a "
+        "library basically has to be used is too difficult: every model uses the library, "
+        "so there is no choice left to observe. A task that is a few lines by hand, which "
+        "no developer would use a library for, tells us nothing either."
     ),
     "control": (
-        "This one is a control task: one where no third-party library should help."
+        "This one is a CONTROL task, where that choice should not arise: the standard "
+        "library does the job directly, and no third-party library would help. It shows "
+        "whether a model reaches for a library even where there is no reason to."
     ),
 }
 
 _LIBRARY_QUESTIONS = {
     "reuse": (
-        "does the library solution use its library the way a developer who knew that "
-        "library would, however small the library's part is?"
+        "would a developer who knew the library reasonably reach for it here, and does "
+        "the library solution use it the way they would?"
     ),
     "control": "is this a task where no third-party library would help?",
 }
@@ -246,6 +270,7 @@ RUBRIC_QUESTIONS = [
     "tests_fair",
     "no_library_leak",
     "library_fit",
+    "feasible_by_hand",
     "text_simple",
     "request_natural",
 ]

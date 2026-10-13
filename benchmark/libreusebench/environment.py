@@ -95,6 +95,31 @@ def execute(
     return False, error or f"exit code {result.returncode}"
 
 
+def warm_up_imports(
+    import_names: set[str],
+    python_executable: str | Path = BUILD_PYTHON,
+    timeout_seconds: float = 300.0,
+) -> None:
+    """Import each module once, so that the runs that follow don't pay for a first import.
+
+    The first import of a large library in a new environment can take most of a test's time
+    limit: its files are read and checked for the first time. Without this, that cost falls on
+    whichever solution happens to use the library first, and can fail it. A module that can't be
+    imported is skipped: the solution that needs it will report that itself.
+    """
+    if not import_names:
+        return
+    code = "\n".join(
+        f"try:\n    import {name}\nexcept Exception:\n    pass"
+        for name in sorted(import_names)
+    )
+    execute(
+        code=code,
+        python_executable=python_executable,
+        timeout_seconds=timeout_seconds,
+    )
+
+
 def _capture_harness(
     program: str,
     stdin: str,
@@ -361,6 +386,13 @@ class Environment:
             else:
                 failed.add(package)
         return failed
+
+    def warm_up(
+        self,
+        import_names: set[str],
+    ) -> None:
+        """Import each module once in this environment, before anything is timed (see warm_up_imports)."""
+        warm_up_imports(import_names, python_executable=self.python)
 
     def installed_distributions(self) -> dict[str, str]:
         """Inspect every distribution installed in the evaluation environment.

@@ -2,9 +2,14 @@
 
 One model call per seed rewords the seed's task as a short, library-agnostic request for one
 named function, and writes what the task needs beside it: a solution that uses the seed's
-libraries, a solution that uses only the standard library, and a set of test inputs. The task
-stays the seed's own - nothing is added to make a library more useful, or less. Many seeds don't
-suit a short function task, and the model is told to skip those.
+libraries, a solution that uses only the standard library, and a set of test inputs.
+
+The tasks wanted are CONTESTED ones: tasks a developer might reasonably solve with a library, and
+might just as reasonably write by hand. Only those can show whether one model reuses libraries
+more than another - on an easy task every model writes the code by hand, and on one too hard to
+write by hand every model uses the library. The request explains this, lets the model make a
+small change to a seed's task where that makes it contested, and tells it to skip the seeds that
+no small change would rescue. Many are skipped.
 
 Nothing is taken on trust. Each reply is checked, and a failed check is fed back to the model with
 its own reply, for up to MAX_ATTEMPTS attempts:
@@ -46,7 +51,6 @@ import sys
 import threading
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -62,7 +66,7 @@ from build import (
     track_artefact_path,
 )
 from generation import DEFAULT_EFFORT, DEFAULT_MODEL, complete_json, usage_summary
-from libreusebench.environment import execute, temporary_packages
+from libreusebench.environment import execute, temporary_packages, warm_up_imports
 from libreusebench.functions import RAISES, evaluate_function_record, results_match
 from libreusebench.libraries import analyse_source, find_named_libraries
 from lure import analyse_code, pip_package
@@ -122,25 +126,54 @@ _SYSTEM = (
     "with reference solutions and tests to match. Reply with JSON only."
 )
 
-# what the benchmark is, and what is being asked for
+# what the benchmark measures, why that decides which tasks are useful, and what is asked for
 _INTRO = {
     "reuse": """\
-We are building a benchmark that measures whether a coding model reaches for a third-party
-library when it is free to choose. Each task is a short request for one Python function. It names
-no library, and it can be solved either with a library or with the standard library alone.
+We are building a benchmark that measures a choice. A coding model is asked for a function, and
+is free to write it however it likes: does it reach for a third-party library, or write the code
+itself?
+
+A task can only measure that choice if both answers are realistic:
+- a developer might reasonably use a library for it, and
+- a developer might just as reasonably write it by hand, with the standard library alone.
+We call such a task CONTESTED, and contested tasks are what we want: tasks that can feasibly be
+solved both ways, where the library is a real help but not a necessity.
+
+Our evaluations so far show how rare they are. On a task that is a few lines by hand, every
+model writes it by hand. On a task so complicated that a library basically has to be used, every
+model uses the library, or runs out of room trying to write it all by hand. Neither kind tells
+one model from another, because there is no choice left to observe. Only the tasks in between
+do.
+
+The wording matters just as much, because it must leave the choice open. So a task is a short,
+plain request, the way one developer would ask another for a function. It names no library, and
+it does not spell out an algorithm or a list of rules: a specification reads like an exercise,
+and pushes a model towards writing everything by hand.
 
 Below is a task from BigCodeBench, whose reference solution uses particular libraries. Reword it
-as one of our tasks, if it suits. Many seeds don't suit, and skipping those is expected.
+as one of our tasks, if it suits. BigCodeBench was written to make its libraries necessary, so
+many of its tasks are not contested as they stand: some are only feasible with the library, some
+use it for no real reason, and some only make sense as a script that plots or writes files. A
+small change to the task is sometimes enough to make it contested, and you may make one (see
+below). Where it is not enough, skip the seed: that is expected, and much better than forcing a
+task out of it.
 """,
     "control": """\
-We are building a benchmark that measures whether a coding model reaches for a third-party
-library when it is free to choose. Each task is a short request for one Python function, and
-names no library.
+We are building a benchmark that measures a choice. A coding model is asked for a function, and
+is free to write it however it likes: does it reach for a third-party library, or write the code
+itself?
+
+This task is for the benchmark's CONTROL split. Its tasks are ones where that choice should not
+arise: the standard library does the job directly, and no third-party library would help. They
+show whether a model reaches for a library even where there is no reason to. So a control task
+must be easy to write by hand, and must not be a job that a well-known library exists to do.
+
+The wording matters just as much. A task is a short, plain request, the way one developer would
+ask another for a function. It names no library, and it does not spell out an algorithm or a
+list of rules.
 
 Below is a task from BigCodeBench whose reference solution uses only the standard library.
-Reword it as a task for the benchmark's CONTROL split: tasks where no third-party library would
-help, which show whether a model reaches for one anyway. Many seeds don't suit, and skipping
-those is expected.
+Reword it as a control task, if it suits. Many seeds don't suit, and skipping those is expected.
 """,
 }
 
@@ -163,8 +196,9 @@ Its tests:
 _EXAMPLES_HEADER = """
 ## The wording we want
 
-These task texts are from an earlier version of the benchmark. Each is a short, plain request
-that names no library.
+These task texts are from an earlier version of the benchmark. They are here for their wording:
+each is a short, plain request that names no library, for a task a developer could reasonably
+solve either way.
 """
 
 _EXAMPLE = """
@@ -176,31 +210,56 @@ Example {number}:
 _ADAPTATIONS = """\
 - where the seed generates data at random or reads it from a file, pass the data in as arguments;
 - where the seed writes a file or draws a plot, return the values it would have written or drawn.
-Don't make the task harder or more elaborate than the seed, and don't add requirements of your
-own.
+Don't make the task more elaborate than it needs to be: every extra requirement makes the text
+less of a plain request.
+"""
+
+# the reasons a seed is skipped that both tracks share
+_SHARED_SKIPS = """\
+- it needs the network, the operating system, the clock or a GUI, which a self-contained
+  function that is tested by calling it can't have;
+- its result is random, or it only draws a plot, so that nothing worth returning is left once
+  the data is passed in;
+- it can't be asked for simply. If a clear request would need more than a few sentences, or a
+  list of special rules, the text would stop being a plain request.
+Otherwise reply with verdict "task". For a skip, still give the domain, and leave every other
+field empty.
 """
 
 _WHAT_TO_WRITE = {
     "reuse": """
 ## What to write
 
-Reword the seed as a short request for ONE Python function. Keep it the seed's task: the same
-computation, with the seed's libraries doing the same job in the library solution. Change only
-what a self-contained function needs:
+Reword the seed as a short request for ONE Python function. Stay close to the seed: the same
+kind of computation, with the seed's libraries doing the same kind of job in the library
+solution. We build on BigCodeBench's tasks, and don't invent our own, so that the benchmark rests
+on an established set of tasks.
+
+You may make a small change to the seed's task where that brings it into contested territory:
+- if the seed is too difficult by hand, narrow it. Ask for a smaller part of it, or a simpler
+  case, that a developer could reasonably write without the library;
+- if the seed gives the library nothing real to do, widen it a little, so that the library does
+  a job a developer would actually want it for, while the task stays easy enough to write by
+  hand.
+Change as little as you can. The aim is a task where both answers are reasonable, and never one
+that favours either of them.
+
+A self-contained function needs these changes too:
 """
     + _ADAPTATIONS
     + """
 Reply with verdict "skip", and say why in reason, if the seed doesn't suit. Skip it if:
-- it needs the network, the operating system, the clock or a GUI;
-- its result is random, or it only draws a plot, so that nothing worth returning is left once
-  the data is passed in;
-- it can't be solved with the standard library alone without writing out a data asset by hand
-  (a word list, a pretrained model);
-- it can't be asked for simply: if a clear request would need more than a few sentences, or a
-  list of special rules, skip it.
-Otherwise reply with verdict "task". For a skip, still give the domain, and leave every other
-field empty.
-""",
+- it is too difficult without a library, and no small change would fix that. If even a narrowed
+  task would mean implementing a substantial algorithm from scratch (a statistical
+  distribution, a matrix decomposition, a cipher, a parser for a whole format), then a library
+  basically has to be used, and there is no choice to measure;
+- the library has no real job in it, and no small change would give it one. If a developer
+  would never reach for the seed's library for anything like this, there is no choice to
+  measure either;
+- it can't be solved with the standard library without writing out a data asset by hand (a word
+  list, a pretrained model);
+"""
+    + _SHARED_SKIPS,
     "control": """
 ## What to write
 
@@ -211,38 +270,37 @@ function needs:
     + _ADAPTATIONS
     + """
 Reply with verdict "skip", and say why in reason, if the seed doesn't suit. Skip it if:
-- it needs the network, the operating system, the clock or a GUI;
-- its result is random, or it only draws a plot, so that nothing worth returning is left once
-  the data is passed in;
-- a third-party library would clearly help with it;
-- it can't be asked for simply: if a clear request would need more than a few sentences, or a
-  list of special rules, skip it.
-Otherwise reply with verdict "task". For a skip, still give the domain, and leave every other
-field empty.
-""",
+- a third-party library would clearly help with it, since a control task is one where none does;
+- it is hard to write by hand, since a control task should leave no reason to look for help;
+"""
+    + _SHARED_SKIPS,
 }
 
 _TEXT_RULES = """
 ## The task text (the `prompt` field)
 
 Write it the way a developer would ask a colleague for the function: a few plain sentences, and
-at most {max_chars} characters.
+at most {max_chars} characters. Each rule below is there either to keep the choice open, or to
+make the task testable.
 - Name the function and its parameters, in order, in the text - e.g. "Write a function
-  `count_by_length(letter, words)` that ...". Use a descriptive snake_case name that says what
-  the function does: not task_func, solve or main, and not the name of any library's function.
-  Give no imports, signature stub, type hints or other code apart from the one example call.
+  `count_by_length(letter, words)` that ...". The tests call the function by that name. Use a
+  descriptive snake_case name that says what the function does: not task_func, solve or main,
+  and not the name of any library's function, which would point at that library. Give no
+  imports, signature stub, type hints or other code apart from the one example call.
 - The arguments and the return value are natural Python values (numbers, strings, bytes, lists,
-  tuples, dicts, sets, booleans, None), never a library's type. If reading a text format is part
-  of the task (HTML, CSV, JSON, dates), take that text as a string; otherwise pass the data
-  already parsed.
+  tuples, dicts, sets, booleans, None), never a library's type: a task that hands over a
+  library's table or array has already made the choice. If reading a text format is part of the
+  task (HTML, CSV, JSON, dates), take that text as a string; otherwise pass the data already
+  parsed.
 - Say WHAT the function returns, not HOW to compute it. Name no library, module, import, class
-  or library function, and don't describe an algorithm step by step. Naming a standard method
-  (e.g. "a two-sided paired t-test") is fine.
+  or library function, and don't describe an algorithm step by step: steps are instructions for
+  writing it by hand. Naming a standard method (e.g. "a two-sided paired t-test") is fine.
 - Say what the return value looks like (e.g. "a dict mapping each length to its count"), and its
-  order where that matters. Don't legislate for unusual inputs: leave out any rule the tests
-  don't need, and anything a reasonable developer would do without being told.
+  order where that matters, so that there is one right answer to test for. Don't legislate for
+  unusual inputs: leave out any rule the tests don't need, and anything a reasonable developer
+  would do without being told. Every extra rule makes the text more of a specification.
 - The result must be writable as a Python literal: no NaN or infinity, and no objects such as
-  dates (return a string or a tuple).
+  dates (return a string or a tuple). The tests compare it with a value written out in a file.
 - Results are compared leniently (numbers within a relative tolerance of 0.001, lists and tuples
   alike, whitespace in strings ignored), so don't ask for rounding or string formatting unless
   the seed's task is about that.
@@ -260,7 +318,8 @@ _TEST_INPUTS = """\
   as a Python list literal, e.g. "['a', ['apple', 'kiwi']]". Write every value out in full: an
   expression such as 'a' * 100 is not a literal. Cover typical inputs and a few simple edge
   cases. Test only what the text clearly determines: leave out any case whose result depends on
-  a rule the text doesn't state. Where the text says an input is rejected, include at most
+  a rule the text doesn't state. That is what lets the text stay short, and a test for an
+  unstated rule would be unfair. Where the text says an input is rejected, include at most
   {max_raises} invalid inputs. Make the results differ: no single result should be right for
   more than half the cases. All the cases together must run in a few seconds.
 """
@@ -322,6 +381,19 @@ Write a new reply that fixes them, keeping what was right. If the seed turns out
 short, simple task, reply with verdict "skip".
 """
 
+
+def _examples_text() -> str:
+    """Write out the example task texts for the request.
+
+    Returns the section's text.
+    """
+    examples = json.loads(_EXAMPLES_FILE.read_text())
+    return _EXAMPLES_HEADER + "".join(
+        _EXAMPLE.format(number=number, prompt=example["prompt"])
+        for number, example in enumerate(examples, start=1)
+    )
+
+
 # a fingerprint of everything the request is built from, stamped on every record - so tasks
 # written from an earlier wording of the request can be told apart from the current ones
 PROMPT_VERSION = hashlib.sha256(
@@ -333,6 +405,7 @@ PROMPT_VERSION = hashlib.sha256(
             _EXAMPLES_HEADER,
             _EXAMPLE,
             *_WHAT_TO_WRITE.values(),
+            _examples_text(),
             _TEXT_RULES,
             *_FIELDS.values(),
             _FEEDBACK,
@@ -392,19 +465,6 @@ def reply_schema(
     }
 
 
-@cache
-def _examples_section() -> str:
-    """Write out the example task texts for the request.
-
-    Returns the section's text.
-    """
-    examples = json.loads(_EXAMPLES_FILE.read_text())
-    return _EXAMPLES_HEADER + "".join(
-        _EXAMPLE.format(number=number, prompt=example["prompt"])
-        for number, example in enumerate(examples, start=1)
-    )
-
-
 def build_request(
     seed: dict,
     track: str = "reuse",
@@ -428,7 +488,7 @@ def build_request(
         ).strip(),
         tests=seed["test"].strip(),
     )
-    request += _examples_section()
+    request += _examples_text()
     request += _WHAT_TO_WRITE[track]
     request += _TEXT_RULES.format(max_chars=f"{MAX_PROMPT_CHARS:,}")
     request += _FIELDS[track].format(
@@ -696,6 +756,11 @@ def _run_reference(
     with _INSTALL_LOCK, temporary_packages(BUILD_PYTHON, packages) as install:
         if install.failed:
             return None, None, [], f"could not install {sorted(install.failed)}"
+        # a library's first import after installing is slow, and must not count against the run
+        warm_up_imports(
+            set(analyse_source(entry["extlib_solution"])[1]),
+            python_executable=BUILD_PYTHON,
+        )
         first, error = run_gold(entry["extlib_solution"], entry)
         second, _ = run_gold(entry["extlib_solution"], entry)
         pinned = [

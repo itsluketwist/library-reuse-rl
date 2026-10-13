@@ -162,8 +162,26 @@ class TestBuildRequest:
     def test_the_control_request_asks_for_no_library(self) -> None:
         request = generate.build_request(_SEED | {"ext_libs": []}, "control")
         assert "which uses only the standard library" in request
-        assert "no third-party library would\nhelp" in request
+        assert "CONTROL split" in request
+        assert "a third-party library would clearly help with it" in request
         assert "extlib_solution" not in request
+
+    def test_the_request_says_what_a_task_is_for(self) -> None:
+        """The reason behind the rules is stated: a task must be feasible both ways."""
+        request = " ".join(generate.build_request(_SEED, "reuse").split())
+        assert "We call such a task CONTESTED" in request
+        assert "can feasibly be solved both ways" in request
+        assert "it is too difficult without a library" in request
+        assert "the library has no real job in it" in request
+
+    def test_the_request_allows_a_small_change_to_make_a_task_contested(self) -> None:
+        request = " ".join(generate.build_request(_SEED, "reuse").split())
+        assert "You may make a small change to the seed's task" in request
+        assert "if the seed is too difficult by hand, narrow it" in request
+        assert "Change as little as you can" in request
+        # a control task has no such choice to make
+        control = " ".join(generate.build_request(_SEED, "control").split())
+        assert "contested" not in control.lower()
 
     def test_feedback_shows_the_earlier_reply_and_its_problems(self) -> None:
         request = generate.build_request(

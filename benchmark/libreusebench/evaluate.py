@@ -33,6 +33,7 @@ from typing import Any
 
 from libreusebench.environment import _DEFAULT_TIMEOUT_SECONDS, Environment
 from libreusebench.libraries import (
+    analyse_source,
     extract_code,
     imported_libraries,
     pip_package,
@@ -684,6 +685,19 @@ def evaluate_responses(
                 f"\ncould not install {sorted(install_failed)} - continuing; responses "
                 "importing them are not run, and count as not passed (see not_run)."
             )
+
+        # import every library once before anything is timed: the first import of a large
+        # library can take most of a test's time limit, and would otherwise fall on whichever
+        # response used it first. the libraries are those the responses import, and those the
+        # tasks' own library solutions import
+        gold_imports = {
+            name
+            for task_id in responses
+            for name in analyse_source(
+                (benchmark[task_id].get("ground_truth") or {}).get("gold_extlib") or ""
+            )[1]
+        }
+        env.warm_up({name for names in plan.values() for name in names} | gold_imports)
 
         # correctness (pass@1 / pass@k) and per-problem library-reuse statistics
         results = score_responses(
