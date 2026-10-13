@@ -62,3 +62,15 @@ libreusebench_function_control:
   path: "benchmark/v1/pipeline/function_pilot/control.jsonl"
   evaluator: libreusebench
   environment_root: ".libreuseeval-venvs"
+# the LibReuseBench v2 pilot (benchmark/pipeline/05_build.py --pilot): new function tasks
+# generated from 60 pilot seeds, before the full run - every task the agent review kept. the
+# first is the reuse tasks, each with a reuse value (the lines of code a library saves), and
+# the second is the control tasks, where no library should help
+libreusebench_v2_pilot:
+  path: "benchmark/artefacts/pilot/test.jsonl"
+  evaluator: libreusebench
+  environment_root: ".libreuseeval-venvs"
+libreusebench_v2_pilot_control:
+  path: "benchmark/artefacts/pilot/control.jsonl"
+  evaluator: libreusebench
+  environment_root: ".libreuseeval-venvs"
