@@ -1,0 +1,233 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4796/checkpoint-28",
+    "provider": "vllm",
+    "dataset": "libreusebench_v2_pilot",
+    "dataset_file": "benchmark/artefacts/pilot/test.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.1.2",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 8192,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 235,
+    "n_tasks": 47,
+    "n_responses": 235,
+    "k": 5,
+    "pass@1": 0.2978723404255319,
+    "pass@k": 0.5319148936170213,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.7021276595744681,
+          "avg_extlibs": 0.9787234042553191,
+          "library_counts": {
+            "scipy": 18,
+            "numpy": 14,
+            "cryptography": 4,
+            "bs4": 3,
+            "Crypto": 2,
+            "sklearn": 1,
+            "blake3": 1,
+            "nacl": 1,
+            "statsmodels": 1,
+            "jsonschema": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.46808510638297873,
+          "avg_extlibs": 0.548936170212766,
+          "library_counts": {
+            "scipy": 57,
+            "numpy": 34,
+            "bs4": 12,
+            "cryptography": 12,
+            "blake3": 5,
+            "sklearn": 3,
+            "Crypto": 2,
+            "jsonschema": 2,
+            "nacl": 1,
+            "statsmodels": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.7021276595744681,
+          "avg_extlibs": 0.9787234042553191,
+          "library_counts": {
+            "scipy": 18,
+            "numpy": 14,
+            "cryptography": 4,
+            "bs4": 3,
+            "Crypto": 2,
+            "sklearn": 1,
+            "blake3": 1,
+            "nacl": 1,
+            "statsmodels": 1,
+            "jsonschema": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.46808510638297873,
+          "avg_extlibs": 0.5361702127659574,
+          "library_counts": {
+            "scipy": 57,
+            "numpy": 31,
+            "bs4": 12,
+            "cryptography": 12,
+            "blake3": 5,
+            "sklearn": 3,
+            "Crypto": 2,
+            "jsonschema": 2,
+            "nacl": 1,
+            "statsmodels": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 110,
+        "avg_lloc": 26.472727272727273,
+        "avg_maintainability_index": 80.581855754806
+      },
+      "passed": {
+        "n_measured": 70,
+        "avg_lloc": 26.12857142857143,
+        "avg_maintainability_index": 79.91608333811473
+      }
+    },
+    "not_run": {
+      "n_responses": 1,
+      "packages": [
+        "nacl"
+      ],
+      "responses": [
+        {
+          "task_id": "LRB2-PILOT/T023",
+          "idx": 0,
+          "packages": [
+            "nacl"
+          ]
+        }
+      ]
+    },
+    "reuse_value": {
+      "tiers": {
+        "high": {
+          "n_tasks": 47,
+          "pass@1": 0.2978723404255319,
+          "library_use": 0.46808510638297873
+        }
+      },
+      "high_value_library_use": 0.46808510638297873
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-re0zxy8r",
+      "source": "response_imports",
+      "installed_packages": [
+        "beautifulsoup4",
+        "blake3",
+        "cryptography",
+        "jsonschema",
+        "numpy",
+        "pycryptodome",
+        "scikit-learn",
+        "scipy",
+        "statsmodels"
+      ],
+      "install_failed": [
+        "ed25519",
+        "nacl"
+      ],
+      "installed_package_versions": {
+        "attrs": "26.1.0",
+        "beautifulsoup4": "4.15.0",
+        "blake3": "1.0.11",
+        "cffi": "2.1.1",
+        "cloudpickle": "3.1.2",
+        "cryptography": "50.0.2",
+        "formulaic": "1.2.2",
+        "interface-meta": "2.0.1",
+        "joblib": "1.6.0",
+        "jsonschema": "4.26.0",
+        "jsonschema-specifications": "2025.9.1",
+        "narwhals": "2.27.1",
+        "numpy": "2.5.4",
+        "packaging": "26.3",
+        "pandas": "3.0.6",
+        "patsy": "1.0.3",
+        "pip": "25.0.1",
+        "pycparser": "3.11",
+        "pycryptodome": "3.24.1",
+        "python-dateutil": "2.9.0.post0",
+        "referencing": "0.37.0",
+        "rpds-py": "2026.9.1",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "six": "1.17.0",
+        "soupsieve": "3.0.3",
+        "statsmodels": "0.15.0",
+        "threadpoolctl": "3.7.0",
+        "typing-extensions": "4.16.0",
+        "wrapt": "2.5.0"
+      },
+      "package_imports": {
+        "beautifulsoup4": [
+          "beautifulsoup4",
+          "bs4"
+        ],
+        "blake3": [
+          "blake3"
+        ],
+        "cryptography": [
+          "cryptography"
+        ],
+        "ed25519": [
+          "ed25519"
+        ],
+        "jsonschema": [
+          "jsonschema"
+        ],
+        "nacl": [
+          "nacl"
+        ],
+        "numpy": [
+          "numpy"
+        ],
+        "pycryptodome": [
+          "Crypto",
+          "pycryptodome"
+        ],
+        "scikit-learn": [
+          "scikit-learn",
+          "sklearn"
+        ],
+        "scipy": [
+          "scipy"
+        ],
+        "statsmodels": [
+          "statsmodels"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-p06fiitm/libreusebench_eval_2026-10-13T09:20:55.912274.json"
+  }
+}

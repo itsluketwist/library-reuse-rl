@@ -1,0 +1,245 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4796/checkpoint-56",
+    "provider": "vllm",
+    "dataset": "libreusebench_v2_pilot",
+    "dataset_file": "benchmark/artefacts/pilot/test.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.1.2",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 8192,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 235,
+    "n_tasks": 47,
+    "n_responses": 235,
+    "k": 5,
+    "pass@1": 0.2553191489361702,
+    "pass@k": 0.44680851063829785,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.6808510638297872,
+          "avg_extlibs": 0.9148936170212766,
+          "library_counts": {
+            "scipy": 15,
+            "numpy": 14,
+            "cryptography": 4,
+            "bs4": 3,
+            "Crypto": 1,
+            "sklearn": 1,
+            "pandas": 1,
+            "blake3": 1,
+            "nacl": 1,
+            "statsmodels": 1,
+            "jsonschema": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.39574468085106385,
+          "avg_extlibs": 0.46382978723404256,
+          "library_counts": {
+            "scipy": 46,
+            "numpy": 30,
+            "bs4": 12,
+            "cryptography": 8,
+            "blake3": 4,
+            "Crypto": 2,
+            "sklearn": 2,
+            "jsonschema": 2,
+            "pandas": 1,
+            "nacl": 1,
+            "statsmodels": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.6808510638297872,
+          "avg_extlibs": 0.8936170212765957,
+          "library_counts": {
+            "scipy": 15,
+            "numpy": 13,
+            "cryptography": 4,
+            "bs4": 3,
+            "Crypto": 1,
+            "sklearn": 1,
+            "pandas": 1,
+            "blake3": 1,
+            "nacl": 1,
+            "statsmodels": 1,
+            "jsonschema": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.39574468085106385,
+          "avg_extlibs": 0.451063829787234,
+          "library_counts": {
+            "scipy": 46,
+            "numpy": 27,
+            "bs4": 12,
+            "cryptography": 8,
+            "blake3": 4,
+            "Crypto": 2,
+            "sklearn": 2,
+            "jsonschema": 2,
+            "pandas": 1,
+            "nacl": 1,
+            "statsmodels": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 93,
+        "avg_lloc": 25.247311827956988,
+        "avg_maintainability_index": 81.48693703967582
+      },
+      "passed": {
+        "n_measured": 60,
+        "avg_lloc": 24.25,
+        "avg_maintainability_index": 81.17889648395307
+      }
+    },
+    "not_run": {
+      "n_responses": 1,
+      "packages": [
+        "nacl"
+      ],
+      "responses": [
+        {
+          "task_id": "LRB2-PILOT/T023",
+          "idx": 2,
+          "packages": [
+            "nacl"
+          ]
+        }
+      ]
+    },
+    "reuse_value": {
+      "tiers": {
+        "high": {
+          "n_tasks": 47,
+          "pass@1": 0.2553191489361702,
+          "library_use": 0.39574468085106385
+        }
+      },
+      "high_value_library_use": 0.39574468085106385
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-hva7rsh7",
+      "source": "response_imports",
+      "installed_packages": [
+        "beautifulsoup4",
+        "blake3",
+        "cryptography",
+        "jsonschema",
+        "lxml",
+        "numpy",
+        "pandas",
+        "pycryptodome",
+        "scikit-learn",
+        "scipy",
+        "statsmodels"
+      ],
+      "install_failed": [
+        "nacl",
+        "pyblake3"
+      ],
+      "installed_package_versions": {
+        "attrs": "26.1.0",
+        "beautifulsoup4": "4.15.0",
+        "blake3": "1.0.11",
+        "cffi": "2.1.1",
+        "cloudpickle": "3.1.2",
+        "cryptography": "50.0.2",
+        "formulaic": "1.2.2",
+        "interface-meta": "2.0.1",
+        "joblib": "1.6.0",
+        "jsonschema": "4.26.0",
+        "jsonschema-specifications": "2025.9.1",
+        "lxml": "6.1.3",
+        "narwhals": "2.27.1",
+        "numpy": "2.5.4",
+        "packaging": "26.3",
+        "pandas": "3.0.6",
+        "patsy": "1.0.3",
+        "pip": "25.0.1",
+        "pycparser": "3.11",
+        "pycryptodome": "3.24.1",
+        "python-dateutil": "2.9.0.post0",
+        "referencing": "0.37.0",
+        "rpds-py": "2026.9.1",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "six": "1.17.0",
+        "soupsieve": "3.0.3",
+        "statsmodels": "0.15.0",
+        "threadpoolctl": "3.7.0",
+        "typing-extensions": "4.16.0",
+        "wrapt": "2.5.0"
+      },
+      "package_imports": {
+        "beautifulsoup4": [
+          "beautifulsoup4",
+          "bs4"
+        ],
+        "blake3": [
+          "blake3"
+        ],
+        "cryptography": [
+          "cryptography"
+        ],
+        "jsonschema": [
+          "jsonschema"
+        ],
+        "lxml": [
+          "lxml"
+        ],
+        "nacl": [
+          "nacl"
+        ],
+        "numpy": [
+          "numpy"
+        ],
+        "pandas": [
+          "pandas"
+        ],
+        "pyblake3": [
+          "pyblake3"
+        ],
+        "pycryptodome": [
+          "Crypto",
+          "pycryptodome"
+        ],
+        "scikit-learn": [
+          "sklearn"
+        ],
+        "scipy": [
+          "scipy"
+        ],
+        "statsmodels": [
+          "statsmodels"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-b_xl92_g/libreusebench_eval_2026-10-13T09:21:29.547624.json"
+  }
+}
