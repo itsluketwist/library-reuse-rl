@@ -97,3 +97,17 @@ libreusebench_v2_pilot3_25:
   path: "benchmark/artefacts/pilot_3/test.jsonl"
   evaluator: libreusebench
   environment_root: ".libreuseeval-venvs"
+# the fourth pilot (benchmark/artefacts/pilot_4/): tasks from 50 fresh seeds drawn at random,
+# after the request was told that a task needing a numerical method or a parser by hand is too
+# difficult, and not to pin a convention a library's usual call doesn't follow
+libreusebench_v2_pilot4:
+  path: "benchmark/artefacts/pilot_4/test.jsonl"
+  evaluator: libreusebench
+  environment_root: ".libreuseeval-venvs"
+# the fifth pilot (benchmark/artefacts/pilot_5/): tasks from 100 seeds (the fourth pilot's 50
+# again, and 50 fresh ones drawn at random), after the request was told the benchmark's purpose:
+# models write too many custom implementations, so parsing, cryptography and utilities are wanted
+libreusebench_v2_pilot5:
+  path: "benchmark/artefacts/pilot_5/test.jsonl"
+  evaluator: libreusebench
+  environment_root: ".libreuseeval-venvs"

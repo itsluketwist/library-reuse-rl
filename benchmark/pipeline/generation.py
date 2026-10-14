@@ -11,6 +11,8 @@ import threading
 from typing import Any
 
 import anthropic
+import httpx
+from anthropic.types import Message
 
 
 # the model every stage uses, and how hard it thinks. opus 5.5 always thinks, and its own default
@@ -29,10 +31,34 @@ PRICE_PER_MILLION = {"input_tokens": 4.00, "output_tokens": 20.00}
 # one shared client - reads its credentials from the environment and retries 429/5xx itself
 _client = anthropic.Anthropic()
 
+# how many times one request is sent if its stream keeps dropping part way through
+STREAM_ATTEMPTS = 3
+
 # the tokens used by every call this process has made. stages call the model from several
 # threads at once, so the totals are only changed while holding the lock
 _usage = {"calls": 0, "input_tokens": 0, "output_tokens": 0}
 _usage_lock = threading.Lock()
+
+
+def _stream_message(
+    kwargs: dict[str, Any],
+) -> Message:
+    """Send one streamed request, and send it again if the stream drops part way through.
+
+    The SDK retries a request that fails to start, but not a stream that is cut off once it
+    has begun, which happens now and then on a long reply.
+
+    Returns the complete message.
+    """
+    for attempt in range(1, STREAM_ATTEMPTS + 1):
+        try:
+            with _client.messages.stream(**kwargs) as stream:
+                return stream.get_final_message()
+        except (httpx.TransportError, anthropic.APIConnectionError) as error:
+            if attempt == STREAM_ATTEMPTS:
+                raise
+            print(f"stream dropped ({type(error).__name__}), sending it again")
+    raise AssertionError("unreachable: the last attempt returns or raises")
 
 
 def complete_json(
@@ -69,8 +95,7 @@ def complete_json(
 
     # streamed, then gathered into one message: a reply with a large max_tokens (thinking
     # included) can take longer than a single non-streaming request is allowed to
-    with _client.messages.stream(**kwargs) as stream:
-        message = stream.get_final_message()
+    message = _stream_message(kwargs)
 
     with _usage_lock:
         _usage["calls"] += 1

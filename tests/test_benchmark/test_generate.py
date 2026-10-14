@@ -167,10 +167,12 @@ class TestBuildRequest:
         assert "extlib_solution" not in request
 
     def test_the_request_says_what_a_task_is_for(self) -> None:
-        """The reason behind the rules is stated: a task must be feasible both ways."""
+        """The reason behind the rules is stated: models write too many custom
+        implementations, and a task must be feasible both ways to measure that."""
         request = " ".join(generate.build_request(_SEED, "reuse").split())
+        assert "known to write too many custom implementations" in request
         assert "We call such a task CONTESTED" in request
-        assert "can feasibly be solved both ways" in request
+        assert "Both answers must be realistic" in request
         assert "it is too difficult without a library" in request
         assert "the library has no real job in it" in request
 

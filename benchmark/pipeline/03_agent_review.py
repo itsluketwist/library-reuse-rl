@@ -211,9 +211,12 @@ Answer each with true or false:
   from the text?
 - no_library_leak: is the text free of any hint at a particular library, module or function?
 - library_fit: {library_question}
-- feasible_by_hand: could a developer reasonably write this by hand, with the standard library
-  alone, without implementing a substantial algorithm from scratch (a statistical distribution,
-  a matrix decomposition, a cipher, a parser for a whole format)?
+- feasible_by_hand: could a model plausibly write this by hand, with the standard library
+  alone? Answer false only if it means writing something nobody would sensibly write by hand (a
+  statistical distribution's quantiles or p-values, a matrix decomposition, an iterative model
+  fit). Parsing a format such as HTML or XML, routine cryptography such as signing or checking
+  a token, and common utilities are feasible by hand: they are exactly what models tend to
+  write themselves.
 - text_simple: is the text short and plain, with no list of special rules, and no step-by-step
   account of how to compute the result?
 - request_natural: does the text read like a request a developer would really make?
@@ -226,20 +229,26 @@ Then give a verdict:
 In the note, say in a few sentences what is wrong, and for a "fix" exactly what must change. A
 failed blind attempt usually means the text is unclear or the tests are unfair: work out which,
 and say so. Where a test needs a rule the text doesn't state, the fix is to drop that test, not
-to add the rule to the text. Reject a task that is not feasible by hand, or that the library has
+to add the rule to the text. Ask for a fix where the text pins an obscure convention or fitting
+method that a library's usual call doesn't follow: a model that uses the library the usual way
+would fail it. Reject a task that is not feasible by hand, or that the library has
 no real job in: neither can be fixed by rewording. A task where the library saves only a little
 is still wanted, as long as using it is natural. Leave the note empty for a clean "keep".
 """
 
 _TRACK_NOTES = {
     "reuse": (
-        "A task can only measure that choice if both answers are realistic: a developer "
-        "might reasonably use a library for it, and might just as reasonably write it by "
-        "hand, with the standard library alone. We call such a task CONTESTED, and "
-        "contested tasks are what the benchmark wants. A task so complicated that a "
-        "library basically has to be used is too difficult: every model uses the library, "
-        "so there is no choice left to observe. A task that is a few lines by hand, which "
-        "no developer would use a library for, tells us nothing either."
+        "The benchmark is about code reuse. Language models are known to write too many "
+        "custom implementations: they often write their own code for a problem that an "
+        "established library already solves well, such as parsing HTML or XML, "
+        "cryptography, or a common utility. A task can only measure how often they do this "
+        "if both answers are realistic: a developer might reasonably use a library for it, "
+        "and might just as reasonably write it by hand, with the standard library alone. We "
+        "call such a task CONTESTED, and contested tasks are what the benchmark wants. A "
+        "task so complicated that nobody would attempt it by hand is too difficult: every "
+        "model uses the library, so there is no choice left to observe. A task that is a "
+        "few lines by hand, which no developer would use a library for, tells us nothing "
+        "either."
     ),
     "control": (
         "This one is a CONTROL task, where that choice should not arise: the standard "

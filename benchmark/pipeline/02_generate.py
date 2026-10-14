@@ -129,21 +129,26 @@ _SYSTEM = (
 # what the benchmark measures, why that decides which tasks are useful, and what is asked for
 _INTRO = {
     "reuse": """\
-We are building a benchmark that measures a choice. A coding model is asked for a function, and
-is free to write it however it likes: does it reach for a third-party library, or write the code
-itself?
+We are building a benchmark about code reuse. Language models that write code are known to write
+too many custom implementations: asked for a function, they often write their own code for a
+problem that has already been solved, and solved well, by an established library. A model that
+parses HTML or XML by hand, writes its own cryptographic code, or reimplements a common utility
+(date handling, fuzzy string matching, summary statistics of a table) produces more code to read
+and maintain, and more places for bugs, where a well-tested library would do the job in a call
+or two. The benchmark measures how often a model does this: given a task, and free to solve it
+however it likes, does it reuse a library, or write its own implementation?
 
-A task can only measure that choice if both answers are realistic:
+So the tasks we want are problems that a well-known library already solves, but that a model
+could plausibly solve by hand instead. Both answers must be realistic, or there is no choice to
+measure:
 - a developer might reasonably use a library for it, and
 - a developer might just as reasonably write it by hand, with the standard library alone.
-We call such a task CONTESTED, and contested tasks are what we want: tasks that can feasibly be
-solved both ways, where the library is a real help but not a necessity.
-
-Our evaluations so far show how rare they are. On a task that is a few lines by hand, every
-model writes it by hand. On a task so complicated that a library basically has to be used, every
-model uses the library, or runs out of room trying to write it all by hand. Neither kind tells
-one model from another, because there is no choice left to observe. Only the tasks in between
-do.
+We call such a task CONTESTED, and contested tasks are what we want. If the job is only a few
+lines with the standard library, writing it by hand is simply the right answer. If it is so
+complicated that nobody would attempt it by hand (a statistical distribution, a matrix
+decomposition or an iterative model fit, written from scratch), every model uses the library.
+The tasks we want sit in between: writing them by hand is a real job, but a feasible one, and a
+library makes the code shorter and more reliable.
 
 The wording matters just as much, because it must leave the choice open. So a task is a short,
 plain request, the way one developer would ask another for a function. It names no library, and
@@ -196,9 +201,8 @@ Its tests:
 _EXAMPLES_HEADER = """
 ## The wording we want
 
-These task texts are from an earlier version of the benchmark. They are here for their wording:
-each is a short, plain request that names no library, for a task a developer could reasonably
-solve either way.
+These task texts have the wording we want: each is a short, plain request that names no
+library, for a problem that a library solves but a model could plausibly write by hand.
 """
 
 _EXAMPLE = """
@@ -236,8 +240,9 @@ solution. We build on BigCodeBench's tasks, and don't invent our own, so that th
 on an established set of tasks.
 
 You may make a small change to the seed's task where that brings it into contested territory:
-- if the seed is too difficult by hand, narrow it. Ask for a smaller part of it, or a simpler
-  case, that a developer could reasonably write without the library;
+- if the seed is too difficult by hand, narrow it to a part a model could plausibly write
+  itself, but keep enough of it that the library still saves real work: narrowed too far, it
+  becomes a few lines that anyone would write by hand;
 - if the seed gives the library nothing real to do, widen it a little, so that the library does
   a job a developer would actually want it for, while the task stays easy enough to write by
   hand.
@@ -250,9 +255,11 @@ A self-contained function needs these changes too:
     + """
 Reply with verdict "skip", and say why in reason, if the seed doesn't suit. Skip it if:
 - it is too difficult without a library, and no small change would fix that. If even a narrowed
-  task would mean implementing a substantial algorithm from scratch (a statistical
-  distribution, a matrix decomposition, a cipher, a parser for a whole format), then a library
-  basically has to be used, and there is no choice to measure;
+  task would mean writing something nobody would sensibly write by hand (a statistical
+  distribution's quantiles or p-values, a matrix decomposition, an iterative model fit), every
+  model uses the library, and there is no choice to measure. Parsing a format such as HTML or
+  XML, routine cryptography such as signing or checking a token, and common utilities are not
+  too difficult: they are exactly what models tend to write themselves;
 - the library has no real job in it, and no small change would give it one. If a developer
   would never reach for the seed's library for anything like this, there is no choice to
   measure either;
@@ -294,7 +301,10 @@ make the task testable.
   parsed.
 - Say WHAT the function returns, not HOW to compute it. Name no library, module, import, class
   or library function, and don't describe an algorithm step by step: steps are instructions for
-  writing it by hand. Naming a standard method (e.g. "a two-sided paired t-test") is fine.
+  writing it by hand. Naming a standard method (e.g. "a two-sided paired t-test") is fine. But
+  don't pin an obscure convention or fitting method that a library's usual call doesn't follow
+  (e.g. Filliben's quantile estimates, or a fit by conditional least squares): answers that use
+  the library the usual way then fail, so the task tests the convention, not the choice.
 - Say what the return value looks like (e.g. "a dict mapping each length to its count"), and its
   order where that matters, so that there is one right answer to test for. Don't legislate for
   unusual inputs: leave out any rule the tests don't need, and anything a reasonable developer
