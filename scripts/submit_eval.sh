@@ -24,13 +24,13 @@ TIME="12:00:00"
 # need network access - run them with scripts/run_eval_local.sh instead.
 models=(
     # "vllm:qwen3-debug"
-    # "vllm:qwen3-4b"
+    "vllm:qwen3-4b"
     "vllm:qwen3-8b"
-    # "vllm:qwen3-14b"
-    # "vllm:qwen3-32b"
-    # "vllm:olmo3-7b"
-    # "vllm:qwen3.5-9b"
-    # "vllm:domyn-small"
+    "vllm:qwen3-14b"
+    "vllm:qwen3-32b"
+    "vllm:olmo3-7b"
+    "vllm:qwen3.5-9b"
+    "vllm:domyn-small"
 )
 
 # training runs to evaluate, by run id (e.g. "qwen3-8b-4796"). each is added to the models
@@ -65,7 +65,8 @@ datasets=(
     # "libreusebench_v2_pilot3"
     # "libreusebench_v2_pilot3_25"
     # "libreusebench_v2_pilot4"
-    "libreusebench_v2_pilot5"
+    # "libreusebench_v2_pilot5"
+    "libreusebench_v2_full"
 )
 
 # completions sampled per prompt (see --n-samples in src/run_eval.py); eval-only, unrelated

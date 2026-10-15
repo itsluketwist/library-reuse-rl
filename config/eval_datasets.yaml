@@ -111,3 +111,10 @@ libreusebench_v2_pilot5:
   path: "benchmark/artefacts/pilot_5/test.jsonl"
   evaluator: libreusebench
   environment_root: ".libreuseeval-venvs"
+# every reuse task generated from all 813 BigCodeBench seeds with the fifth pilot's request, and
+# kept by the agent review (benchmark/artefacts/full_run/, built with 05_build.py --pilot, so
+# uncapped and unsplit, with LRB2-PILOT/ ids). evaluated before rewording and deduplication
+libreusebench_v2_full:
+  path: "benchmark/artefacts/full_run/test.jsonl"
+  evaluator: libreusebench
+  environment_root: ".libreuseeval-venvs"
