@@ -8,20 +8,26 @@ cached so the build stays reproducible and needs no model at build time:
 - script: three *staged* wordings of one concrete stdin/stdout exercise per task, written in
   LibReuseBench's template at increasing levels of detail (see SCRIPT_STAGES), cached to
   script_stage_prompts.json.
+- function: three staged requests for one python function per task, in the style of
+  LibReuseBench's function tasks, from just the function's name up to a signature and one example
+  (see FUNCTION_STAGES), cached to function_stage_prompts.json. From dataset v4 these replace
+  the script wordings in the build; the script ones are kept for the script pilot.
 
 The build reads these caches if present; regenerating them (via this file's CLI) is a
 deliberate, one-off offline step that needs ANTHROPIC_API_KEY. Until a cache is regenerated,
 build.py produces the template-only rows for that mode without it.
 
-Usage: python data/build/library/augment.py [--type simple|script|repo|all] [--n N]
+Usage: python data/build/library/augment.py [--type simple|script|repo|function|all] [--n N]
        [--model M] [--limit N] [--pilot N] [--skip-cached] [--workers N]
 """
 
 import argparse
+import ast
 import hashlib
 import json
 import random
 import re
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
@@ -38,7 +44,7 @@ TASKS_FILE = _HERE / "tasks.yaml"
 
 # the committed caches the build folds in - {seed_task ("<category_id>.<number>", from
 # tasks.yaml): [claude-generated prompts]}. "script" is the retired dataset-v2 script wording -
-# the v3 build doesn't use it, but it is kept as the record of v2 and so the script pilot
+# the v3 and v4 builds don't use it, but it is kept as the record of v2 and so the script pilot
 # (build.py --pilot) can score it beside the staged wordings below
 CACHE_FILES: dict[str, Path] = {
     "simple": _HERE / "simple_prompts.json",
@@ -49,6 +55,11 @@ CACHE_FILES: dict[str, Path] = {
 # the staged script wordings - {seed_task: {fits_stdio, reason, solution, exercise, outline,
 # precise, benchmark, model, prompt_version}}, see generate_script_stages
 SCRIPT_STAGE_CACHE_FILE = _HERE / "script_stage_prompts.json"
+
+# the staged function wordings - {seed_task: {fits_example, reason, function_name,
+# function_signature, solution, name, signature, example, example_call, example_result, model,
+# prompt_version}}, see generate_function_stages
+FUNCTION_STAGE_CACHE_FILE = _HERE / "function_stage_prompts.json"
 
 # seed for picking the pilot's sample of tasks (see pilot_seed_tasks)
 PILOT_SEED = 42
@@ -522,11 +533,26 @@ Two real statements from the benchmark (unrelated to your task):
 {feedback}"""
 
 # appended to the prompt when a previous attempt was rejected, so the model can fix what was
-# wrong instead of repeating it (e.g. writing too much)
+# wrong instead of repeating it (e.g. writing too much). the function wordings use it too
 _SCRIPT_STAGE_FEEDBACK = """
 Your previous attempt was rejected for these reasons - write a new attempt that fixes them:
 {problems}
 """
+
+
+def _feedback(
+    problems: list[str] | None,
+) -> str:
+    """Write a rejected attempt's problems out as the feedback section of the next prompt.
+
+    Returns the section's text, or "" when there are no problems (e.g. a first attempt).
+    """
+    if not problems:
+        return ""
+    return _SCRIPT_STAGE_FEEDBACK.format(
+        problems="\n".join(f"- {problem}" for problem in problems)
+    )
+
 
 _SCRIPT_STAGE_SCHEMA = {
     "type": "object",
@@ -581,17 +607,10 @@ def build_script_stage_prompt(
 
     Returns the prompt string.
     """
-    feedback = (
-        _SCRIPT_STAGE_FEEDBACK.format(
-            problems="\n".join(f"- {problem}" for problem in problems)
-        )
-        if problems
-        else ""
-    )
     return _SCRIPT_STAGE_PROMPT.format(
         task=task,
         examples=_SCRIPT_STAGE_EXAMPLES,
-        feedback=feedback,
+        feedback=_feedback(problems),
         **{
             f"{stage}_max": f"{limit:,}"
             for stage, limit in _SCRIPT_STAGE_TARGETS.items()
@@ -657,23 +676,41 @@ def generate_script_stages(
     return None
 
 
+def _load_stage_cache(
+    cache_file: Path,
+) -> dict[str, dict[str, Any]]:
+    """Load a staged wording cache (script or function), or {} if it doesn't exist yet.
+
+    Returns the {seed_task: entry} mapping.
+    """
+    if cache_file.exists():
+        return json.loads(cache_file.read_text())
+    return {}
+
+
+def _write_stage_cache(
+    cache_file: Path,
+    cache: dict[str, dict[str, Any]],
+) -> None:
+    """Write a staged wording cache, ordered by seed task so diffs stay readable."""
+    cache_file.write_text(
+        json.dumps(dict(sorted(cache.items())), indent=2, ensure_ascii=False) + "\n"
+    )
+
+
 def load_script_stage_cache() -> dict[str, dict[str, Any]]:
     """Load the committed staged script cache, or {} if it doesn't exist yet.
 
     Returns the {seed_task: entry} mapping (see generate_script_stages).
     """
-    if SCRIPT_STAGE_CACHE_FILE.exists():
-        return json.loads(SCRIPT_STAGE_CACHE_FILE.read_text())
-    return {}
+    return _load_stage_cache(SCRIPT_STAGE_CACHE_FILE)
 
 
 def write_script_stage_cache(
     cache: dict[str, dict[str, Any]],
 ) -> None:
     """Write the staged script cache, ordered by seed task so diffs stay readable."""
-    SCRIPT_STAGE_CACHE_FILE.write_text(
-        json.dumps(dict(sorted(cache.items())), indent=2, ensure_ascii=False) + "\n"
-    )
+    _write_stage_cache(SCRIPT_STAGE_CACHE_FILE, cache)
 
 
 def pilot_seed_tasks(
@@ -702,24 +739,30 @@ def pilot_seed_tasks(
     return sorted(f"{cid}.{rng.choice(sorted(tasks[cid]))}" for cid in chosen)
 
 
-def regenerate_script_stage_cache(
+def _regenerate_stage_cache(
+    kind: str,
+    cache_file: Path,
+    prompt_version: str,
+    generate: Callable[[dict, str], dict[str, Any] | None],
+    describe: Callable[[dict[str, Any]], str],
     taxonomy: dict,
     tasks: dict[str, dict[int, str]],
-    model: str,
-    only: set[str] | None = None,
-    limit: int | None = None,
-    skip_cached: bool = False,
-    workers: int = 1,
+    only: set[str] | None,
+    limit: int | None,
+    skip_cached: bool,
+    workers: int,
 ) -> None:
-    """Generate the staged script wordings, writing the cache after every task.
+    """Generate one kind of staged wording (script or function), writing its cache after every task.
 
-    Covers every task, or just the `only` subset (e.g. the pilot's), optionally skipping tasks
-    already cached with the current prompt (SCRIPT_STAGE_PROMPT_VERSION) and stopping after
-    `limit` tasks. Writing after each task means an interrupted run loses nothing - rerun with
-    `skip_cached` to pick up where it stopped. `workers` tasks are generated at once (each call
-    takes minutes); only this thread writes the cache, as each task finishes.
+    `generate` makes one task's cache entry from its taxonomy entry and task text (None if it
+    failed), and `describe` sums an entry up for the progress line. Covers every task, or just
+    the `only` subset (e.g. the pilot's), optionally skipping tasks already cached with the
+    current prompt (`prompt_version`) and stopping after `limit` tasks. Writing after each task
+    means an interrupted run loses nothing - rerun with `skip_cached` to pick up where it
+    stopped. `workers` tasks are generated at once (each call takes minutes); only this thread
+    writes the cache, as each task finishes.
     """
-    cache = load_script_stage_cache()
+    cache = _load_stage_cache(cache_file)
     todo = [
         (entry, f"{entry['id']}.{number}", task)
         for entry in taxonomy.get("code", [])
@@ -732,13 +775,12 @@ def regenerate_script_stage_cache(
         todo = [
             item
             for item in todo
-            if cache.get(item[1], {}).get("prompt_version")
-            != SCRIPT_STAGE_PROMPT_VERSION
+            if cache.get(item[1], {}).get("prompt_version") != prompt_version
         ]
     if limit is not None:
         todo = todo[:limit]
 
-    def generate(
+    def run(
         item: tuple[dict, str, str],
     ) -> tuple[str, dict[str, Any] | None]:
         """Generate one task's staged wordings, in a worker thread.
@@ -747,11 +789,7 @@ def regenerate_script_stage_cache(
         """
         entry, seed_task, task = item
         try:
-            result = generate_script_stages(
-                task=task,
-                banned_terms=entry["seed_libraries"],
-                model=model,
-            )
+            result = generate(entry, task)
         except Exception as error:
             # e.g. an api timeout - the task stays uncached, so a --skip-cached rerun retries it
             print(f"  {seed_task}: {type(error).__name__}: {error}")
@@ -759,19 +797,406 @@ def regenerate_script_stage_cache(
         return seed_task, result
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = [pool.submit(generate, item) for item in todo]
+        futures = [pool.submit(run, item) for item in todo]
         for i, future in enumerate(as_completed(futures), start=1):
             seed_task, result = future.result()
             if result is None:
-                print(f"script: {i}/{len(todo)} | {seed_task} -> failed, not cached")
+                print(f"{kind}: {i}/{len(todo)} | {seed_task} -> failed, not cached")
                 continue
             cache[seed_task] = result
-            write_script_stage_cache(cache)
-            status = (
-                "staged" if result["fits_stdio"] else f"not stdio: {result['reason']}"
+            _write_stage_cache(cache_file, cache)
+            print(f"{kind}: {i}/{len(todo)} | {seed_task} -> {describe(result)}")
+    print(f"{kind}: {len(cache)} cached task(s) in {cache_file}")
+
+
+def regenerate_script_stage_cache(
+    taxonomy: dict,
+    tasks: dict[str, dict[int, str]],
+    model: str,
+    only: set[str] | None = None,
+    limit: int | None = None,
+    skip_cached: bool = False,
+    workers: int = 1,
+) -> None:
+    """Generate the staged script wordings, writing the cache after every task.
+
+    See _regenerate_stage_cache for `only`, `limit`, `skip_cached` and `workers`.
+    """
+    _regenerate_stage_cache(
+        kind="script",
+        cache_file=SCRIPT_STAGE_CACHE_FILE,
+        prompt_version=SCRIPT_STAGE_PROMPT_VERSION,
+        generate=lambda entry, task: generate_script_stages(
+            task=task,
+            banned_terms=entry["seed_libraries"],
+            model=model,
+        ),
+        describe=lambda result: (
+            "staged" if result["fits_stdio"] else f"not stdio: {result['reason']}"
+        ),
+        taxonomy=taxonomy,
+        tasks=tasks,
+        only=only,
+        limit=limit,
+        skip_cached=skip_cached,
+        workers=workers,
+    )
+
+
+# --- function: one python function per task, in three staged requests ------------------------
+
+# the staged function wordings, from the plainest to the most benchmark-like. all three ask for
+# the same function, and differ only in how much of it they spell out (see
+# _FUNCTION_STAGE_PROMPT)
+FUNCTION_STAGES = ("name", "signature", "example")
+
+# the most characters each stage may have. the example stage gets the limit LibReuseBench's own
+# function tasks are held to (MAX_PROMPT_CHARS in benchmark/pipeline/02_generate.py)
+FUNCTION_STAGE_MAX_CHARS = {
+    "name": 200,
+    "signature": 450,
+    "example": 900,
+}
+
+# how many times each stage writes "<function name>(", and what that count stands for
+_FUNCTION_CALLS_PER_STAGE = {
+    "name": (0, "only the name, with no parameter list or example"),
+    "signature": (1, "the signature once, with no example"),
+    "example": (2, "the signature, then exactly one example call"),
+}
+
+# names too generic to say what a function does (as in benchmark/pipeline/02_generate.py)
+_GENERIC_FUNCTION_NAMES = {
+    "task_func",
+    "solve",
+    "solution",
+    "main",
+    "func",
+    "function",
+    "f",
+}
+
+
+def check_function_stages(
+    entry: dict[str, Any],
+    banned_terms: list[str],
+) -> list[str]:
+    """Check one task's three function requests, deterministically - no code is run.
+
+    All three must ask for the same function: the name stage names it with no parameter list,
+    the signature stage gives its signature (`function_signature`) and no example, and the
+    example stage gives the signature and exactly one example, whose call and result are written
+    as in `example_call` and `example_result`. A task with no honest example (fits_example
+    false) has no example stage to check. Every stage must be prose (no python code), name no
+    library, and be within its length limit (FUNCTION_STAGE_MAX_CHARS). The function's name
+    must not name a library either, so a name such as slugify_title is caught.
+
+    Returns the problems found, each prefixed with its stage (empty if the entry passes).
+    """
+    name = entry["function_name"]
+    signature = entry["function_signature"]
+    problems = []
+    if not re.fullmatch(r"[a-z][a-z0-9_]*", name) or name in _GENERIC_FUNCTION_NAMES:
+        problems.append(f"function name {name!r} is not a descriptive snake_case name")
+    # the name's words, e.g. "slugify title", so a whole-word match can find a library in it
+    name_leaks = _stage_library_leaks(name.replace("_", " "), banned_terms)
+    if name_leaks:
+        problems.append(f"function name {name!r} mentions libraries: {name_leaks}")
+    if not signature.startswith(f"{name}("):
+        problems.append(f"function_signature {signature!r} doesn't start with {name}(")
+
+    stages = FUNCTION_STAGES if entry["fits_example"] else FUNCTION_STAGES[:2]
+    for stage in stages:
+        text = entry[stage]
+        if name not in text:
+            problems.append(f"{stage}: doesn't name the function {name}")
+        calls, meaning = _FUNCTION_CALLS_PER_STAGE[stage]
+        if text.count(f"{name}(") != calls:
+            problems.append(
+                f'{stage}: writes "{name}(" {text.count(f"{name}(")} times - it should '
+                f"give {meaning}"
             )
-            print(f"script: {i}/{len(todo)} | {seed_task} -> {status}")
-    print(f"script: {len(cache)} cached task(s) in {SCRIPT_STAGE_CACHE_FILE}")
+        if stage != "name" and signature not in text:
+            problems.append(
+                f"{stage}: doesn't give the signature exactly as in function_signature"
+            )
+        if _CODE_LINE.search(text):
+            problems.append(f"{stage}: contains python code")
+        if _ESCAPED_CHARACTER.search(text):
+            problems.append(
+                f"{stage}: contains an escaped character such as \\u00b1 - write the "
+                "character itself"
+            )
+        limit = FUNCTION_STAGE_MAX_CHARS[stage]
+        if len(text) > limit:
+            problems.append(f"{stage}: {len(text)} characters, over the {limit} limit")
+        leaks = _stage_library_leaks(text, banned_terms)
+        if leaks:
+            problems.append(f"{stage}: mentions libraries: {leaks}")
+
+    if entry["fits_example"]:
+        for field in ("example_call", "example_result"):
+            if not entry[field] or entry[field] not in entry["example"]:
+                problems.append(
+                    f"example: {field} doesn't appear in it exactly as written"
+                )
+        if not entry["example_call"].startswith(f"{name}("):
+            problems.append(f"example: example_call doesn't call {name}")
+        try:
+            ast.literal_eval(entry["example_result"])
+        except (ValueError, SyntaxError, TypeError, MemoryError, RecursionError):
+            problems.append("example: example_result is not a python literal")
+    return problems
+
+
+_FUNCTION_STAGE_SYSTEM = (
+    "You reword coding tasks as short requests for one Python function, for a dataset about "
+    "whether a model reuses a library or writes the code itself. Reply with JSON only."
+)
+
+# the request explains WHY each rule is there: a wording teaches the model's choice between a
+# library and the standard library only if it leaves both open (it is "contested")
+_FUNCTION_STAGE_PROMPT = """\
+We are building training data about a choice. A coding model is asked for a function, and is
+free to write it however it likes: does it reach for a third-party library, or write the code
+itself with the standard library alone?
+
+A request only tells us anything about that choice if BOTH answers are realistic for it:
+- a developer might reasonably use a library for it, and
+- a developer might just as reasonably write it by hand.
+We call such a request CONTESTED, and contested requests are the only ones we want: there is no
+obvious right choice, and the wording leaves the door open both ways. A request that every
+developer would answer with a library, or that every developer would write by hand, has no
+choice left in it.
+
+The wording decides this as much as the task does. It closes the door on a library when it:
+- spells out an algorithm, a formula or a list of rules, which are instructions for writing it
+  by hand;
+- fixes an output format or convention that a library would not produce as it stands;
+- hands over input so pre-digested that the library has no job left (a web page given as a list
+  of links, an audio clip given as a list of numbers);
+- reads like an exam exercise or a specification.
+It closes the door on the standard library when it:
+- names a library, package, module or class, or borrows a library function's name;
+- takes or returns a library's own type, such as a data frame or an array;
+- asks for so much that nobody would write it by hand.
+
+## The task
+
+{task}
+
+It is from the category "{category}". Developers commonly use these libraries for it:
+{libraries}. Without one, the temptation is: {diy_temptation}. This is so that you can see both
+sides of the choice; the request must not mention or hint at either.
+
+## What to write
+
+Reword the task as a request for ONE Python function. The task is a single line, so the concrete
+function is yours to choose: stay close to the task, and choose a function a developer could
+equally well write with a library or by hand in one sitting.
+
+First, in "solution", write that function using a suitable, well-known library. It is only for
+you, to pin down what the function takes and returns; nobody solving the request sees it.
+
+Then write the request at three levels of detail. All three ask for the same function, by the
+same name:
+- "name": very simple. One sentence that gives only the function's name and what it is for. No
+  parameter list, no types, no return format, no example. At most {name_max} characters.
+- "signature": simple. Names the function with its parameters in order, and says plainly what it
+  takes and what it returns. No example. At most {signature_max} characters.
+- "example": like a task in our benchmark. The same signature, what the return value looks like
+  where that is needed for there to be one right answer, and exactly one example, as a call and
+  its return value. At most {example_max} characters.
+
+For instance, for a task about reading durations (unrelated to yours):
+- name: Write a function called `duration_to_seconds` that works out how many seconds a duration
+  like "1h 30m" lasts.
+- signature: Write a function `duration_to_seconds(text)` that takes a duration written like
+  "1h 30m" or "2 days" and returns its length in seconds as an integer.
+- example: Write a function `duration_to_seconds(text)` that takes a duration written like
+  "1h 30m" or "2 days" and returns its length in seconds as an integer. For example,
+  `duration_to_seconds('1h 30m')` returns `5400`.
+
+Each rule below is there to keep the choice open:
+- Write the way one developer would ask another: a few plain sentences, no lists or headings.
+- Give the function a descriptive snake_case name that says what it does. Not the name of a
+  library or of a library's function, which would point at that library.
+- The arguments and the return value are natural Python values (numbers, strings, bytes, lists,
+  tuples, dicts, sets, booleans, None). If reading a format is part of the task (HTML, CSV,
+  JSON, dates), take the text as a string: parsing it is the job a library might be wanted for.
+- Say WHAT the function returns, never HOW to work it out. Call standard concepts by their usual
+  names ("Levenshtein distance", "a two-sided t-test") without defining them.
+- Leave out rules for unusual inputs, rounding and string formatting, and anything a reasonable
+  developer would do without being told. Every extra rule makes the request more of a
+  specification.
+- The only code is the function's name, its parameter list and the one example: no imports,
+  type hints, stub or docstring.
+- The example's return value must be what the library gives as it stands AND what a
+  straightforward hand-written version gives, so that it favours neither. Nothing is run to
+  check it, so choose a small input whose result you are sure of, and write the result as a
+  Python literal.
+
+Some tasks have no honest example: the result depends on the network, the file system, the clock
+or randomness, or the function is called for its effect. For those, set "fits_example" to false,
+say why in "reason", and leave "example", "example_call" and "example_result" empty. Still write
+"name" and "signature".
+
+Also give "function_name", "function_signature" (the name and parameter list exactly as written
+in the requests, e.g. "duration_to_seconds(text)"), and "example_call" and "example_result"
+exactly as they appear in "example".
+{feedback}"""
+
+# the reply's fields, in the order the model writes them: whether there is an example, then the
+# function and its private solution, then the three requests
+_FUNCTION_STAGE_FIELDS: dict[str, dict[str, str]] = {
+    "fits_example": {"type": "boolean"},
+    "reason": {"type": "string"},
+    "function_name": {"type": "string"},
+    "function_signature": {"type": "string"},
+    "solution": {"type": "string"},
+    "name": {"type": "string"},
+    "signature": {"type": "string"},
+    "example": {"type": "string"},
+    "example_call": {"type": "string"},
+    "example_result": {"type": "string"},
+}
+
+_FUNCTION_STAGE_SCHEMA = {
+    "type": "object",
+    "properties": _FUNCTION_STAGE_FIELDS,
+    "required": list(_FUNCTION_STAGE_FIELDS),
+    "additionalProperties": False,
+}
+
+# a fingerprint of the function request, stamped on each cache entry (as
+# SCRIPT_STAGE_PROMPT_VERSION), so --skip-cached regenerates entries from an earlier prompt
+FUNCTION_STAGE_PROMPT_VERSION = hashlib.sha256(
+    "\n".join(
+        [
+            _FUNCTION_STAGE_SYSTEM,
+            _FUNCTION_STAGE_PROMPT,
+            _SCRIPT_STAGE_FEEDBACK,
+            json.dumps(FUNCTION_STAGE_MAX_CHARS, sort_keys=True),
+        ]
+    ).encode()
+).hexdigest()[:12]
+
+
+def build_function_stage_prompt(
+    task: str,
+    category: dict[str, Any],
+    problems: list[str] | None = None,
+) -> str:
+    """Build the LLM prompt asking for one function for `task`, as three staged requests.
+
+    `category` is the task's taxonomy.yaml entry: its name, libraries and diy temptation are
+    shown, so the model can see both sides of the choice it must leave open. `problems` are a
+    previous attempt's check failures, fed back so the next attempt can fix them.
+
+    Returns the prompt string.
+    """
+    return _FUNCTION_STAGE_PROMPT.format(
+        task=task,
+        category=category["name"],
+        libraries=", ".join(category["seed_libraries"]),
+        diy_temptation=category["diy_temptation"],
+        feedback=_feedback(problems),
+        **{f"{stage}_max": limit for stage, limit in FUNCTION_STAGE_MAX_CHARS.items()},
+    )
+
+
+def generate_function_stages(
+    task: str,
+    category: dict[str, Any],
+    model: str = llm.DEFAULT_GEN_MODEL,
+    max_attempts: int = 3,
+) -> dict[str, Any] | None:
+    """Ask the LLM for one python function for `task`, requested at three levels of detail.
+
+    Every attempt is checked with check_function_stages, against the shared blocklist and the
+    category's libraries. If it fails, the whole attempt is retried with the problems fed back -
+    the three requests ask for one function, so they are kept or dropped together - up to
+    `max_attempts` times. A task the model judges has no honest example comes back with
+    fits_example false and an empty example stage.
+
+    Returns the cache entry ({fits_example, reason, function_name, function_signature, solution,
+    name, signature, example, example_call, example_result, model, prompt_version}), or None if
+    every attempt failed. The solution is the model's private library solution, kept to show
+    which library shaped each function and so its example can be checked by hand.
+    """
+    problems: list[str] = []
+    for attempt in range(1, max_attempts + 1):
+        data, resolved_model = llm.complete_json(
+            prompt=build_function_stage_prompt(task, category, problems),
+            schema=_FUNCTION_STAGE_SCHEMA,
+            system=_FUNCTION_STAGE_SYSTEM,
+            model=model,
+            # thinking counts towards max_tokens, as in generate_script_stages
+            max_tokens=32000,
+        )
+        if not data:
+            print(f"  attempt {attempt}: no usable reply")
+            continue
+
+        entry: dict[str, Any] = {
+            field: str(data.get(field, "")).strip() for field in _FUNCTION_STAGE_FIELDS
+        }
+        entry["fits_example"] = bool(data.get("fits_example"))
+        if not entry["fits_example"]:
+            # no example for a task that has none, whatever the model wrote in it
+            entry |= dict.fromkeys(("example", "example_call", "example_result"), "")
+        entry |= {
+            "model": resolved_model,
+            "prompt_version": FUNCTION_STAGE_PROMPT_VERSION,
+        }
+
+        problems = check_function_stages(entry, category["seed_libraries"])
+        if not problems:
+            return entry
+        print(f"  attempt {attempt} rejected: {problems}")
+    return None
+
+
+def load_function_stage_cache() -> dict[str, dict[str, Any]]:
+    """Load the committed staged function cache, or {} if it doesn't exist yet.
+
+    Returns the {seed_task: entry} mapping (see generate_function_stages).
+    """
+    return _load_stage_cache(FUNCTION_STAGE_CACHE_FILE)
+
+
+def regenerate_function_stage_cache(
+    taxonomy: dict,
+    tasks: dict[str, dict[int, str]],
+    model: str,
+    only: set[str] | None = None,
+    limit: int | None = None,
+    skip_cached: bool = False,
+    workers: int = 1,
+) -> None:
+    """Generate the staged function wordings, writing the cache after every task.
+
+    See _regenerate_stage_cache for `only`, `limit`, `skip_cached` and `workers`.
+    """
+    _regenerate_stage_cache(
+        kind="function",
+        cache_file=FUNCTION_STAGE_CACHE_FILE,
+        prompt_version=FUNCTION_STAGE_PROMPT_VERSION,
+        generate=lambda entry, task: generate_function_stages(
+            task=task,
+            category=entry,
+            model=model,
+        ),
+        describe=lambda result: (
+            "staged" if result["fits_example"] else f"no example: {result['reason']}"
+        ),
+        taxonomy=taxonomy,
+        tasks=tasks,
+        only=only,
+        limit=limit,
+        skip_cached=skip_cached,
+        workers=workers,
+    )
 
 
 # --- repo: a natural request framed inside the task's chosen repo ----------------------------
@@ -906,8 +1331,8 @@ def generate_repo_prompts(
 
 _GENERATORS = {
     "simple": generate_simple_prompts,
-    # repo needs the extra `context` argument, and script its own staged cache - both are
-    # handled separately in main()
+    # repo needs the extra `context` argument, and script and function their own staged
+    # caches - these are handled separately in main()
 }
 
 
@@ -916,7 +1341,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--type",
-        choices=["simple", "script", "repo", "all"],
+        choices=["simple", "script", "repo", "function", "all"],
         default="all",
         help="which prompt cache(s) to regenerate",
     )
@@ -933,18 +1358,20 @@ def main() -> None:
         "--pilot",
         type=int,
         default=None,
-        help="script only: generate just the pilot's sample of N tasks (see pilot_seed_tasks)",
+        help="script/function only: generate just the pilot's sample of N tasks "
+        "(see pilot_seed_tasks)",
     )
     parser.add_argument(
         "--skip-cached",
         action="store_true",
-        help="script only: skip tasks already cached with the current prompt (to resume a run)",
+        help="script/function only: skip tasks already cached with the current prompt "
+        "(to resume a run)",
     )
     parser.add_argument(
         "--workers",
         type=int,
         default=1,
-        help="script only: tasks to generate at once (each call takes minutes)",
+        help="script/function only: tasks to generate at once (each call takes minutes)",
     )
     args = parser.parse_args()
 
@@ -955,10 +1382,17 @@ def main() -> None:
         c.context_id: c for c in contexts.values() if c.language == "python"
     }
 
-    prompt_types = ["simple", "script", "repo"] if args.type == "all" else [args.type]
+    prompt_types = (
+        ["simple", "script", "repo", "function"] if args.type == "all" else [args.type]
+    )
     for prompt_type in prompt_types:
-        if prompt_type == "script":
-            regenerate_script_stage_cache(
+        if prompt_type in ("script", "function"):
+            regenerate = (
+                regenerate_script_stage_cache
+                if prompt_type == "script"
+                else regenerate_function_stage_cache
+            )
+            regenerate(
                 taxonomy=taxonomy,
                 tasks=tasks,
                 model=args.model,

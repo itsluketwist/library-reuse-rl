@@ -46,8 +46,10 @@ training_jobs=(
 eval_datasets=(
     "library_usage"
     "library_usage_val"
-    "libreusebench_test"
-    "libreusebench_control"
+    # libreusebench v2 before manual review, until its test / control splits are built
+    "libreusebench_v2_full"
+    # "libreusebench_test"
+    # "libreusebench_control"
 )
 
 # grpo training recipe - hyperparameters, including the decoding settings used to

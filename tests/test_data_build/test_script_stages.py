@@ -229,40 +229,52 @@ _CONTEXTS = {
 
 
 class TestBuildRows:
-    """Tests for the build's v3 rows and the script pilot's rows."""
+    """Tests for the build's v4 rows and the script pilot's rows."""
 
-    def test_script_rows_are_the_template_and_three_stages(self):
-        """A staged task gets 4 script rows; a task that doesn't fit stdio keeps only 1."""
+    def test_function_rows_replace_the_script_rows(self):
+        """A task gets 3 function rows and no script rows; one with no example gets 2."""
         rows = build_library_usage_rows(
             _TAXONOMY,
             _TASKS,
             _TEMPLATES,
             _CONTEXTS,
             prompt_caches={"simple": {}, "repo": {}},
-            stage_cache={
-                "timezones.1": _stage_entry(),
-                "timezones.2": _stage_entry(fits_stdio=False),
+            function_cache={
+                "timezones.1": {"name": "N1", "signature": "S1", "example": "E1"},
+                # a task with no honest example has an empty example stage
+                "timezones.2": {"name": "N2", "signature": "S2", "example": ""},
             },
         )
 
-        def script_rows(seed_task: str) -> list[tuple[str, str]]:
+        def function_rows(seed_task: str) -> list[tuple[str, str]]:
             return [
-                (row["source"], row["script_stage"])
+                (row["function_stage"], row["prompt"])
                 for row in rows
-                if row["seed_task"] == seed_task and row["phrasing_mode"] == "script"
+                if row["seed_task"] == seed_task and row["phrasing_mode"] == "function"
             ]
 
-        assert script_rows("timezones.1") == [
-            ("template", "template"),
-            ("llm", "outline"),
-            ("llm", "precise"),
-            ("llm", "benchmark"),
+        assert not any(row["phrasing_mode"] == "script" for row in rows)
+        assert function_rows("timezones.1") == [
+            ("name", "N1"),
+            ("signature", "S1"),
+            ("example", "E1"),
         ]
-        assert script_rows("timezones.2") == [("template", "template")]
-        # repo and simple rows carry no script stage; repo has the picked template row and
-        # the project-framed one
-        other = [row for row in rows if row["phrasing_mode"] != "script"]
+        assert function_rows("timezones.2") == [("name", "N2"), ("signature", "S2")]
+        # function rows are claude wordings with no repo context
+        function = [row for row in rows if row["phrasing_mode"] == "function"]
+        assert all(
+            r["source"] == "llm"
+            and r["context_id"] == "none"
+            and r["local_modules"] == []
+            for r in function
+        )
+        # repo and simple rows carry no stage; repo has the picked template row and the
+        # project-framed one
+        other = [row for row in rows if row["phrasing_mode"] != "function"]
         assert len(other) == 6
+        assert all(
+            r["script_stage"] is None and r["function_stage"] is None for r in other
+        )
         assert sorted(r["source"] for r in other if r["phrasing_mode"] == "repo") == [
             "project",
             "project",
@@ -277,7 +289,6 @@ class TestBuildRows:
         assert (
             project[0]["prompt"] == "Convert a timestamp to UTC. Use it in my project."
         )
-        assert all(row["script_stage"] is None for row in other)
 
     def test_pilot_rows_hold_old_and_new_wordings(self):
         """The pilot scores the template, the v2 wording and the three stages side by side."""

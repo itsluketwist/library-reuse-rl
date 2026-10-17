@@ -33,10 +33,11 @@ exists but a model is tempted to hand-roll it. Reuse is detected programmaticall
 solution's imports, subtract the standard library and the repo's own modules (`local_modules`),
 and any remaining *used* import is genuine reuse (no labels, no execution). Each task is asked
 in 3 modes — set **in a python repo's context** (`repo`), as a **bare "how do I implement X"**
-(`simple`), or as a **stdin/stdout script** (`script`, in the LibReuseBench eval benchmark's
-template) — each from 2 sources, a deterministic template and claude-generated wordings (one for
-`repo` and `simple`, three staged ones for `script`) - plus a project-framed `repo` template
-row with no repo context (`source: "project"`), so every task has up to 9 rows. See
+(`simple`), or as a **request for one named function** (`function`, in the style of the
+LibReuseBench eval benchmark's function tasks). `repo` and `simple` each have a deterministic
+template row and a claude-generated row, and `repo` also has a project-framed template row with
+no repo context (`source: "project"`). `function` has three claude-generated requests at
+increasing detail (`name` / `signature` / `example`), so every task has up to 8 rows. See
 `src/grpo/rewards/library_usage.py`.
 
 **Ids.** Every row carries a unique `task_id` in the benchmark's style — `LRRL/U####` for
@@ -47,12 +48,17 @@ in test → train → val order, so they are contiguous per split and the test s
 deterministic, template-only build. **v2** is the 3-mode (`repo`/`simple`/`script`) x
 2-source (`template`/`claude`) build: every task gets one row per (mode, source) - 6 rows/task
 once the claude caches (`build/library/*_prompts.json`) are populated via `augment.py`'s CLI, 3
-rows/task (template-only) while a cache is still empty. **v3** (current) replaces the one claude
+rows/task (template-only) while a cache is still empty. **v3** replaces the one claude
 `script` wording with three staged ones in LibReuseBench's template (`outline` / `precise` /
 `benchmark`, recorded as `script_stage`), because the v2 wording gave almost no library-use
 signal, and adds a project-framed `repo` row with no repo context ("... so that I can use it in my
 project") -
-9 rows/task, or 6 for a task that can't be posed as stdin/stdout. Bump
+9 rows/task, or 6 for a task that can't be posed as stdin/stdout. **v4** (current) follows
+LibReuseBench's move from stdin/stdout programs to function tasks: the four `script` rows are
+replaced by three `function` rows (`name` / `signature` / `example`, recorded as
+`function_stage`), each written to leave the choice between a library and the standard library
+open - 8 rows/task, or 7 for a task with no honest example. The `repo` and `simple` rows and the
+test tasks are the same as v3's. The script wordings are kept, for the script pilot only. Bump
 `DATASET_VERSION` in `build/library/build.py` when the construction method changes again.
 Eval results record the `dataset_version` they scored, since a rebuild renumbers every id.
 
@@ -93,17 +99,23 @@ Shared helpers (used by both pipelines):
 - **`taxonomy.yaml`** — the 66 code categories (`seed_libraries` are pip import names;
   `repo_hint` picks which repo below a category's repo-mode rows are set in).
 - **`tasks.yaml`** — the concrete feature tasks per category.
-- **`templates.yaml`** — 2 deterministic phrasing templates per mode (`repo`/`simple`/`script`);
+- **`templates.yaml`** — 2 deterministic phrasing templates per mode (`repo`/`simple`, plus
+  `script`, which only the script pilot still uses);
   build.py deterministically picks one per task.
 - **`repos/`** — committed repos we author (e.g. `pytoolbox`, a deliberately broad toolbox) used
   as repo-mode contexts, so every category has a plausible repo it could be added to.
 - **`augment.py`** — LLM seam that adds claude-generated wordings (one per task for `repo` and
-  `simple`, three staged ones for `script`); also the CLI (`python data/build/library/augment.py
-  --type simple|script|repo|all`) that regenerates the caches offline (needs `ANTHROPIC_API_KEY`;
-  build.py itself never calls an LLM).
-- **`simple_prompts.json` / `repo_prompts.json` / `script_stage_prompts.json`** — committed
-  caches of claude-generated wordings the build folds in (empty ⇒ templates only).
-  `script_prompts.json` holds the retired v2 script wordings, kept only for the script pilot.
+  `simple`, three staged ones for `script`, and three staged `function` requests); also the CLI
+  (`python data/build/library/augment.py --type simple|script|repo|function|all`) that
+  regenerates the caches offline (needs `ANTHROPIC_API_KEY`; build.py itself never calls an LLM).
+- **`simple_prompts.json` / `repo_prompts.json`** — committed caches of claude-generated
+  wordings the build folds in (empty ⇒ templates only). `script_stage_prompts.json` (the v3
+  staged script wordings) and `script_prompts.json` (the v2 ones) are kept only for the script
+  pilot.
+- **`function_stage_prompts.json`** — each task as a request for one Python function, in
+  LibReuseBench's new function style, at three levels of detail (`name` / `signature` /
+  `example`). Every wording is asked to be *contested*: as reasonable to write by hand as with a
+  library. These are the `function` rows from dataset v4 on.
 - **`build.py`** — build the `library_usage` split → `train/library_usage/`; with `--pilot N`,
   the script pilot file instead (`pilot/script_pilot.jsonl`, see `docs/CONSTRUCTION.md`).
 - **`docs/`** — `CONSTRUCTION.md` (how this all fits together), `REPORT.md`, `PROMPT_COMPARISON.md`
@@ -135,7 +147,7 @@ run_eval -m <model> -d library_usage,product_choice
 The eval dataset configuration stores an explicit `evaluator` beside every path. The
 library-usage evaluator examines every fenced answer code block and reports valid-code
 rate, reuse rate, appropriate-library rate, average distinct libraries used, library counts,
-and per-phrasing-mode breakdowns (`repo`/`simple`/`script`). LibReuseBench uses its package's complete official
+and per-phrasing-mode breakdowns (`repo`/`simple`/`function`; `script` for v3 results). LibReuseBench uses its package's complete official
 evaluator:
 it discovers and installs the generated responses' dependencies in an isolated environment,
 runs the official tests, and saves the official correctness and reuse statistics together with

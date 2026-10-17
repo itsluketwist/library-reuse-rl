@@ -107,6 +107,12 @@ def _dataset_section(
     stages = Counter(row["script_stage"] for row in all_rows if row.get("script_stage"))
     if stages:
         lines.append(f"- **script stages**: {dict(stages)}")
+    # from v4, function rows record which of their three requests they are (name, ...)
+    function_stages = Counter(
+        row["function_stage"] for row in all_rows if row.get("function_stage")
+    )
+    if function_stages:
+        lines.append(f"- **function stages**: {dict(function_stages)}")
     lines.append("")
     lines.append("| category | rows |")
     lines.append("| --- | --- |")

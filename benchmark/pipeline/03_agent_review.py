@@ -251,9 +251,14 @@ _TRACK_NOTES = {
         "either."
     ),
     "control": (
-        "This one is a CONTROL task, where that choice should not arise: the standard "
-        "library does the job directly, and no third-party library would help. It shows "
-        "whether a model reaches for a library even where there is no reason to."
+        "The benchmark is about code reuse. Language models are known to write too many "
+        "custom implementations of problems that established libraries already solve. But "
+        "reaching for a library is not always right: a dependency has costs of its own, and "
+        "a model that imports one for a job the standard library does directly is adding a "
+        "dependency for nothing. This one is a CONTROL task, where the choice should not "
+        "arise: the standard library does the job directly, and no third-party library "
+        "would help. It shows whether a model reaches for a library even where there is no "
+        "reason to, so that always importing something can't score well."
     ),
 }
 

@@ -34,7 +34,7 @@ no library solution, so their expected values come from the standard-library sol
 
 Records are appended to benchmark/artefacts/02_generated.jsonl (02_generated_control.jsonl for
 the control track), one per seed, and a seed's last record is its current state. Each carries the
-fingerprint of the request it came from (PROMPT_VERSION), so tasks from an earlier wording of the
+fingerprint of its track's request (PROMPT_VERSION), so tasks from an earlier wording of the
 request can be told apart, and --skip-done only skips seeds done with the current one. Generated
 code only ever runs in the build venv (benchmark/pipeline/setup_build_venv.sh).
 
@@ -164,18 +164,31 @@ below). Where it is not enough, skip the seed: that is expected, and much better
 task out of it.
 """,
     "control": """\
-We are building a benchmark that measures a choice. A coding model is asked for a function, and
-is free to write it however it likes: does it reach for a third-party library, or write the code
-itself?
+We are building a benchmark about code reuse. Language models that write code are known to write
+too many custom implementations: asked for a function, they often write their own code for a
+problem that an established library already solves well. The benchmark measures how often a
+model does this: given a task, and free to solve it however it likes, does it reuse a library, or
+write its own implementation?
 
-This task is for the benchmark's CONTROL split. Its tasks are ones where that choice should not
-arise: the standard library does the job directly, and no third-party library would help. They
-show whether a model reaches for a library even where there is no reason to. So a control task
-must be easy to write by hand, and must not be a job that a well-known library exists to do.
+Reaching for a library is not always right, though. A dependency has costs of its own: one more
+package to install, keep up to date and trust. A model that imports a table library to sum a
+list, or a date library to add a day to a date, is not reusing code well: it is adding a
+dependency for nothing. So the benchmark also has a CONTROL split, and this task is for it.
+Control tasks are ones where the standard library does the job directly, and no third-party
+library would help. They show whether a model reaches for a library even where there is no
+reason to, so that a model can't do well on the benchmark simply by always importing something.
 
-The wording matters just as much. A task is a short, plain request, the way one developer would
-ask another for a function. It names no library, and it does not spell out an algorithm or a
-list of rules.
+So a control task must be easy to write with the standard library alone, and must not be a job
+that a well-known third-party library exists to do. If a developer might reasonably reach for a
+library for it (parsing HTML, fuzzy string matching, numerical work on arrays or tables), it
+belongs in the benchmark's main split, not here.
+
+The wording matters just as much, because it must leave the choice open: it should push a model
+neither towards a library nor towards the standard library, exactly as a main task's wording
+does. A task is a short, plain request, the way one developer would ask another for a function.
+It names no library and no module, standard-library ones included, and it doesn't ask for the
+function to be written "without libraries" or "using only built-ins". Nor does it spell out an
+algorithm or a list of rules: a specification reads like an exercise.
 
 Below is a task from BigCodeBench whose reference solution uses only the standard library.
 Reword it as a control task, if it suits. Many seeds don't suit, and skipping those is expected.
@@ -277,7 +290,9 @@ function needs:
     + _ADAPTATIONS
     + """
 Reply with verdict "skip", and say why in reason, if the seed doesn't suit. Skip it if:
-- a third-party library would clearly help with it, since a control task is one where none does;
+- a third-party library would clearly help with it, since a control task is one where none does.
+  Parsing a format such as HTML, fuzzy string matching and numerical work on arrays or tables are
+  jobs like that, even where the standard library could do them;
 - it is hard to write by hand, since a control task should leave no reason to look for help;
 """
     + _SHARED_SKIPS,
@@ -404,25 +419,32 @@ def _examples_text() -> str:
     )
 
 
-# a fingerprint of everything the request is built from, stamped on every record - so tasks
-# written from an earlier wording of the request can be told apart from the current ones
-PROMPT_VERSION = hashlib.sha256(
-    "\n".join(
-        [
-            _SYSTEM,
-            *_INTRO.values(),
-            _SEED,
-            _EXAMPLES_HEADER,
-            _EXAMPLE,
-            *_WHAT_TO_WRITE.values(),
-            _examples_text(),
-            _TEXT_RULES,
-            *_FIELDS.values(),
-            _FEEDBACK,
-            str((MAX_PROMPT_CHARS, MIN_TESTS, MAX_RAISES)),
-        ]
-    ).encode()
-).hexdigest()[:12]
+def _request_version(
+    track: str,
+) -> str:
+    """Fingerprint everything one track's request is built from.
+
+    Returns the first 12 hex digits of its sha256.
+    """
+    parts = [
+        _SYSTEM,
+        _INTRO[track],
+        _SEED,
+        _EXAMPLES_HEADER,
+        _EXAMPLE,
+        _WHAT_TO_WRITE[track],
+        _examples_text(),
+        _TEXT_RULES,
+        _FIELDS[track],
+        _FEEDBACK,
+        str((MAX_PROMPT_CHARS, MIN_TESTS, MAX_RAISES)),
+    ]
+    return hashlib.sha256("\n".join(parts).encode()).hexdigest()[:12]
+
+
+# each track's request fingerprint, stamped on every record - so tasks written from an earlier
+# wording can be told apart, and rewording one track leaves the other track's records current
+PROMPT_VERSION = {track: _request_version(track) for track in _INTRO}
 
 # the reply's fields and their json types - every one is required
 _FIELD_TYPES: dict[str, dict[str, Any]] = {
@@ -894,7 +916,7 @@ def generate_task(
         "seed_id": seed["seed_id"],
         "track": track,
         "seed_libs": seed["ext_libs"],
-        "prompt_version": PROMPT_VERSION,
+        "prompt_version": PROMPT_VERSION[track],
     }
     fields = reply_fields(track)
     problems = list(problems or [])
@@ -1039,13 +1061,14 @@ def main() -> None:
         todo = [
             seed
             for seed in todo
-            if done.get(seed["seed_id"], {}).get("prompt_version") != PROMPT_VERSION
+            if done.get(seed["seed_id"], {}).get("prompt_version")
+            != PROMPT_VERSION[args.track]
         ]
     if args.limit is not None:
         todo = todo[: args.limit]
     print(
         f"{len(todo)} {args.track} seed(s) to generate with {args.model} "
-        f"(request {PROMPT_VERSION})"
+        f"(request {PROMPT_VERSION[args.track]})"
     )
 
     def generate(

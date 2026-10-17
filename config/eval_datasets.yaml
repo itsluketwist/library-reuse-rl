@@ -118,3 +118,16 @@ libreusebench_v2_full:
   path: "benchmark/artefacts/full_run/test.jsonl"
   evaluator: libreusebench
   environment_root: ".libreuseeval-venvs"
+# LibReuseBench v2 as it stands before manual review: every task the agent review kept, built
+# with 05_build.py --provisional into benchmark/artefacts/provisional/. the splits follow
+# BigCodeBench - test from the seeds that use a library, control from the standard-library ones.
+# the test split is the same 233 tasks as libreusebench_v2_full, numbered the same (LRB2/T017 is
+# LRB2-PILOT/T017), so the results already on that dataset carry over
+libreusebench_v2_test:
+  path: "benchmark/artefacts/provisional/test.jsonl"
+  evaluator: libreusebench
+  environment_root: ".libreuseeval-venvs"
+libreusebench_v2_control:
+  path: "benchmark/artefacts/provisional/control.jsonl"
+  evaluator: libreusebench
+  environment_root: ".libreuseeval-venvs"

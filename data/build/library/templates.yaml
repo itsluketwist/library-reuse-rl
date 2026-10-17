@@ -5,7 +5,9 @@
 #             repo_hint), carrying local_modules
 #   - simple: the task is asked on its own, "how do i implement x", with no repo context
 #   - script: the task is asked as a stdin/stdout program - here as a one-line request; the
-#             claude-generated script wordings are in the LibReuseBench benchmark's template
+#             claude-generated script wordings are in the LibReuseBench benchmark's template.
+#             since dataset v4 the build has no script rows (the claude-generated function
+#             requests replace them), so these templates are only used by the script pilot
 # each mode has exactly 2 templates; build.py deterministically picks ONE per task (not both),
 # so every task gets exactly one template-sourced row per mode. build.py substitutes {context}
 # (repo summary), {task} (the task verbatim), {task_lower} (the task with a lowercased first

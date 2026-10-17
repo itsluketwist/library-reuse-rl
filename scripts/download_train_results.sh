@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# copies the eval results on the full training split (library_usage_train), and on the script
-# pilot (library_usage_script_pilot), down from isambard. they are too large to commit (thousands
-# of long responses per model), so they are git-ignored and fetched with this instead. run from
-# the repo root on your own machine; existing files are overwritten with the latest.
+# copies the eval results on the full training split (library_usage_train), on the script
+# pilot (library_usage_script_pilot), and every response on the full LibReuseBench v2 generation
+# (libreusebench_v2_full), down from isambard. they are too large to commit (thousands of long
+# responses per model), so they are git-ignored and fetched with this instead. run from the repo
+# root on your own machine; existing files are overwritten with the latest.
 #
 #   bash scripts/download_train_results.sh         # download (or refresh) the local copies
 #   bash scripts/download_train_results.sh clean   # delete the local copies (lists them and asks)
@@ -13,8 +14,13 @@ HOST="u6yb.aip2.isambard"  # see ~/.ssh/config_clifton - run `clifton auth` firs
 REMOTE_REPO="reuse"  # the repo's path on isambard, relative to the home directory
 
 # the result files to copy, each as the analysis (.json) and every response (.generations.jsonl):
-# the full training split's, and the script pilot's (see data/build/library/build.py --pilot)
-PATTERNS=("library_usage_train-*" "library_usage_script_pilot-*")
+# the full training split's, and the script pilot's (see data/build/library/build.py --pilot).
+# for libreusebench_v2_full only the responses are copied: its analysis files are committed
+PATTERNS=(
+    "library_usage_train-*"
+    "library_usage_script_pilot-*"
+    "libreusebench_v2_full-*.generations.jsonl"
+)
 
 mode="${1:-download}"
 

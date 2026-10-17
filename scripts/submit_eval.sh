@@ -27,8 +27,8 @@ models=(
     "vllm:qwen3-4b"
     "vllm:qwen3-8b"
     "vllm:qwen3-14b"
-    "vllm:qwen3-32b"
-    "vllm:olmo3-7b"
+    # "vllm:qwen3-32b"  # both ran out of the 12h limit on libreusebench_v2_full
+    # "vllm:olmo3-7b"
     "vllm:qwen3.5-9b"
     "vllm:domyn-small"
 )
@@ -66,12 +66,14 @@ datasets=(
     # "libreusebench_v2_pilot3_25"
     # "libreusebench_v2_pilot4"
     # "libreusebench_v2_pilot5"
-    "libreusebench_v2_full"
+    # "libreusebench_v2_full"
+    # "libreusebench_v2_test"  # the same tasks as libreusebench_v2_full, whose results carry over
+    "libreusebench_v2_control"
 )
 
 # completions sampled per prompt (see --n-samples in src/run_eval.py); eval-only, unrelated
 # to training rollouts. leave blank to use the default of 1.
-n_samples=25
+n_samples=5
 
 # decoding profiles to evaluate with (eval_decoding_profiles in config/training.yaml)
 decoding_profiles=(

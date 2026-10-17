@@ -176,6 +176,15 @@ class TestBuildRequest:
         assert "it is too difficult without a library" in request
         assert "the library has no real job in it" in request
 
+    def test_each_track_has_its_own_request_version(self, monkeypatch) -> None:
+        """Rewording the control request leaves the reuse track's records current."""
+        reuse = generate._request_version("reuse")
+        monkeypatch.setitem(generate._INTRO, "control", "a reworded control request")
+        assert generate._request_version("reuse") == reuse
+        assert (
+            generate._request_version("control") != generate.PROMPT_VERSION["control"]
+        )
+
     def test_the_request_allows_a_small_change_to_make_a_task_contested(self) -> None:
         request = " ".join(generate.build_request(_SEED, "reuse").split())
         assert "You may make a small change to the seed's task" in request
@@ -394,7 +403,7 @@ class TestGenerateTask:
         assert record["attempts"] == 2
         assert record["expected_outputs"] == _EXPECTED_OUTPUTS
         assert record["task_hash"] == build.task_hash(record)
-        assert record["prompt_version"] == generate.PROMPT_VERSION
+        assert record["prompt_version"] == generate.PROMPT_VERSION["reuse"]
         assert record["seed_id"] == "BigCodeBench/1"
 
     def test_a_low_reuse_value_is_recorded_not_sent_back(self, monkeypatch) -> None:

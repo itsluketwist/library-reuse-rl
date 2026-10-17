@@ -2,17 +2,19 @@
 
 Each of the 66 code categories (taxonomy.yaml) pairs mature python libraries with concrete
 feature tasks (tasks.yaml) whose natural solution reaches for one of those libraries. Every
-task is wrapped in three modes (templates.yaml) - asked inside one vendored python repo's
-context (taxonomy.yaml's repo_hint), as a bare "how do I implement x", or as a stdin/stdout
-script reminiscent of the LibReuseBench eval benchmark - so the model sees the same
-library-reuse decision worded several ways. The reward is programmatic: any used external
-import (after subtracting stdlib and the repo's own local_modules) counts as reuse, so no
-labels or execution are needed.
+task is asked in three modes - inside one vendored python repo's context (taxonomy.yaml's
+repo_hint), as a bare "how do I implement x" (both from templates.yaml), or as a request for
+one named function in the style of the LibReuseBench eval benchmark's function tasks - so the
+model sees the same library-reuse decision worded several ways. The reward is programmatic: any
+used external import (after subtracting stdlib and the repo's own local_modules) counts as
+reuse, so no labels or execution are needed.
 
 The hybrid LLM layer (augment.py) adds claude-generated wordings from committed caches when
 present: one extra wording per task for repo and simple (repo_prompts.json / simple_prompts.json),
-and three staged wordings per task for script (script_stage_prompts.json, see SCRIPT_STAGES in
-augment.py). Without them the template-only build is fully deterministic.
+and the function mode's three staged requests (function_stage_prompts.json, see FUNCTION_STAGES
+in augment.py), which the function mode has no template for. The stdin/stdout script wordings
+of dataset v3 (templates.yaml's script templates and script_stage_prompts.json) are no longer in
+the dataset, but are kept for the script pilot below.
 
 `--pilot N` instead writes the script pilot file: just the script rows of the pilot's N tasks,
 both the dataset-v2 wordings and the new staged ones, so a model's library use on each can be
@@ -32,7 +34,9 @@ from llm_cgr import save_jsonl
 
 from data.build.contexts import Context, build_contexts
 from data.build.library.augment import (
+    FUNCTION_STAGES,
     SCRIPT_STAGES,
+    load_function_stage_cache,
     load_prompt_cache,
     load_script_stage_cache,
     pilot_seed_tasks,
@@ -61,8 +65,11 @@ VERSION = "2026-08"
 # script wording with three staged ones in LibReuseBench's template (outline/precise/benchmark,
 # see augment.py) beside the template script row, and adds a project-framed repo row with no
 # repo context (source "project", templates.yaml's repo_project) - 9 rows/task, or 6 for a task
-# that can't be posed honestly as stdin/stdout (it keeps only its template script row).
-DATASET_VERSION = "v3"
+# that can't be posed honestly as stdin/stdout (it keeps only its template script row). v4
+# follows LibReuseBench's move from stdin/stdout programs to function tasks: the four script rows
+# are replaced by three function-style requests (phrasing mode "function", function_stage
+# name/signature/example, see augment.py) - 8 rows/task, or 7 for a task with no honest example.
+DATASET_VERSION = "v4"
 
 _HERE = Path(__file__).parent
 TASKS_FILE = _HERE / "tasks.yaml"
@@ -157,11 +164,13 @@ def _row(
     phrasing_mode: str,
     source: str,
     script_stage: str | None = None,
+    function_stage: str | None = None,
 ) -> dict:
     """Assemble one library-usage row.
 
     `script_stage` names which script wording a script row is ("template", or one of
-    SCRIPT_STAGES for the staged claude wordings); it is None for repo and simple rows.
+    SCRIPT_STAGES for the staged claude wordings), and `function_stage` which of
+    FUNCTION_STAGES a function row is; each is None for every other row.
 
     Returns the row dict.
     """
@@ -182,6 +191,7 @@ def _row(
         "useful_libs": useful_libs,
         "phrasing_mode": phrasing_mode,
         "script_stage": script_stage,
+        "function_stage": function_stage,
         "allowlist_version": VERSION,
         "dataset_version": DATASET_VERSION,
         "source": source,
@@ -194,15 +204,16 @@ def build_library_usage_rows(
     templates: dict[str, list[str]],
     contexts_by_id: dict[str, Context],
     prompt_caches: dict[str, dict[str, list[str]]],
-    stage_cache: dict[str, dict[str, Any]],
+    function_cache: dict[str, dict[str, Any]],
 ) -> list[dict]:
     """Build library-usage rows: each task, in each of the 3 modes, from each source.
 
-    Every task gets one template row per mode, plus a project-framed repo row with no repo
-    context (source "project"). Repo and simple add one claude row each (once `prompt_caches` has an entry);
-    script adds one claude row per stage of the task's staged wording (once `stage_cache` has
-    an entry that fits stdin/stdout). That is 9 rows/task in steady state. Repo-mode rows are set in the one repo named by the task's category's
-    taxonomy.yaml repo_hint; simple- and script-mode rows carry no context.
+    Repo and simple get one template row each, and one claude row each once `prompt_caches` has
+    an entry; repo also gets a project-framed row with no repo context (source "project").
+    Function gets one claude row per stage of the task's staged requests, once `function_cache`
+    has an entry - two for a task with no honest example. That is 8 rows/task in steady state.
+    Repo-mode rows are set in the one repo named by the task's category's taxonomy.yaml
+    repo_hint; simple- and function-mode rows carry no context.
 
     Returns the library-usage rows.
     """
@@ -217,7 +228,6 @@ def build_library_usage_rows(
             for mode, context in (
                 ("repo", repo_context),
                 ("simple", None),
-                ("script", None),
             ):
                 # every mode has a fixed, non-empty template list, so this is never None
                 template = _pick_one(templates[mode], seed_task, salt=mode)
@@ -232,7 +242,6 @@ def build_library_usage_rows(
                         context,
                         phrasing_mode=mode,
                         source="template",
-                        script_stage="template" if mode == "script" else None,
                     )
                 )
 
@@ -253,23 +262,6 @@ def build_library_usage_rows(
                         )
                     )
 
-                if mode == "script":
-                    for stage, prompt in _staged_prompts(stage_cache, seed_task):
-                        rows.append(
-                            _row(
-                                prompt,
-                                cid,
-                                seed_task,
-                                task,
-                                useful_libs,
-                                context,
-                                phrasing_mode=mode,
-                                source="llm",
-                                script_stage=stage,
-                            )
-                        )
-                    continue
-
                 claude_prompt = _pick_one(
                     prompt_caches[mode].get(seed_task, []),
                     seed_task,
@@ -288,7 +280,38 @@ def build_library_usage_rows(
                             source="llm",
                         )
                     )
+
+            # the function-style requests, which replace v3's stdin/stdout script rows
+            for stage, prompt in _function_prompts(function_cache, seed_task):
+                rows.append(
+                    _row(
+                        prompt,
+                        cid,
+                        seed_task,
+                        task,
+                        useful_libs,
+                        None,
+                        phrasing_mode="function",
+                        source="llm",
+                        function_stage=stage,
+                    )
+                )
     return rows
+
+
+def _function_prompts(
+    function_cache: dict[str, dict[str, Any]],
+    seed_task: str,
+) -> list[tuple[str, str]]:
+    """List a task's staged function requests, plainest first.
+
+    A task with no cache entry has none, and one with no honest example (fits_example false)
+    has no example stage.
+
+    Returns (stage, prompt) pairs.
+    """
+    entry = function_cache.get(seed_task, {})
+    return [(stage, entry[stage]) for stage in FUNCTION_STAGES if entry.get(stage)]
 
 
 def _staged_prompts(
@@ -395,9 +418,9 @@ def main() -> None:
     taxonomy = yaml.safe_load(LIBRARY_TAXONOMY_FILE.read_text())
     tasks = yaml.safe_load(TASKS_FILE.read_text())
     templates = yaml.safe_load(TEMPLATES_FILE.read_text())
-    stage_cache = load_script_stage_cache()
 
     if args.pilot is not None:
+        stage_cache = load_script_stage_cache()
         pilot_tasks = pilot_seed_tasks(taxonomy, tasks, args.pilot)
         missing = [
             seed_task for seed_task in pilot_tasks if seed_task not in stage_cache
@@ -423,6 +446,7 @@ def main() -> None:
         return
 
     prompt_caches = {mode: load_prompt_cache(mode) for mode in ("simple", "repo")}
+    function_cache = load_function_stage_cache()
     aligned_categories = {
         entry["id"]
         for entry in taxonomy.get("code", [])
@@ -451,15 +475,16 @@ def main() -> None:
 
     rows = dedupe(
         build_library_usage_rows(
-            taxonomy, tasks, templates, contexts_by_id, prompt_caches, stage_cache
+            taxonomy, tasks, templates, contexts_by_id, prompt_caches, function_cache
         )
     )
-    # a task without a cached staged wording silently gets no staged rows, so report coverage
+    # a task without a cached function wording silently gets no function rows, so report
+    # coverage
     n_tasks = sum(len(category_tasks) for category_tasks in tasks.values())
-    n_fit = sum(1 for entry in stage_cache.values() if entry.get("fits_stdio"))
+    n_example = sum(1 for entry in function_cache.values() if entry.get("fits_example"))
     print(
-        f"staged script wordings: {len(stage_cache)}/{n_tasks} tasks cached, "
-        f"{n_fit} posed as stdin/stdout"
+        f"function wordings: {len(function_cache)}/{n_tasks} tasks cached, "
+        f"{n_example} with an example"
     )
     # test holds out whole (unseen) tasks; val is an in-distribution, category-stratified
     # subset of the seen tasks - so val tracks learning and test tracks generalisation. the

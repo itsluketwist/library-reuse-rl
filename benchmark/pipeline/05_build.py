@@ -1,17 +1,12 @@
-"""Stage 05: choose the tasks that ship, split them, and write the benchmark's data files.
+"""Stage 05: write the benchmark's data files from the tasks that ship.
 
-The splits are:
-- test: the high-tier tasks, where a library saves a lot of code. This is the main split.
-- dev: a few high-tier tasks held out of test (DEV_COUNT of them), for trying prompts on.
-- low_value: about LOW_VALUE_COUNT low-tier tasks, where a library saves little, spread across
-  libraries. They show the contrast with the test split.
-- control: the control track's tasks, where no library should help.
-Medium-tier tasks are in no split.
-
-Variety is enforced, so that no kind of task and no library dominates:
-- at most MAX_PER_CATEGORY tasks of any one category in each pool;
-- no library is the primary library of more than MAX_LIBRARY_SHARE of the test split.
-Where a cap forces a choice, the tasks with the highest reuse value are kept.
+The splits follow BigCodeBench itself, so that no choice made here shapes them:
+- test: every reuse-track task, from a seed whose reference solution uses a third-party library.
+- control: every control-track task, from a seed whose reference solution uses only the
+  standard library, where no library should help.
+Nothing is chosen or capped. Each test row carries a reuse_tier field (low, medium or high, from
+how many lines the library saves - see build.reuse_stats) with the line counts behind it, so that
+results can be broken down by how much a library helps.
 
 --provisional builds from the tasks the agent review (stage 03) kept, into
 benchmark/artefacts/provisional/, so that the benchmark can be evaluated before any human review.
@@ -19,13 +14,12 @@ Without it, only tasks both human reviewers approved are used, the splits are wr
 benchmark/libreusebench/data/ (where they are bundled as the released benchmark), and the build
 refuses to run while any task is still missing a verdict.
 
---pilot is for evaluating a pilot run, where every task counts. It writes every task the agent
-review kept to benchmark/artefacts/pilot/, with no variety caps and no dev split: all the reuse
-tasks, of any tier, go to test.jsonl, and all the control tasks to control.jsonl. Their ids start
-LRB2-PILOT/, so that a pilot's results are never mistaken for the benchmark's.
+--pilot is for evaluating a pilot run. It writes the same splits as --provisional, into
+benchmark/artefacts/pilot/, with ids starting LRB2-PILOT/, so that a pilot's results are never
+mistaken for the benchmark's.
 
-Each task gets a dataset-unique id after a seeded shuffle: LRB2/T000... (test), LRB2/D000...
-(dev), LRB2/L000... (low_value) and LRB2/C000... (control).
+Each task gets a dataset-unique id after a seeded shuffle: LRB2/T000... (test) and
+LRB2/C000... (control).
 
 Usage: python benchmark/pipeline/05_build.py [--provisional | --pilot]
 """
@@ -33,7 +27,7 @@ Usage: python benchmark/pipeline/05_build.py [--provisional | --pilot]
 import argparse
 import random
 import shutil
-from collections import Counter, defaultdict
+from collections import Counter
 
 from build import DATA_DIR, PILOT_DIR, PROVISIONAL_DIR, TRACKS, agent_kept_tasks
 from review import approved_tasks, pending
@@ -42,13 +36,9 @@ from src.utils.io import save_jsonl
 
 
 SEED = 42
-DEV_COUNT = 10
-LOW_VALUE_COUNT = 40
-MAX_PER_CATEGORY = 3
-MAX_LIBRARY_SHARE = 0.2
 
 # each split's file name and the letter in its task ids
-SPLIT_LETTERS = {"test": "T", "dev": "D", "low_value": "L", "control": "C"}
+SPLIT_LETTERS = {"test": "T", "control": "C"}
 
 
 def by_reuse_value(
@@ -56,7 +46,8 @@ def by_reuse_value(
 ) -> list[dict]:
     """Order tasks from the highest reuse value to the lowest (ties broken by seed id).
 
-    A control task has no reuse value, so control tasks simply come out in seed order.
+    A control task has no reuse value, so control tasks simply come out in seed order. The order
+    only fixes what the seeded shuffle starts from, so that a build is reproducible.
 
     Returns the ordered tasks.
     """
@@ -64,68 +55,6 @@ def by_reuse_value(
         tasks,
         key=lambda task: (-task.get("reuse_value", 0), task["seed_id"]),
     )
-
-
-def cap_categories(
-    tasks: list[dict],
-) -> list[dict]:
-    """Keep at most MAX_PER_CATEGORY tasks of each category, preferring the highest reuse value.
-
-    Returns the tasks kept, from the highest reuse value down.
-    """
-    kept: list[dict] = []
-    counts: Counter[str] = Counter()
-    for task in by_reuse_value(tasks):
-        if counts[task["category"]] < MAX_PER_CATEGORY:
-            counts[task["category"]] += 1
-            kept.append(task)
-    return kept
-
-
-def cap_libraries(
-    tasks: list[dict],
-) -> list[dict]:
-    """Drop tasks until no library is the primary library of more than MAX_LIBRARY_SHARE of them.
-
-    The most common library loses its lowest-value task, again and again, until it is within
-    the share. Every library may keep one task, so a pool with few libraries is not emptied.
-
-    Returns the tasks kept, from the highest reuse value down.
-    """
-    kept = by_reuse_value(tasks)
-    while kept:
-        counts = Counter(task["primary_library"] for task in kept)
-        library, count = counts.most_common(1)[0]
-        if count <= max(1, int(MAX_LIBRARY_SHARE * len(kept))):
-            break
-        # the list is ordered by value, so the library's last task is its lowest-value one
-        lowest = max(
-            index
-            for index, task in enumerate(kept)
-            if task["primary_library"] == library
-        )
-        del kept[lowest]
-    return kept
-
-
-def spread_across_libraries(
-    tasks: list[dict],
-    count: int,
-) -> list[dict]:
-    """Pick up to `count` tasks, taking one from each library in turn.
-
-    Returns the tasks picked.
-    """
-    by_library: defaultdict[str, list[dict]] = defaultdict(list)
-    for task in by_reuse_value(tasks):
-        by_library[task["primary_library"]].append(task)
-
-    picked: list[dict] = []
-    while len(picked) < count and any(by_library.values()):
-        for library in sorted(by_library):
-            if by_library[library] and len(picked) < count:
-                picked.append(by_library[library].pop(0))
-    return picked
 
 
 def shape(
@@ -167,37 +96,21 @@ def build_splits(
     control_tasks: list[dict],
     pilot: bool = False,
 ) -> dict[str, list[dict]]:
-    """Choose and split the tasks that ship, and give each its task id.
+    """Put every task that ships in its split, and give each its task id.
 
-    A pilot build chooses nothing: every reuse task goes to test, and every control task to
-    control, under ids of their own.
+    A pilot build uses ids of its own.
 
     Returns the rows of each split, by split name.
     """
-    rng = random.Random(SEED)
-    if pilot:
-        chosen = {"test": by_reuse_value(reuse_tasks), "control": list(control_tasks)}
-        return number_tasks(chosen, rng, prefix="LRB2-PILOT")
-
-    # the dev tasks are held out of the high-tier pool at random, never more than a fifth of
-    # it. the library cap is applied after that, so it holds for the test split itself
-    high = cap_categories(
-        [task for task in reuse_tasks if task["reuse_tier"] == "high"]
-    )
-    rng.shuffle(high)
-    n_dev = min(DEV_COUNT, len(high) // 5)
     chosen = {
-        "test": cap_libraries(high[n_dev:]),
-        "dev": high[:n_dev],
-        "low_value": spread_across_libraries(
-            cap_categories(
-                [task for task in reuse_tasks if task["reuse_tier"] == "low"]
-            ),
-            count=LOW_VALUE_COUNT,
-        ),
-        "control": cap_categories(control_tasks),
+        "test": by_reuse_value(reuse_tasks),
+        "control": by_reuse_value(control_tasks),
     }
-    return number_tasks(chosen, rng, prefix="LRB2")
+    return number_tasks(
+        chosen,
+        random.Random(SEED),
+        prefix="LRB2-PILOT" if pilot else "LRB2",
+    )
 
 
 def number_tasks(
@@ -256,7 +169,7 @@ def main() -> None:
     mode.add_argument(
         "--pilot",
         action="store_true",
-        help="write every agent-kept task, uncapped and unsplit, into artefacts/pilot",
+        help="build from the agent-kept tasks into artefacts/pilot, with pilot ids",
     )
     args = parser.parse_args()
 
@@ -283,9 +196,6 @@ def main() -> None:
         + ", ".join(f"{tiers[tier]} {tier}" for tier in ("high", "medium", "low"))
         + f") and {len(pools['control'])} control tasks may ship"
     )
-    if not args.pilot:
-        left_out = tiers["high"] - len(splits["test"]) - len(splits["dev"])
-        print(f"{left_out} high-tier task(s) are left out by the variety caps")
     for name, rows in splits.items():
         if not rows:
             print(f"{name}: no tasks, so no file is written")

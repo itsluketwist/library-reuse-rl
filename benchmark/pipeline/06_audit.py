@@ -34,7 +34,7 @@ from src.utils.io import load_jsonl
 
 
 # the splits each track ships
-TRACK_SPLITS = {"reuse": ("test", "dev", "low_value"), "control": ("control",)}
+TRACK_SPLITS = {"reuse": ("test",), "control": ("control",)}
 
 
 def _md_counts(
