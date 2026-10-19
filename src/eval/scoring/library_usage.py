@@ -52,7 +52,7 @@ def _task_library_use(
 
 def score_library_usage(
     dataset: Iterable[dict],
-    responses: list[list[tuple[str, str]]],
+    responses: list[list[tuple[str, str, int | None]]],
     python_executable: str | None = None,
     environment_root: str | None = None,
     environment_cache_dir: str | None = None,
@@ -73,7 +73,9 @@ def score_library_usage(
     task_results: list[list[dict]] = []
     for row, samples in zip(dataset, responses):
         row_results = []
-        for sample_idx, (response, stop_reason) in enumerate(samples):
+        for sample_idx, (response, stop_reason, completion_tokens) in enumerate(
+            samples
+        ):
             # the same parsing and library analysis (lure) as the training reward
             parsed = parse_response(
                 response,
@@ -93,6 +95,7 @@ def score_library_usage(
                 "task_id": row.get("task_id"),
                 "sample_idx": sample_idx,
                 "stop_reason": stop_reason,
+                "completion_tokens": completion_tokens,
                 "response": response,
                 "category_id": row.get("category_id"),
                 # valid means the answer has code and all of it parses, matching the

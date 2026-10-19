@@ -8,7 +8,7 @@ from libreusebench.evaluate import evaluate_responses as evaluate_lrb_responses
 
 def score_libreusebench(
     dataset: Iterable[dict],
-    responses: list[list[tuple[str, str]]],
+    responses: list[list[tuple[str, str, int | None]]],
     python_executable: str | None = None,
     environment_root: str | None = None,
     environment_cache_dir: str | None = None,
@@ -35,13 +35,16 @@ def score_libreusebench(
     del python_executable
     rows = list(dataset)
     response_texts = {
-        row["task_id"]: [response for response, _stop_reason in samples]
+        row["task_id"]: [response for response, _stop_reason, _tokens in samples]
         for row, samples in zip(rows, responses)
     }
-    stop_reasons = {
-        (row["task_id"], sample_idx): stop_reason
+    # each sample's stop reason and token count, keyed by task and sample
+    endings = {
+        (row["task_id"], sample_idx): (stop_reason, completion_tokens)
         for row, samples in zip(rows, responses)
-        for sample_idx, (_response, stop_reason) in enumerate(samples)
+        for sample_idx, (_response, stop_reason, completion_tokens) in enumerate(
+            samples
+        )
     }
 
     # the responses are already in memory, so they go straight to evaluate_responses;
@@ -67,10 +70,11 @@ def score_libreusebench(
         )
 
     # the official results number each task's samples as "idx" (0, 1, ...), which is
-    # how they are matched back to the stop reason and full text of that sample
+    # how they are matched back to the stop reason, token count and full text of that sample
     results = official.pop("results")
     for result in results:
-        result["stop_reason"] = stop_reasons[(result["task_id"], result["idx"])]
+        key = (result["task_id"], result["idx"])
+        result["stop_reason"], result["completion_tokens"] = endings[key]
         result["response"] = response_texts[result["task_id"]][result["idx"]]
 
     return {

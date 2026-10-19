@@ -22,7 +22,7 @@ def generate_vllm_responses(
     llm: LLM,
     prompts: list[list[dict]],
     decoding_settings: dict[str, Any],
-) -> list[list[tuple[str, str]]]:
+) -> list[list[tuple[str, str, int | None]]]:
     """
     Generate one or more sampled responses per prompt from `llm`.
 
@@ -38,11 +38,20 @@ def generate_vllm_responses(
     outputs in the same order as `prompts`.
 
     Returns a list aligned with `prompts`, each element a list of that prompt's
-    (response, stop_reason) samples (length `n_samples`).
+    (response, stop_reason, completion_tokens) samples (length `n_samples`).
     """
     records = generate_vllm_records(llm, prompts, decoding_settings)
     return [
-        [(sample["content"], sample["finish_reason"]) for sample in samples]
+        [
+            (
+                sample["content"],
+                sample["finish_reason"],
+                # the tokens the model generated, thinking included (a prefilled opening
+                # <think> tag is part of the prompt, so it isn't counted)
+                sample["usage"]["completion_tokens"],
+            )
+            for sample in samples
+        ]
         for samples in records
     ]
 

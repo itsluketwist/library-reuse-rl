@@ -10,7 +10,7 @@ from src.response.pick import extract_primary_pick
 
 def score_product_choice(
     dataset: Iterable[dict],
-    responses: list[tuple[str, str]],
+    responses: list[tuple[str, str, int | None]],
     python_executable: str | None = None,
     environment_root: str | None = None,
     environment_cache_dir: str | None = None,
@@ -21,7 +21,7 @@ def score_product_choice(
     """
     del python_executable, environment_root, environment_cache_dir
     results = []
-    for row, (response, stop_reason) in zip(dataset, responses):
+    for row, (response, stop_reason, completion_tokens) in zip(dataset, responses):
         # only the answer is judged, never the reasoning
         _, answer = split_reasoning(response)
         pick = extract_primary_pick(
@@ -35,6 +35,7 @@ def score_product_choice(
                 "idx": row["idx"],
                 "task_id": row.get("task_id"),
                 "stop_reason": stop_reason,
+                "completion_tokens": completion_tokens,
                 "response": response,
                 "category_id": row.get("category_id"),
                 "primary": pick.primary,

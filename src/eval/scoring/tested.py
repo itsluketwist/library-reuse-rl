@@ -9,7 +9,7 @@ from src.response.pipeline import process_response
 
 def score_tested(
     dataset: Iterable[dict],
-    responses: list[tuple[str, str]],
+    responses: list[tuple[str, str, int | None]],
     python_executable: str | None = None,
     environment_root: str | None = None,
     environment_cache_dir: str | None = None,
@@ -22,7 +22,7 @@ def score_tested(
     # each result is a heterogeneous record (strs, bools, lists, ...), so type as Any
     results: list[dict[str, Any]] = []
     n_passed = 0
-    for row, (response, stop_reason) in zip(dataset, responses):
+    for row, (response, stop_reason, completion_tokens) in zip(dataset, responses):
         processed = process_response(
             response=response,
             record={
@@ -46,6 +46,7 @@ def score_tested(
                 "idx": row["idx"],
                 "task_id": row.get("task_id"),
                 "stop_reason": stop_reason,
+                "completion_tokens": completion_tokens,
                 "response": response,
                 "passed": processed.passed,
                 "output": processed.output,

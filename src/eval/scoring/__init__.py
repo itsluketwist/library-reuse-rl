@@ -35,7 +35,7 @@ MULTI_SAMPLE_EVALUATORS = set(_MULTI_SAMPLE_SCORERS)
 
 def score_dataset(
     dataset: Iterable[dict],
-    responses: list[list[tuple[str, str]]],
+    responses: list[list[tuple[str, str, int | None]]],
     evaluator: str,
     python_executable: str | None = None,
     environment_root: str | None = None,
@@ -43,9 +43,10 @@ def score_dataset(
 ) -> tuple[dict, list[dict]]:
     """Score a whole eval dataset with its configured evaluator.
 
-    `responses` holds every sampled response per row (see generate_vllm_responses'
-    n_samples support). MULTI_SAMPLE_EVALUATORS score every sample; the rest only ever
-    look at the first, which this takes care of internally.
+    `responses` holds every sampled response per row, each as (response, stop_reason,
+    completion_tokens) (see generate_vllm_responses' n_samples support). Every scorer keeps
+    the stop reason and token count on its result rows. MULTI_SAMPLE_EVALUATORS score every
+    sample; the rest only ever look at the first, which this takes care of internally.
 
     Datasets that execute code build a venv to run it in: `environment_root` is where a
     disposable one goes, and `environment_cache_dir` names one to reuse across runs

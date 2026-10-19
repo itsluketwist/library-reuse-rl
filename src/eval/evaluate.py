@@ -36,19 +36,24 @@ def unscored_generations_path(output_path: Path) -> Path:
 
 
 def save_unscored_generations(
-    responses: list[list[tuple[str, str]]],
+    responses: list[list[tuple[str, str, int | None]]],
     path: Path,
 ) -> None:
     """
-    Save a dataset's generated responses (one line per prompt, with every sample's text and
-    stop reason) before they are scored, so a scoring failure never loses them.
+    Save a dataset's generated responses (one line per prompt, with every sample's text,
+    stop reason and token count) before they are scored, so a scoring failure never loses
+    them.
     """
     save_jsonl(
         [
             {
                 "samples": [
-                    {"response": response, "stop_reason": stop_reason}
-                    for response, stop_reason in samples
+                    {
+                        "response": response,
+                        "stop_reason": stop_reason,
+                        "completion_tokens": completion_tokens,
+                    }
+                    for response, stop_reason, completion_tokens in samples
                 ],
             }
             for samples in responses
@@ -61,7 +66,7 @@ def load_unscored_generations(
     path: Path,
     n_prompts: int,
     n_samples: int,
-) -> list[list[tuple[str, str]]] | None:
+) -> list[list[tuple[str, str, int | None]]] | None:
     """
     Load generations a previous run saved but couldn't score, so they can be scored without
     generating them again. They are only reused when they match this run: one line per prompt
@@ -73,8 +78,16 @@ def load_unscored_generations(
     if not path.exists():
         return None
 
+    # a file saved before token counts were kept has none, so its samples load as None
     responses = [
-        [(sample["response"], sample["stop_reason"]) for sample in row["samples"]]
+        [
+            (
+                sample["response"],
+                sample["stop_reason"],
+                sample.get("completion_tokens"),
+            )
+            for sample in row["samples"]
+        ]
         for row in load_jsonl(path)
     ]
     if len(responses) != n_prompts or any(len(s) != n_samples for s in responses):

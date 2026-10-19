@@ -238,7 +238,7 @@ class TestScoringFailures:
     @staticmethod
     def _score(**kwargs):
         """A fake scorer that fails on the first dataset's response."""
-        if kwargs["responses"] == [[("first response", "eos")]]:
+        if kwargs["responses"] == [[("first response", "eos", 2)]]:
             raise RuntimeError("could not install a package")
         return {"task": "library_usage", "n_total": 1}, [{"idx": 0}]
 
@@ -249,7 +249,7 @@ class TestScoringFailures:
         names = iter(["first", "second"])
 
         def generate(**kwargs):
-            return [[(f"{next(names)} response", "eos")]]
+            return [[(f"{next(names)} response", "eos", 2)]]
 
         with pytest.raises(RuntimeError, match=r"\['first'\]"):
             self._evaluate(monkeypatch, tmp_path, generate, self._score)
@@ -264,13 +264,13 @@ class TestScoringFailures:
     def test_a_later_run_scores_the_saved_generations(self, monkeypatch, tmp_path):
         """Saved generations are scored without generating them again."""
         evaluate.save_unscored_generations(
-            [[("saved response", "eos")]],
+            [[("saved response", "eos", 2)]],
             tmp_path / "first.unscored.jsonl",
         )
         scored = []
 
         def generate(**kwargs):
-            return [[("second response", "eos")]]
+            return [[("second response", "eos", 2)]]
 
         def score(**kwargs):
             scored.append(kwargs["responses"])
@@ -278,7 +278,8 @@ class TestScoringFailures:
 
         self._evaluate(monkeypatch, tmp_path, generate, score)
 
-        assert scored[0] == [[("saved response", "eos")]]
+        # the saved sample comes back whole, its token count included
+        assert scored[0] == [[("saved response", "eos", 2)]]
         assert (tmp_path / "first.json").exists()
         assert not (tmp_path / "first.unscored.jsonl").exists()
 
@@ -286,12 +287,22 @@ class TestScoringFailures:
 def test_mismatched_saved_generations_are_ignored(tmp_path):
     """Saved generations are only reused when they match the run's prompts and samples."""
     path = tmp_path / "x.unscored.jsonl"
-    evaluate.save_unscored_generations([[("a", "eos")], [("b", "eos")]], path)
+    evaluate.save_unscored_generations([[("a", "eos", 1)], [("b", "eos", 1)]], path)
 
     assert evaluate.load_unscored_generations(path, n_prompts=2, n_samples=1) == [
-        [("a", "eos")],
-        [("b", "eos")],
+        [("a", "eos", 1)],
+        [("b", "eos", 1)],
     ]
     assert evaluate.load_unscored_generations(path, n_prompts=3, n_samples=1) is None
     assert evaluate.load_unscored_generations(path, n_prompts=2, n_samples=5) is None
     assert evaluate.load_unscored_generations(tmp_path / "none.jsonl", 2, 1) is None
+
+
+def test_saved_generations_from_before_token_counts_still_load(tmp_path):
+    """A file saved before token counts were kept loads, with no count for its samples."""
+    path = tmp_path / "old.unscored.jsonl"
+    path.write_text('{"samples": [{"response": "a", "stop_reason": "eos"}]}\n')
+
+    assert evaluate.load_unscored_generations(path, n_prompts=1, n_samples=1) == [
+        [("a", "eos", None)],
+    ]

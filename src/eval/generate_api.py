@@ -68,12 +68,13 @@ def _complete_one(
     prompt: list[dict],
     decoding_settings: dict[str, Any],
     api: ApiSettings,
-) -> tuple[str, str]:
+) -> tuple[str, str, int | None]:
     """
     Request a single chat completion for `prompt` (a chat-messages list, see
     load_eval_dataset). `decoding_settings`' top_k has no API equivalent and is ignored.
 
-    Returns a (response, stop_reason) tuple.
+    Returns a (response, stop_reason, completion_tokens) tuple; completion_tokens is None
+    when the provider reports no usage, or the request failed.
     """
     try:
         completion = client.chat.completions.create(
@@ -87,7 +88,7 @@ def _complete_one(
     except Exception as exc:
         # the SDK already retried; failing this one sample beats discarding every other
         # (paid) generation in the run by raising out of the thread pool
-        return f"API request failed: {exc}", FAILED_STOP_REASON
+        return f"API request failed: {exc}", FAILED_STOP_REASON, None
 
     choice = completion.choices[0]
     text = choice.message.content or ""
@@ -99,7 +100,10 @@ def _complete_one(
     if reasoning:
         text = f"<think>{reasoning}</think>{text}"
 
-    return text, map_stop_reason(choice.finish_reason)
+    # each sample is its own request, so the request's usage is this sample's
+    usage = getattr(completion, "usage", None)
+    completion_tokens = getattr(usage, "completion_tokens", None)
+    return text, map_stop_reason(choice.finish_reason), completion_tokens
 
 
 def generate_api_responses(
@@ -108,7 +112,7 @@ def generate_api_responses(
     prompts: list[list[dict]],
     decoding_settings: dict[str, Any],
     max_workers: int = DEFAULT_MAX_WORKERS,
-) -> list[list[tuple[str, str]]]:
+) -> list[list[tuple[str, str, int | None]]]:
     """
     Generate one or more sampled responses per prompt from the hosted `model`.
 
@@ -120,7 +124,7 @@ def generate_api_responses(
     network call rather than a batched local forward pass.
 
     Returns a list aligned with `prompts`, each element a list of that prompt's
-    (response, stop_reason) samples (length `n_samples`).
+    (response, stop_reason, completion_tokens) samples (length `n_samples`).
     """
     client = _build_client(api)
     n_samples = decoding_settings.get("n_samples", 1)
@@ -145,7 +149,9 @@ def generate_api_responses(
             )
         )
 
-    failed = sum(1 for _text, stop_reason in flat if stop_reason == FAILED_STOP_REASON)
+    failed = sum(
+        1 for _text, stop_reason, _tokens in flat if stop_reason == FAILED_STOP_REASON
+    )
     if failed:
         log(f"WARNING: {failed}/{len(flat)} API requests failed - see the responses")
 

@@ -7,9 +7,9 @@ from lure import parse_response
 from src.eval.scoring import score_dataset
 
 
-def _responses(*texts: str) -> list[list[tuple[str, str]]]:
-    """One sampled response per row, each paired with a 'stop' stop-reason."""
-    return [[(text, "stop")] for text in texts]
+def _responses(*texts: str) -> list[list[tuple[str, str, int | None]]]:
+    """One sampled response per row, each with a 'stop' stop-reason and 100 tokens."""
+    return [[(text, "stop", 100)] for text in texts]
 
 
 class TestScoreTestedImplementation:
@@ -42,6 +42,7 @@ print(value)
 
         assert analysis["accuracy"] == 1.0
         assert results[0]["n_code_blocks"] == 2
+        assert results[0]["completion_tokens"] == 100
         # the code is not stored, but re-extracts from the stored response
         reparsed = parse_response(results[0]["response"])
         assert reparsed.longest_block is reparsed.code_blocks[1]

@@ -1,125 +1,66 @@
 # Datasets
 
-All dataset download/construction code and the built datasets live here (the exception is the
-**LibReuseBench** eval benchmark, which is built and bundled in `benchmark/`). The folder is
-called `data` (not `datasets`) so it never shadows the HuggingFace `datasets` library.
+The training and evaluation datasets, and the code that builds them. The LibReuseBench benchmark
+is built separately, in `benchmark/`. The folder is called `data`, not `datasets`, so it never
+shadows the HuggingFace `datasets` library.
 
-- **`train/`** — built training splits (`{train,val,test}.jsonl` each). `library_usage` is
-  committed; `skywork` is a large download and `product_choice` depends on an upstream seed
-  without a redistribution licence, so those two are gitignored and must be built locally.
-- **`eval/`** — the committed evaluation sets (`livecodebench.jsonl`, `apps_introductory.jsonl`).
-- **`build/`** — all the construction code (an installed package, `data.build.*`, run by path).
-  `audit.py` writes one report per pipeline: `build/library/docs/REPORT.md` (library_usage, the
-  main focus) and `build/amplify/docs/REPORT.md` (everything else, e.g. product_choice).
-- **`build/library/docs/`** — `CONSTRUCTION.md` (how the library_usage dataset is built),
-  `REPORT.md`, `PROMPT_COMPARISON.md`.
+- **`train/`**: built training splits, each as `{train,val,test}.jsonl`.
+- **`eval/`**: committed eval sets (`livecodebench.jsonl`, `apps_introductory.jsonl`).
+- **`build/`**: the code that builds them, run by path from the repo root.
 
-The `product_choice` split and the amplify seed are derived from amplifying.ai's **claude-code-picks**
-study — [blog](https://amplifying.ai/research/claude-code-picks) ·
-[repo](https://github.com/amplifying-ai/claude-code-picks). Credit to them for the prompts, the
-test repos, and the tool-frequency data we build on. The split is not redistributed here because
-the upstream seed has no licence.
+## The training datasets
 
-## Three task styles
+| Dataset | Model produces | Reward | Status |
+| --- | --- | --- | --- |
+| `library_usage` | code | whether the code uses a library (from its imports, nothing is run) | **main focus**, committed |
+| `implement_tested` (`train/skywork/`) | a stdin/stdout program | execution against tests | option, gitignored (large download) |
+| `product_choice` | a prose recommendation | whether it names an allowlisted tool | option, gitignored (see below) |
 
-| Task | Split | Model produces | Reward | Focus |
-| --- | --- | --- | --- | --- |
-| `implement_tested` | `train/skywork/` | code (stdin/stdout) | execution vs tests | option |
-| `product_choice` | `train/product_choice/` | prose pick | allowlist prose match, no execution | option |
-| `library_usage` | `train/library_usage/` | code (in/around a repo) | **import classification, no execution** | **main focus** |
+### `library_usage`
 
-`library_usage` is the one we care about: 66 code categories where a mature python library
-exists but a model is tempted to hand-roll it. Reuse is detected programmatically — extract the
-solution's imports, subtract the standard library and the repo's own modules (`local_modules`),
-and any remaining *used* import is genuine reuse (no labels, no execution). Each task is asked
-in 3 modes — set **in a python repo's context** (`repo`), as a **bare "how do I implement X"**
-(`simple`), or as a **request for one named function** (`function`, in the style of the
-LibReuseBench eval benchmark's function tasks). `repo` and `simple` each have a deterministic
-template row and a claude-generated row, and `repo` also has a project-framed template row with
-no repo context (`source: "project"`). `function` has three claude-generated requests at
-increasing detail (`name` / `signature` / `example`), so every task has up to 8 rows. See
-`src/grpo/rewards/library_usage.py`.
+- **Tasks:** 194 small feature tasks in 66 categories, each a job where a mature Python library
+  exists but a model might write the code by hand. They are defined in `build/library/`
+  (`taxonomy.yaml`, `tasks.yaml`).
+- **Reward:** the response's imports, minus the standard library and the project's own modules
+  (`local_modules`). Any remaining import the code uses counts as library use. See
+  `src/grpo/rewards/library_usage.py`.
+- **Wordings:** each task is asked in three modes, up to 8 rows per task in the current
+  version (v4):
+  - `repo`, 3 rows: a template inside a real project's files, the same request with no project
+    shown, and a claude-written request inside the project.
+  - `simple`, 2 rows: a template and a claude-written request.
+  - `function`, 3 rows: claude-written requests for one named function, in LibReuseBench's
+    style: `name`, `signature` and `example`.
+- **Splits** (`build/split.py`): **test** holds out 19 whole tasks, one per category, to measure
+  generalisation to unseen tasks. **val** holds out some wordings of the tasks in train, to track
+  learning.
+- **Ids:** `LRRL/U####`, numbered test, then train, then val. Every rebuild renumbers them, so
+  eval results record the `dataset_version` they scored.
+- **More:** `build/library/HISTORY.md` describes each version and why it changed;
+  `build/library/docs/CONSTRUCTION.md` explains how the rows are built.
 
-**Ids.** Every row carries a unique `task_id` in the benchmark's style — `LRRL/U####` for
-`library_usage`, `LRRL/P####` for `product_choice`. Ids are assigned within the splits, numbered
-in test → train → val order, so they are contiguous per split and the test set starts at `…0000`.
+### `product_choice`
 
-**Versioning.** Every `library_usage` row carries a `dataset_version`. **v1** was the
-deterministic, template-only build. **v2** is the 3-mode (`repo`/`simple`/`script`) x
-2-source (`template`/`claude`) build: every task gets one row per (mode, source) - 6 rows/task
-once the claude caches (`build/library/*_prompts.json`) are populated via `augment.py`'s CLI, 3
-rows/task (template-only) while a cache is still empty. **v3** replaces the one claude
-`script` wording with three staged ones in LibReuseBench's template (`outline` / `precise` /
-`benchmark`, recorded as `script_stage`), because the v2 wording gave almost no library-use
-signal, and adds a project-framed `repo` row with no repo context ("... so that I can use it in my
-project") -
-9 rows/task, or 6 for a task that can't be posed as stdin/stdout. **v4** (current) follows
-LibReuseBench's move from stdin/stdout programs to function tasks: the four `script` rows are
-replaced by three `function` rows (`name` / `signature` / `example`, recorded as
-`function_stage`), each written to leave the choice between a library and the standard library
-open - 8 rows/task, or 7 for a task with no honest example. The `repo` and `simple` rows and the
-test tasks are the same as v3's. The script wordings are kept, for the script pilot only. Bump
-`DATASET_VERSION` in `build/library/build.py` when the construction method changes again.
-Eval results record the `dataset_version` they scored, since a rebuild renumbers every id.
-
-**Splits.** Made by `build/split.py:split_disjoint_test`, with two deliberately different holdouts:
-
-- **test** holds out **whole, unseen tasks** — every wording of a held-out task is removed from
-  training, so test measures generalisation to tasks the model never trained on. Test tasks are
-  spread across categories (at most one per category, only from categories with >1 task, so no
-  category is emptied). With v2's 194 tasks across 66 categories this covers ~19 categories.
-- **val** is an in-distribution, **`category_id`-stratified** subset of the *seen* tasks (held-out
-  rows/wordings of tasks that are also in train, across all 66 categories) — so val tracks whether
-  the model is learning the training distribution, while test is the final unseen check.
+Built from amplifying.ai's **claude-code-picks** study ([blog](https://amplifying.ai/research/claude-code-picks)
+· [repo](https://github.com/amplifying-ai/claude-code-picks)), which we credit for the prompts,
+test repos and tool-frequency data. The upstream seed has no licence, so the split is not
+redistributed and must be built locally.
 
 ## `build/`
 
-Shared helpers (used by both pipelines):
-
-- **`paths.py`** — every shared path (vendor dir, taxonomies, output dirs, report).
-- **`contexts.py`** — turn a repo into prompt context (+ `local_modules`).
-- **`split.py`** — stratified train/val/test split.
-- **`download_skywork.py`** — the `implement_tested` / skywork code split → `train/skywork/`.
-- **`download_eval.py`** — the LiveCodeBench + APPS eval sets → `eval/`.
-- **`audit.py`** — summarise the built splits, one report per pipeline: `library/docs/REPORT.md`
-  and `amplify/docs/REPORT.md`.
-
-**`build/amplify/`** — the amplify (`product_choice`) pipeline (an option, not expanded):
-
-- **`vendor_seed.py`** — fetch the amplify seed (prompts + tool-frequency extractions + repos)
-  into `build/vendor/` (gitignored, pinned revision). Shared prerequisite — run it first; the
-  library pipeline reuses the vendored python-api repo as one of its contexts.
-- **`taxonomy.yaml`** — the 20 amplify product categories.
-- **`allowlists.py`** — build `config/library_allowlists.yaml` from the taxonomies + amplify data.
-- **`build.py`** — build the `product_choice` split → `train/product_choice/`.
-- **`docs/REPORT.md`** — `audit.py`'s report for every dataset besides library_usage.
-
-**`build/library/`** — the library-usage pipeline (the main focus):
-
-- **`taxonomy.yaml`** — the 66 code categories (`seed_libraries` are pip import names;
-  `repo_hint` picks which repo below a category's repo-mode rows are set in).
-- **`tasks.yaml`** — the concrete feature tasks per category.
-- **`templates.yaml`** — 2 deterministic phrasing templates per mode (`repo`/`simple`, plus
-  `script`, which only the script pilot still uses);
-  build.py deterministically picks one per task.
-- **`repos/`** — committed repos we author (e.g. `pytoolbox`, a deliberately broad toolbox) used
-  as repo-mode contexts, so every category has a plausible repo it could be added to.
-- **`augment.py`** — LLM seam that adds claude-generated wordings (one per task for `repo` and
-  `simple`, three staged ones for `script`, and three staged `function` requests); also the CLI
-  (`python data/build/library/augment.py --type simple|script|repo|function|all`) that
-  regenerates the caches offline (needs `ANTHROPIC_API_KEY`; build.py itself never calls an LLM).
-- **`simple_prompts.json` / `repo_prompts.json`** — committed caches of claude-generated
-  wordings the build folds in (empty ⇒ templates only). `script_stage_prompts.json` (the v3
-  staged script wordings) and `script_prompts.json` (the v2 ones) are kept only for the script
-  pilot.
-- **`function_stage_prompts.json`** — each task as a request for one Python function, in
-  LibReuseBench's new function style, at three levels of detail (`name` / `signature` /
-  `example`). Every wording is asked to be *contested*: as reasonable to write by hand as with a
-  library. These are the `function` rows from dataset v4 on.
-- **`build.py`** — build the `library_usage` split → `train/library_usage/`; with `--pilot N`,
-  the script pilot file instead (`pilot/script_pilot.jsonl`, see `docs/CONSTRUCTION.md`).
-- **`docs/`** — `CONSTRUCTION.md` (how this all fits together), `REPORT.md`, `PROMPT_COMPARISON.md`
-  (sample prompts from each mode/source, for reviewing `augment.py`'s output by eye).
+- **Shared:** `paths.py` (every path), `contexts.py` (a repo as prompt context, with its
+  `local_modules`), `split.py`, `audit.py` (writes each pipeline's `docs/REPORT.md`),
+  `download_skywork.py`, `download_eval.py`, `llm.py` (the claude client).
+- **`amplify/`:** the `product_choice` pipeline. `vendor_seed.py` fetches the amplify seed into
+  `build/vendor/` (gitignored); the library pipeline reuses its python-api repo, so run it first.
+  `allowlists.py` writes `config/library_allowlists.yaml`.
+- **`library/`:** the `library_usage` pipeline.
+  - Inputs: `taxonomy.yaml`, `tasks.yaml`, `templates.yaml`, and the authored repo `repos/pytoolbox/`.
+  - `augment.py` generates the claude-written wordings into committed caches
+    (`simple_prompts.json`, `repo_prompts.json`, `function_stage_prompts.json`). It needs
+    `ANTHROPIC_API_KEY`; `build.py` reads the caches and never calls a model.
+  - `script_prompts.json` and `script_stage_prompts.json` hold the stdin/stdout wordings of v2
+    and v3. Only the script pilot (`build.py --pilot N`) still uses them.
 
 ## Run order (from the repo root)
 
@@ -128,15 +69,15 @@ Shared helpers (used by both pipelines):
 python data/build/amplify/vendor_seed.py    # -> data/build/vendor/ (needed by both pipelines)
 python data/build/amplify/allowlists.py     # -> config/library_allowlists.yaml
 python data/build/amplify/build.py          # -> data/train/product_choice/
-python data/build/library/build.py          # -> data/train/library_usage/   (the focus)
-python data/build/audit.py                  # -> */docs/REPORT.md (library + amplify)
+python data/build/library/build.py          # -> data/train/library_usage/
+python data/build/audit.py                  # -> */docs/REPORT.md
 python data/build/download_skywork.py       # -> data/train/skywork/  (large, optional)
 
-# evaluation benchmarks
+# evaluation sets
 python data/build/download_eval.py          # -> data/eval/
 ```
 
-## Training / eval
+## Training and eval
 
 ```
 run_grpo -m <model> -d data/train/library_usage  -rp lu-v1
@@ -144,11 +85,7 @@ run_grpo -m <model> -d data/train/product_choice -rp product_choice
 run_eval -m <model> -d library_usage,product_choice
 ```
 
-The eval dataset configuration stores an explicit `evaluator` beside every path. The
-library-usage evaluator examines every fenced answer code block and reports valid-code
-rate, reuse rate, appropriate-library rate, average distinct libraries used, library counts,
-and per-phrasing-mode breakdowns (`repo`/`simple`/`function`; `script` for v3 results). LibReuseBench uses its package's complete official
-evaluator:
-it discovers and installs the generated responses' dependencies in an isolated environment,
-runs the official tests, and saves the official correctness and reuse statistics together with
-the requested packages and resolved environment versions.
+Eval datasets are named in `config/eval_datasets.yaml`, each with its path and evaluator. The
+library-usage evaluator reports valid-code, library-use and appropriate-library rates, overall
+and by mode. LibReuseBench uses its own package's evaluator, which installs what the responses
+import and runs the tests.

@@ -5,9 +5,9 @@ import pytest
 from src.eval.scoring import score_dataset
 
 
-def _responses(*texts: str) -> list[list[tuple[str, str]]]:
-    """One sampled response per row, each paired with a 'stop' stop-reason."""
-    return [[(text, "stop")] for text in texts]
+def _responses(*texts: str) -> list[list[tuple[str, str, int | None]]]:
+    """One sampled response per row, each with a 'stop' stop-reason and 100 tokens."""
+    return [[(text, "stop", 100)] for text in texts]
 
 
 class TestScoreLibReuseBench:
@@ -146,8 +146,8 @@ class TestScoreLibReuseBench:
                 "expected_outputs": ["1"],
             }
         ]
-        responses = [
-            [("print(1)", "stop"), ("print(2)", "length")],
+        responses: list[list[tuple[str, str, int | None]]] = [
+            [("print(1)", "stop", 40), ("print(2)", "length", 16384)],
         ]
 
         analysis, results = score_dataset(
@@ -158,9 +158,11 @@ class TestScoreLibReuseBench:
 
         assert seen["responses"] == {"LRB/T000": ["print(1)", "print(2)"]}
         assert analysis["pass@1"] == 0.5
-        # each sample's own stop_reason and full text are matched back by its sample idx
+        # each sample's own stop_reason, token count and full text are matched back by its
+        # sample idx
         assert results[0]["stop_reason"] == "stop"
         assert results[1]["stop_reason"] == "length"
+        assert [r["completion_tokens"] for r in results] == [40, 16384]
         assert [r["response"] for r in results] == ["print(1)", "print(2)"]
 
     def test_environment_setup_failure_is_fatal(self, monkeypatch):

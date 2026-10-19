@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # copies the eval results on the full training split (library_usage_train), on the script
 # pilot (library_usage_script_pilot), and every response on the full LibReuseBench v2 generation
-# (libreusebench_v2_full), down from isambard. they are too large to commit (thousands of long
-# responses per model), so they are git-ignored and fetched with this instead. run from the repo
-# root on your own machine; existing files are overwritten with the latest.
+# (libreusebench_v2_full), down from isambard. most are too large to commit (thousands of long
+# responses per model), so they are git-ignored and fetched with this instead; the
+# libreusebench_v2_full runs with 5 samples are committed too, and copying them is harmless.
+# run from the repo root on your own machine; existing files are overwritten with the latest.
 #
 #   bash scripts/download_train_results.sh         # download (or refresh) the local copies
 #   bash scripts/download_train_results.sh clean   # delete the local copies (lists them and asks)

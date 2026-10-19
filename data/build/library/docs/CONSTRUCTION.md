@@ -1,7 +1,8 @@
 # library_usage — construction
 
 How the `library_usage` dataset is built. This is the internal/reviewer-facing doc; see
-[../../../README.md](../../../README.md) for how the whole `data/` pipeline fits together and
+[../../../README.md](../../../README.md) for how the whole `data/` pipeline fits together,
+[../HISTORY.md](../HISTORY.md) for what each dataset version changed and why, and
 `PROMPT_COMPARISON.md` for real sample output.
 
 ## The idea

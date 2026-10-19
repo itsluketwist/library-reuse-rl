@@ -204,9 +204,13 @@ output/**/*.unscored.jsonl
 output/**/library_usage_train-*
 # ... and on the script pilot (data/build/library/build.py --pilot), fetched the same way
 output/**/library_usage_script_pilot-*
-# ... and every response on the full LibReuseBench v2 generation (233 tasks x 25 samples, up to
-# 200MB a model), fetched the same way. its small .json analysis files are still committed
-output/**/libreusebench_v2_full-*.generations.jsonl
+# ... and every response of the LibReuseBench v2 full runs that drew 25 samples per task (233
+# tasks x 25 samples, up to 200MB a file): the baselines, 4796 and e650. they are fetched the same
+# way. later runs draw 5 samples (about a fifth of the size) and are committed, and the small
+# .json analysis files always are
+output/baselines/*/libreusebench_v2_full-*.generations.jsonl
+output/01/qwen3-8b-4796/*/libreusebench_v2_full-*.generations.jsonl
+output/02/qwen3-8b-e650/*/libreusebench_v2_full-*.generations.jsonl
 
 # debug runs' outputs (see src/utils/paths.py for the layout)
 output/debug/

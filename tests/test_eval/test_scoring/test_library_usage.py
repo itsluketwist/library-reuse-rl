@@ -5,18 +5,21 @@ from lure import parse_response
 from src.eval.scoring import score_dataset
 
 
-def _responses(*texts: str) -> list[list[tuple[str, str]]]:
-    """One sampled response per row, each paired with a 'stop' stop-reason."""
-    return [[(text, "stop")] for text in texts]
+def _responses(*texts: str) -> list[list[tuple[str, str, int | None]]]:
+    """One sampled response per row, each with a 'stop' stop-reason and 100 tokens."""
+    return [[(text, "stop", 100)] for text in texts]
 
 
-def _multi_responses(*rows: list[str]) -> list[list[tuple[str, str]]]:
-    """Pair each row's sampled response texts with a 'stop' stop-reason.
+def _multi_responses(*rows: list[str]) -> list[list[tuple[str, str, int | None]]]:
+    """Give each row's sampled response texts a 'stop' stop-reason, and a token count of
+    100 times the sample's position plus one (100, 200, ...) to tell the samples apart.
 
     Each argument is one dataset row's list of sampled response texts (see
     MULTI_SAMPLE_EVALUATORS - these evaluators score every sample, not just one).
     """
-    return [[(text, "stop") for text in row] for row in rows]
+    return [
+        [(text, "stop", 100 * (i + 1)) for i, text in enumerate(row)] for row in rows
+    ]
 
 
 class TestScoreLibraryUsage:
@@ -168,8 +171,9 @@ def broken(:
 
         assert len(results) == 2
         assert [r["sample_idx"] for r in results] == [0, 1]
-        # each result keeps its sample's full text, reasoning included
+        # each result keeps its sample's full text, reasoning included, and its token count
         assert results[1]["response"].startswith("r</think>")
+        assert [r["completion_tokens"] for r in results] == [100, 200]
         # per-response: only half the samples used the library
         assert analysis["external_lib_used_rate"] == 0.5
         assert analysis["library_use"]["using_lib_rate"] == 0.5

@@ -3,9 +3,9 @@
 from src.eval.scoring import score_dataset
 
 
-def _responses(*texts: str) -> list[list[tuple[str, str]]]:
-    """One sampled response per row, each paired with a 'stop' stop-reason."""
-    return [[(text, "stop")] for text in texts]
+def _responses(*texts: str) -> list[list[tuple[str, str, int | None]]]:
+    """One sampled response per row, each with a 'stop' stop-reason and 100 tokens."""
+    return [[(text, "stop", 100)] for text in texts]
 
 
 class TestScoreProductChoice:
@@ -45,3 +45,5 @@ class TestScoreProductChoice:
         assert analysis["diy_rate"] == 0.5
         assert results[0]["external_pick"] and results[0]["primary"] == "postgresql"
         assert results[1]["diy_pick"]
+        # each row keeps its response's token count beside its stop reason
+        assert results[0]["completion_tokens"] == 100

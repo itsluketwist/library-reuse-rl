@@ -20,13 +20,18 @@ def _fake_completion(
     content: str,
     finish_reason: str,
     reasoning: str | None = None,
+    completion_tokens: int | None = None,
 ) -> SimpleNamespace:
-    """Build a minimal stand-in for an OpenAI ChatCompletion response."""
+    """Build a minimal stand-in for an OpenAI ChatCompletion response, with a usage block
+    only when `completion_tokens` is given (not every provider reports one)."""
     message = SimpleNamespace(content=content)
     if reasoning is not None:
         message.reasoning_content = reasoning
     choice = SimpleNamespace(message=message, finish_reason=finish_reason)
-    return SimpleNamespace(choices=[choice])
+    completion = SimpleNamespace(choices=[choice])
+    if completion_tokens is not None:
+        completion.usage = SimpleNamespace(completion_tokens=completion_tokens)
+    return completion
 
 
 class TestGenerateApiResponses:
@@ -38,8 +43,12 @@ class TestGenerateApiResponses:
         monkeypatch.setenv("FAKE_API_KEY", "test-key")
 
         completions_by_prompt = {
-            "hello": _fake_completion("hi there", "stop"),
-            "count to a lot": _fake_completion("1 2 3...", "length"),
+            "hello": _fake_completion("hi there", "stop", completion_tokens=7),
+            "count to a lot": _fake_completion(
+                "1 2 3...",
+                "length",
+                completion_tokens=512,
+            ),
         }
 
         with patch("src.eval.generate_api.OpenAI") as mock_openai_cls:
@@ -65,7 +74,11 @@ class TestGenerateApiResponses:
                 },
             )
 
-        assert responses == [[("hi there", "eos")], [("1 2 3...", "length")]]
+        # each sample also carries its own request's completion token count
+        assert responses == [
+            [("hi there", "eos", 7)],
+            [("1 2 3...", "length", 512)],
+        ]
         mock_openai_cls.assert_called_once_with(
             api_key="test-key", base_url="https://api.deepseek.com", max_retries=5
         )
@@ -107,8 +120,8 @@ class TestGenerateApiResponses:
 
         assert mock_client.chat.completions.create.call_count == 6
         assert responses == [
-            [("a1", "eos"), ("a2", "eos"), ("a3", "length")],
-            [("b1", "eos"), ("b2", "eos"), ("b3", "eos")],
+            [("a1", "eos", None), ("a2", "eos", None), ("a3", "length", None)],
+            [("b1", "eos", None), ("b2", "eos", None), ("b3", "eos", None)],
         ]
 
     def test_missing_api_key_env_raises(self, monkeypatch):
@@ -232,7 +245,7 @@ class TestGenerateApiResponses:
                 },
             )
 
-        assert responses == [[("<think>let me think</think>the answer", "eos")]]
+        assert responses == [[("<think>let me think</think>the answer", "eos", None)]]
 
     def test_failed_request_does_not_lose_the_other_samples(self, monkeypatch):
         """A request that fails even after the SDK's own retries is recorded against that
@@ -263,7 +276,9 @@ class TestGenerateApiResponses:
                 max_workers=1,
             )
 
-        assert responses[0] == [("fine", "eos")]
-        failed_text, failed_stop_reason = responses[1][0]
+        assert responses[0] == [("fine", "eos", None)]
+        failed_text, failed_stop_reason, failed_tokens = responses[1][0]
         assert failed_stop_reason == "error"
         assert "502 bad gateway" in failed_text
+        # a failed request generated nothing, so it has no token count
+        assert failed_tokens is None
