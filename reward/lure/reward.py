@@ -75,9 +75,13 @@ def library_components(
     appropriate_libraries: Iterable[str] = (),
     require_reasoning: bool = True,
     reasoning_tags: ReasoningTags = DEFAULT_REASONING_TAGS,
+    ignore_placeholders: bool = True,
 ) -> dict[str, bool]:
     """
     Parse a response and check each reward component, for logging or custom rewards.
+
+    With `ignore_placeholders` (the default), placeholder modules such as `your_module`
+    never count as libraries (see analysis.is_placeholder_module).
 
     Returns each component name mapped to whether the response satisfies it.
     """
@@ -87,6 +91,7 @@ def library_components(
         local_modules=local_modules,
         reasoning_tags=reasoning_tags,
         require_reasoning=require_reasoning,
+        ignore_placeholders=ignore_placeholders,
     )
     return components_from_parsed(
         parsed,
@@ -154,6 +159,7 @@ class LibraryReward:
         appropriate_libraries: NamesOption = (),
         require_reasoning: bool = True,
         reasoning_tags: ReasoningTags = DEFAULT_REASONING_TAGS,
+        ignore_placeholders: bool = True,
     ) -> None:
         unknown = set(weights) - set(COMPONENTS)
         if unknown:
@@ -165,6 +171,7 @@ class LibraryReward:
         self.local_modules = _freeze(local_modules)
         self.appropriate_libraries = _freeze(appropriate_libraries)
         self.require_reasoning = require_reasoning
+        self.ignore_placeholders = ignore_placeholders
         # checked now, so bad tags fail when the reward is created rather than mid-training
         self.reasoning_tags = normalise_reasoning_tags(reasoning_tags)
         # training frameworks (e.g. TRL) use a reward function's __name__ when logging
@@ -211,6 +218,7 @@ class LibraryReward:
             ),
             require_reasoning=self.require_reasoning,
             reasoning_tags=self.reasoning_tags,
+            ignore_placeholders=self.ignore_placeholders,
         )
 
     def __call__(
@@ -253,6 +261,7 @@ def create_library_reward(
     appropriate_libraries: NamesOption = (),
     require_reasoning: bool = True,
     reasoning_tags: ReasoningTags = DEFAULT_REASONING_TAGS,
+    ignore_placeholders: bool = True,
 ) -> LibraryReward:
     """
     Create a reward function that scores LLM responses for reusing external libraries.
@@ -268,6 +277,9 @@ def create_library_reward(
     - appropriate_lib_used: the code uses one of `appropriate_libraries`.
 
     `local_modules` are the project's own modules, which are never counted as libraries.
+    With `ignore_placeholders` (the default), neither are placeholder modules such as
+    `your_module` or `utils`, which stand for code the response doesn't have (see
+    analysis.is_placeholder_module) - set it to False to count every import as before.
     Both `local_modules` and `appropriate_libraries` can be one list for every response, or
     a dict mapping each dataset item's id to its own list - then pass the response's
     `item_id` when scoring it. `reasoning_tags` are the (opening, closing) pairs that wrap
@@ -288,4 +300,5 @@ def create_library_reward(
         appropriate_libraries=appropriate_libraries,
         require_reasoning=require_reasoning,
         reasoning_tags=reasoning_tags,
+        ignore_placeholders=ignore_placeholders,
     )

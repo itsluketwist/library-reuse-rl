@@ -120,11 +120,11 @@ class TestCodeReward:
     def test_parse_subtracts_the_rows_local_modules(self):
         """The project's own modules (the row's local_modules) are not external."""
         reward = CodeReward({})
-        content = "r</think>\n```python\nimport requests\nimport app\n```"
+        content = "r</think>\n```python\nimport requests\nimport server\n```"
 
-        parsed = reward.parse(content, {"local_modules": ["app"]})
+        parsed = reward.parse(content, {"local_modules": ["server"]})
         assert parsed.external_imports == {"requests"}
-        assert reward.parse(content, {}).external_imports == {"requests", "app"}
+        assert reward.parse(content, {}).external_imports == {"requests", "server"}
 
     def test_valid_syntax_needs_code_that_parses(self):
         """passes_syntax_check needs python code, all of which parses."""

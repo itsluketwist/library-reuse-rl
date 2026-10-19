@@ -142,6 +142,14 @@ The rules it follows:
   A library is *used* when a single code block imports it and then references it.
   Referencing it in a different block doesn't count, and neither does a name rebound by
   assignment, loop variable, argument or similar.
+- **Placeholder modules** aren't counted as libraries either, by default. These are names that
+  stand for code the response doesn't have: a placeholder such as `your_module` or `my_app`, a
+  generic project-module name such as `utils` or `models`, or a name like `data_utils` or
+  `base_config`. A model that writes `from your_module import parse` beside its own code isn't
+  reusing a library. Each analysed block lists them in `placeholder_imports`; pass
+  `ignore_placeholders=False` (to `parse_response`, `analyse_code` or
+  `create_library_reward`) to count them as before, and see `is_placeholder_module` for the
+  exact rule.
 
 Models that mark their reasoning with other tags can pass them as `(opening, closing)`
 pairs. They are matched literally, ignoring case, and replace the defaults.
@@ -153,7 +161,8 @@ parse_response(response, reasoning_tags=("<|begin_of_thought|>", "<|end_of_thoug
 ```
 
 The building blocks are also available on their own: `split_reasoning`, `extract_code_blocks`,
-`analyse_code`, and `pip_package` (e.g. `pip_package("PIL") == "Pillow"`).
+`analyse_code`, `is_placeholder_module`, and `pip_package` (e.g.
+`pip_package("PIL") == "Pillow"`).
 
 ## Citation
 
