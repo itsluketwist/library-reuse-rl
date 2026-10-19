@@ -1,0 +1,119 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-8672/checkpoint-222",
+    "provider": "vllm",
+    "dataset": "libreusebench_v2_control",
+    "dataset_file": "benchmark/artefacts/provisional/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.1.2",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 480,
+    "n_tasks": 96,
+    "n_responses": 480,
+    "k": 5,
+    "pass@1": 0.8020833333333334,
+    "pass@k": 0.8958333333333334,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.020833333333333332,
+          "avg_extlibs": 0.020833333333333332,
+          "library_counts": {
+            "pytest": 1,
+            "cryptography": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.004166666666666667,
+          "avg_extlibs": 0.004166666666666667,
+          "library_counts": {
+            "pytest": 1,
+            "cryptography": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.010416666666666666,
+          "avg_extlibs": 0.010416666666666666,
+          "library_counts": {
+            "cryptography": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.0020833333333333333,
+          "avg_extlibs": 0.0020833333333333333,
+          "library_counts": {
+            "cryptography": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 478,
+        "avg_lloc": 12.412133891213388,
+        "avg_maintainability_index": 85.26909044694455
+      },
+      "passed": {
+        "n_measured": 385,
+        "avg_lloc": 11.942857142857143,
+        "avg_maintainability_index": 85.43138522112989
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-esifhobn",
+      "source": "response_imports",
+      "installed_packages": [
+        "cryptography",
+        "pytest"
+      ],
+      "install_failed": [],
+      "task_packages": [],
+      "installed_package_versions": {
+        "cffi": "2.1.1",
+        "cryptography": "50.0.2",
+        "iniconfig": "2.3.1",
+        "packaging": "26.3",
+        "pip": "25.0.1",
+        "pluggy": "1.7.0",
+        "pycparser": "3.11",
+        "pygments": "2.21.0",
+        "pytest": "9.1.1"
+      },
+      "package_imports": {
+        "cryptography": [
+          "cryptography"
+        ],
+        "pytest": [
+          "pytest"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-ydq7whqg/libreusebench_eval_2026-10-19T17:55:27.538513.json"
+  }
+}
