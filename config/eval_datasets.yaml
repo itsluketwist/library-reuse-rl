@@ -62,58 +62,13 @@ libreusebench_function_control:
   path: "benchmark/v1/pipeline/function_pilot/control.jsonl"
   evaluator: libreusebench
   environment_root: ".libreuseeval-venvs"
-# the first LibReuseBench v2 pilot (archived in benchmark/artefacts/pilot_1/, with the records
-# it was built from): new function tasks generated from 60 pilot seeds - every task the agent
-# review kept. the first is the reuse tasks, each with a reuse value (the lines of code a
-# library saves), and the second is the control tasks, where no library should help. the
-# request asked for tasks where a library saves a lot of code, which made them long and hard
-libreusebench_v2_pilot:
-  path: "benchmark/artefacts/pilot_1/test.jsonl"
-  evaluator: libreusebench
-  environment_root: ".libreuseeval-venvs"
-libreusebench_v2_pilot_control:
-  path: "benchmark/artefacts/pilot_1/control.jsonl"
-  evaluator: libreusebench
-  environment_root: ".libreuseeval-venvs"
-# the second LibReuseBench v2 pilot (benchmark/artefacts/pilot_2/): 11 tasks from 20 seeds, each
-# a short, library-agnostic rewording of its BigCodeBench seed. the request set no target for
-# how much code a library saves, so the tasks span the low, medium and high reuse tiers
-libreusebench_v2_pilot2:
-  path: "benchmark/artefacts/pilot_2/test.jsonl"
-  evaluator: libreusebench
-  environment_root: ".libreuseeval-venvs"
-# the third LibReuseBench v2 pilot (benchmark/artefacts/pilot_3/): 13 tasks from 40 seeds (the
-# second pilot's 20, and 20 more drawn at random). the request asked for CONTESTED tasks - ones
-# a developer might reasonably solve with a library or by hand - allowed a small change to a
-# seed to get one, and skipped the rest
-libreusebench_v2_pilot3:
-  path: "benchmark/artefacts/pilot_3/test.jsonl"
-  evaluator: libreusebench
-  environment_root: ".libreuseeval-venvs"
-# the third pilot again, for a run with 25 samples a prompt: at 5 samples the base model gave
-# only 4-5 responses a task, too few to compare with the trained runs. results are named by
-# dataset, so the second name keeps them beside the 5-sample ones instead of replacing them
-libreusebench_v2_pilot3_25:
-  path: "benchmark/artefacts/pilot_3/test.jsonl"
-  evaluator: libreusebench
-  environment_root: ".libreuseeval-venvs"
-# the fourth pilot (benchmark/artefacts/pilot_4/): tasks from 50 fresh seeds drawn at random,
-# after the request was told that a task needing a numerical method or a parser by hand is too
-# difficult, and not to pin a convention a library's usual call doesn't follow
-libreusebench_v2_pilot4:
-  path: "benchmark/artefacts/pilot_4/test.jsonl"
-  evaluator: libreusebench
-  environment_root: ".libreuseeval-venvs"
-# the fifth pilot (benchmark/artefacts/pilot_5/): tasks from 100 seeds (the fourth pilot's 50
-# again, and 50 fresh ones drawn at random), after the request was told the benchmark's purpose:
-# models write too many custom implementations, so parsing, cryptography and utilities are wanted
-libreusebench_v2_pilot5:
-  path: "benchmark/artefacts/pilot_5/test.jsonl"
-  evaluator: libreusebench
-  environment_root: ".libreuseeval-venvs"
+# the five LibReuseBench v2 pilots are described in benchmark/HISTORY.md. their task files were
+# removed on 2026-10-19 (they are in git history); their results stay in output/ as
+# libreusebench_v2_pilot*
+#
 # every reuse task generated from all 813 BigCodeBench seeds with the fifth pilot's request, and
 # kept by the agent review (benchmark/artefacts/full_run/, built with 05_build.py --pilot, so
-# uncapped and unsplit, with LRB2-PILOT/ ids). evaluated before rewording and deduplication
+# uncapped and unsplit, with LRB2-PILOT/ ids). evaluated before human review
 libreusebench_v2_full:
   path: "benchmark/artefacts/full_run/test.jsonl"
   evaluator: libreusebench
@@ -121,8 +76,9 @@ libreusebench_v2_full:
 # LibReuseBench v2 as it stands before manual review: every task the agent review kept, built
 # with 05_build.py --provisional into benchmark/artefacts/provisional/. the splits follow
 # BigCodeBench - test from the seeds that use a library, control from the standard-library ones.
-# the test split is the same 233 tasks as libreusebench_v2_full, numbered the same (LRB2/T017 is
-# LRB2-PILOT/T017), so the results already on that dataset carry over
+# the test split holds the same 233 tasks as libreusebench_v2_full, word for word, plus
+# BigCodeBench/845 (redone in the fix round). adding it renumbered the split, so results on
+# libreusebench_v2_full carry over only when matched by seed id (source.seed_id), not by task id
 libreusebench_v2_test:
   path: "benchmark/artefacts/provisional/test.jsonl"
   evaluator: libreusebench

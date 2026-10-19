@@ -182,6 +182,22 @@ def _html(gui: object) -> str:
     return " ".join(widget.value for widget in _of_type(gui, "HTML"))
 
 
+def test_a_refused_blind_solve_is_not_shown_as_a_failure() -> None:
+    # the model refused one attempt (no_solution), and the other failed on the tests
+    agent = {
+        "verdict": "keep",
+        "note": "",
+        "rubric": {"spec_complete": True},
+        "blind": {
+            "stdlib": {"passed": False, "libraries": [], "no_solution": True},
+            "free": {"passed": False, "libraries": [], "no_solution": False},
+        },
+    }
+    shown = review._agent_html(agent)
+    assert "stdlib solve gave no solution (the model refused)" in shown
+    assert "free solve FAILED" in shown
+
+
 class TestReviewGui:
     """The GUI drives keep/update/reject on the current task and saves the verdict."""
 

@@ -174,31 +174,60 @@ class TestReviewTask:
         assert record["blind"]["free"]["passed"]
         assert record["blind"]["free"]["libraries"] == ["regex"]
 
-    @pytest.mark.parametrize(
-        "replies",
-        [
-            [{}],  # an unreadable blind solve
-            [{"solution": _RIGHT}, {"solution": _RIGHT}, {}],  # an unreadable rubric
-        ],
-    )
-    def test_an_unreadable_reply_leaves_no_record(
-        self,
-        monkeypatch,
-        replies: list[dict],
-    ) -> None:
-        _stub_model(monkeypatch, replies)
+    def test_an_unreadable_rubric_leaves_no_record(self, monkeypatch) -> None:
+        _stub_model(monkeypatch, [{"solution": _RIGHT}, {"solution": _RIGHT}, {}])
         with pytest.raises(RuntimeError, match="no usable"):
             agent_review.review_task(_task())
 
-    def test_the_control_rubric_asks_whether_a_library_would_help(self) -> None:
+    def test_a_refused_blind_solve_is_recorded_and_the_task_still_judged(
+        self,
+        monkeypatch,
+    ) -> None:
+        # the standard-library solve gets no usable reply (e.g. a refusal)
+        requests = _stub_model(monkeypatch, [{}, {"solution": _RIGHT}, _KEEP])
+        record = agent_review.review_task(_task())
+
+        assert record["verdict"] == "keep"
+        assert record["blind"]["stdlib"]["no_solution"] is True
+        assert not record["blind"]["stdlib"]["passed"]
+        assert record["blind"]["free"]["no_solution"] is False
+        # the rubric is told the missing attempt says nothing about the task
+        assert "gave no solution" in requests[-1]
+        assert "judge it on everything else" in requests[-1]
+
+    def test_the_control_rubric_asks_for_a_plausible_but_unneeded_library(self) -> None:
         solve = {"passed": True, "message": "", "libraries": [], "solution": _RIGHT}
         request = agent_review.build_rubric_request(
             _task(),
             {"stdlib": solve, "free": solve},
             track="control",
         )
-        assert "is this a task where no third-party library would help?" in request
+        assert "is a third-party library plausible here but unnecessary" in request
+        # a control task is rejected for being trivial, not for giving a library no job
+        assert "Reject a task where library_fit is false" in request
+        assert "no real job in" not in request
         assert "library solution, using" not in request
+
+    def test_each_track_has_its_own_verdict_rule(self) -> None:
+        solve = {"passed": True, "message": "", "libraries": [], "solution": _RIGHT}
+        request = agent_review.build_rubric_request(
+            _task(),
+            {"stdlib": solve, "free": solve},
+        )
+        assert (
+            "Reject a task that is not feasible by hand, or that the library has"
+            in request
+        )
+        assert "Reject a task where library_fit is false" not in request
+
+    def test_a_review_records_its_rubric_version(self, monkeypatch) -> None:
+        _stub_model(monkeypatch, [{"solution": _RIGHT}, {"solution": _RIGHT}, _KEEP])
+        record = agent_review.review_task(_task())
+        assert record["review_version"] == agent_review.review_version("reuse")
+        # the two tracks are asked different things, so their versions differ
+        assert agent_review.review_version("reuse") != agent_review.review_version(
+            "control"
+        )
 
 
 class TestWhatStandsAfterReview:

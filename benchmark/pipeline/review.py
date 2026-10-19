@@ -228,7 +228,15 @@ def _agent_html(
     if review is None:
         return "no agent review"
     blind = "; ".join(
-        f"{kind} solve {'passed' if solve['passed'] else 'FAILED'}"
+        f"{kind} solve "
+        # a refused attempt says nothing about the task, so it isn't shown as a failure
+        + (
+            "gave no solution (the model refused)"
+            if solve.get("no_solution")
+            else "passed"
+            if solve["passed"]
+            else "FAILED"
+        )
         + (f" (used {', '.join(solve['libraries'])})" if solve["libraries"] else "")
         for kind, solve in review.get("blind", {}).items()
     )

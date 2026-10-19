@@ -31,14 +31,20 @@ models=(
     # "vllm:olmo3-7b"
     "vllm:qwen3.5-9b"
     "vllm:domyn-small"
+    # the final epoch of each training run, for a quick check - training_runs below adds every
+    # epoch instead
+    "vllm:qwen3-8b-4796-epoch5"
+    "vllm:qwen3-8b-e650-epoch3"
+    "vllm:qwen3-8b-8672-epoch6"
 )
 
 # training runs to evaluate, by run id (e.g. "qwen3-8b-4796"). each is added to the models
 # above as every epoch checkpoint that run registered (config/trained_models.yaml, or
 # config/debug_models.yaml for a debug run), so a run's epochs needn't be listed one by one
 training_runs=(
-    "qwen3-8b-4796"
-    "qwen3-8b-e650"
+    # "qwen3-8b-4796"
+    # "qwen3-8b-e650"
+    # "qwen3-8b-8672"
 )
 
 # EVAL_MODELS replaces both lists above (a space-separated string of models), which is how
@@ -59,15 +65,9 @@ datasets=(
     # "libreusebench_control"
     # "libreusebench_function_test"
     # "libreusebench_function_control"
-    # "libreusebench_v2_pilot"
-    # "libreusebench_v2_pilot_control"
-    # "libreusebench_v2_pilot2"
-    # "libreusebench_v2_pilot3"
-    # "libreusebench_v2_pilot3_25"
-    # "libreusebench_v2_pilot4"
-    # "libreusebench_v2_pilot5"
     # "libreusebench_v2_full"
-    # "libreusebench_v2_test"  # the same tasks as libreusebench_v2_full, whose results carry over
+    # "libreusebench_v2_test"  # v2_full's 233 tasks + 1, renumbered (match results by seed id)
+    # the provisional control split, before human review (benchmark/artefacts/provisional/)
     "libreusebench_v2_control"
 )
 

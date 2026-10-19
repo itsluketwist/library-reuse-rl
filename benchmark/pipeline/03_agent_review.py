@@ -15,8 +15,9 @@ that with fresh model calls, none of which sees how the task was generated:
 
 One record per task is appended to benchmark/artefacts/03_agent_reviews.jsonl
 (03_agent_reviews_control.jsonl for the control track), with the fingerprint of the task it
-reviewed. A task whose current version is already reviewed is skipped, so the stage can be
-stopped and rerun.
+reviewed and of the rubric it was reviewed with (review_version). A task whose current version
+is already reviewed is skipped, so the stage can be stopped and rerun; --redo reviews it again,
+e.g. after the rubric changes, and the newest review is the one that counts.
 
 A task marked "fix" gets one regeneration. The stage ends by printing the command for it
 (02_generate.py --seeds ...), which feeds the reviewer's note back to the generator. Run this
@@ -26,10 +27,11 @@ Blind solves run in the build venv, and the free one's packages are installed th
 runs. So don't run this stage at the same time as stage 02.
 
 Usage: python benchmark/pipeline/03_agent_review.py [--track reuse|control] [--seeds ID,ID]
-       [--limit N] [--workers N] [--model M] [--effort E]
+       [--limit N] [--redo] [--workers N] [--model M] [--effort E]
 """
 
 import argparse
+import hashlib
 import sys
 import threading
 from collections import Counter
@@ -131,9 +133,12 @@ def blind_solve(
     """Ask for a solution from the task text alone, and run it on the task's tests.
 
     `kind` is "stdlib" (told to use only the standard library) or "free" (free to choose). A
-    standard-library solve that imports a third-party library anyway counts as failed.
+    standard-library solve that imports a third-party library anyway counts as failed. A reply
+    with no solution counts as failed too, and is marked `no_solution`: it is nearly always a
+    refusal (the model declines some hashing and obfuscation tasks), which says nothing about
+    the task, so the rubric is told to judge the task on everything else.
 
-    Returns {passed, message, libraries, solution}.
+    Returns {passed, message, libraries, solution, no_solution}.
     """
     data, _ = complete_json(
         prompt=_SOLVE.format(prompt=task["prompt"], rule=_SOLVE_RULES[kind]),
@@ -144,8 +149,13 @@ def blind_solve(
     )
     solution = data.get("solution")
     if not solution:
-        # no record is written for this task, so a rerun asks again
-        raise RuntimeError(f"no usable {kind} blind solve")
+        return {
+            "passed": False,
+            "message": "the model gave no solution: it refused, or its reply could not be read",
+            "libraries": [],
+            "solution": "",
+            "no_solution": True,
+        }
 
     libraries = analyse_source(solution)[1]
     if kind == "stdlib" and libraries:
@@ -157,6 +167,7 @@ def blind_solve(
         "message": message,
         "libraries": libraries,
         "solution": solution,
+        "no_solution": False,
     }
 
 
@@ -229,12 +240,27 @@ Then give a verdict:
 In the note, say in a few sentences what is wrong, and for a "fix" exactly what must change. A
 failed blind attempt usually means the text is unclear or the tests are unfair: work out which,
 and say so. Where a test needs a rule the text doesn't state, the fix is to drop that test, not
-to add the rule to the text. Ask for a fix where the text pins an obscure convention or fitting
-method that a library's usual call doesn't follow: a model that uses the library the usual way
-would fail it. Reject a task that is not feasible by hand, or that the library has
-no real job in: neither can be fixed by rewording. A task where the library saves only a little
-is still wanted, as long as using it is natural. Leave the note empty for a clean "keep".
+to add the rule to the text. {verdict_note} Leave the note empty for a clean "keep".
 """
+
+# what decides a "fix" or a "reject" on each track. a reuse task needs a real job for its
+# library, while a control task must leave a library nothing worth doing
+_VERDICT_NOTES = {
+    "reuse": (
+        "Ask for a fix where the text pins an obscure convention or fitting\n"
+        "method that a library's usual call doesn't follow: a model that uses the library "
+        "the usual way\n"
+        "would fail it. Reject a task that is not feasible by hand, or that the library has\n"
+        "no real job in: neither can be fixed by rewording. A task where the library saves "
+        "only a little\n"
+        "is still wanted, as long as using it is natural."
+    ),
+    "control": (
+        "Reject a task where library_fit is false: one so plain that no developer would think "
+        "of a\nlibrary, or one where a library would make it meaningfully simpler. Neither "
+        "can be fixed by\nrewording."
+    ),
+}
 
 _TRACK_NOTES = {
     "reuse": (
@@ -255,10 +281,15 @@ _TRACK_NOTES = {
         "custom implementations of problems that established libraries already solve. But "
         "reaching for a library is not always right: a dependency has costs of its own, and "
         "a model that imports one for a job the standard library does directly is adding a "
-        "dependency for nothing. This one is a CONTROL task, where the choice should not "
-        "arise: the standard library does the job directly, and no third-party library "
-        "would help. It shows whether a model reaches for a library even where there is no "
-        "reason to, so that always importing something can't score well."
+        "dependency for nothing. This one is a CONTROL task: it shows whether a model "
+        "reaches for a library where it shouldn't, so that always importing something "
+        "can't score well. A control task is only useful if a library is plausible but "
+        "unnecessary. The job is one a developer might think of using a library for, such "
+        "as reading a format like CSV or JSON, hashing, or working with dates, but the "
+        "standard library does it directly, and no library would make it meaningfully "
+        "simpler. A task so plain that nobody would think of a library, such as summing a "
+        "list or reversing a string, shows nothing: every model writes it by hand. And a "
+        "task where a library would really help is not a control task at all."
     ),
 }
 
@@ -267,8 +298,39 @@ _LIBRARY_QUESTIONS = {
         "would a developer who knew the library reasonably reach for it here, and does "
         "the library solution use it the way they would?"
     ),
-    "control": "is this a task where no third-party library would help?",
+    "control": (
+        "is a third-party library plausible here but unnecessary: might a developer\n"
+        "  think of one, while the standard library does the job directly and no library "
+        "would make it\n  meaningfully simpler?"
+    ),
 }
+
+
+def review_version(
+    track: str,
+) -> str:
+    """A fingerprint of everything a track's review is asked, stamped on each review record.
+
+    Reviews made with an earlier rubric stay in the same file, so the fingerprint tells them
+    apart from the current ones.
+
+    Returns the fingerprint.
+    """
+    return hashlib.sha256(
+        "\n".join(
+            [
+                _SOLVE_SYSTEM,
+                _SOLVE,
+                *_SOLVE_RULES.values(),
+                _RUBRIC_SYSTEM,
+                _RUBRIC,
+                _TRACK_NOTES[track],
+                _LIBRARY_QUESTIONS[track],
+                _VERDICT_NOTES[track],
+            ]
+        ).encode()
+    ).hexdigest()[:12]
+
 
 _SOLUTION = """
 The {name}:
@@ -312,6 +374,11 @@ def _describe_blind(
     used = f" It used {', '.join(solve['libraries'])}." if solve["libraries"] else ""
     if solve["passed"]:
         return f"The {name} attempt passed every test.{used}"
+    if solve.get("no_solution"):
+        return (
+            f"The {name} attempt gave no solution: the model refused, or its reply could not "
+            "be read. That says nothing about the task itself, so judge it on everything else."
+        )
     return (
         f"The {name} attempt FAILED: {solve['message']}{used}\n"
         f"Its code:\n```python\n{solve['solution'].strip()}\n```"
@@ -361,6 +428,7 @@ def build_rubric_request(
             ]
         ),
         library_question=_LIBRARY_QUESTIONS[track],
+        verdict_note=_VERDICT_NOTES[track],
     )
 
 
@@ -397,6 +465,7 @@ def review_task(
         "blind": blind,
         "model": resolved_model,
         "effort": effort,
+        "review_version": review_version(track),
     }
 
 
@@ -436,6 +505,12 @@ def main() -> None:
     parser.add_argument(
         "--limit", type=int, default=None, help="only review the first N tasks"
     )
+    parser.add_argument(
+        "--redo",
+        action="store_true",
+        help="review tasks again even if already reviewed, e.g. after the rubric changed "
+        "(the newest review is the one that counts)",
+    )
     parser.add_argument("--workers", type=int, default=1, help="tasks reviewed at once")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="review model id")
     parser.add_argument(
@@ -452,7 +527,9 @@ def main() -> None:
     output = track_artefact_path("03_agent_reviews.jsonl", args.track)
     reviewed = agent_reviews(args.track)
     todo = [
-        task for task in generated_tasks(args.track) if task["seed_id"] not in reviewed
+        task
+        for task in generated_tasks(args.track)
+        if args.redo or task["seed_id"] not in reviewed
     ]
     if args.seeds:
         wanted = {
