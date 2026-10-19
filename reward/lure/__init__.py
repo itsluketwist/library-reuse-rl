@@ -1,6 +1,6 @@
 """lure (Library Usage REwards): reward functions that score LLM code for library reuse."""
 
-from lure.analysis import CodeBlock, analyse_code
+from lure.analysis import CodeBlock, analyse_code, is_placeholder_module
 from lure.extraction import DEFAULT_REASONING_TAGS, extract_code_blocks, split_reasoning
 from lure.packages import IMPORT_TO_PIP, pip_package
 from lure.parsing import ParsedResponse, parse_response
@@ -16,7 +16,7 @@ from lure.trl import create_trl_reward, stop_reason_from_tokens
 
 
 # the single source of the package version (read by pyproject.toml when building)
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 __all__ = [
     "COMPONENTS",
@@ -32,6 +32,7 @@ __all__ = [
     "create_trl_reward",
     "extract_code_blocks",
     "is_appropriate_library",
+    "is_placeholder_module",
     "library_components",
     "parse_response",
     "pip_package",

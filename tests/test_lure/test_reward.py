@@ -30,6 +30,28 @@ class TestLibraryComponents:
         }
         assert tuple(components) == COMPONENTS
 
+    def test_a_placeholder_import_earns_no_library_credit(self):
+        """A made-up module beside hand-written code is not library reuse, unless asked."""
+        response = _response("from your_module import load\nload(path)")
+
+        components = library_components(response, stop_reason="stop")
+        assert not components["external_lib_imported"]
+        assert not components["external_lib_used"]
+
+        counted = library_components(
+            response,
+            stop_reason="stop",
+            ignore_placeholders=False,
+        )
+        assert counted["external_lib_used"]
+
+        reward = create_library_reward()
+        assert reward(response, stop_reason="stop") == 0.5  # format and syntax only
+        assert create_library_reward(ignore_placeholders=False)(
+            response,
+            stop_reason="stop",
+        ) == pytest.approx(2.0)
+
     def test_truncation_fails_format(self):
         """A response cut off by the token limit loses the format component."""
         components = library_components(_response("x = 1"), stop_reason="length")
@@ -129,8 +151,8 @@ class TestCreateLibraryReward:
 
     def test_default_and_per_call_local_modules(self):
         """Local modules set at creation can be overridden for each response."""
-        response = _response("import helpers\nhelpers.solve()")
-        reward = create_library_reward(local_modules=["helpers"])
+        response = _response("import toolkit\ntoolkit.solve()")
+        reward = create_library_reward(local_modules=["toolkit"])
 
         assert not reward.components(response)["external_lib_used"]
         assert reward.components(response, local_modules=[])["external_lib_used"]
@@ -172,14 +194,14 @@ class TestCreateLibraryReward:
 class TestPerItemNames:
     """Tests for giving local_modules / appropriate_libraries as dicts keyed by item id."""
 
-    # scores 0.5 (format + syntax) when helpers is local, or 2.0 when it's a library
-    _RESPONSE = _response("import helpers\nhelpers.solve()")
+    # scores 0.5 (format + syntax) when toolkit is local, or 2.0 when it's a library
+    _RESPONSE = _response("import toolkit\ntoolkit.solve()")
 
     def test_looks_up_each_items_names(self):
         """Each response uses the names given for its own item id."""
         reward = create_library_reward(
-            local_modules={"a": ["helpers"], "b": []},
-            appropriate_libraries={"a": [], "b": ["helpers"]},
+            local_modules={"a": ["toolkit"], "b": []},
+            appropriate_libraries={"a": [], "b": ["toolkit"]},
             appropriate_lib_used=1.0,
         )
 
@@ -188,14 +210,14 @@ class TestPerItemNames:
 
     def test_integer_ids(self):
         """Any hashable id works, e.g. dataset row indices."""
-        reward = create_library_reward(local_modules={0: ["helpers"], 1: []})
+        reward = create_library_reward(local_modules={0: ["toolkit"], 1: []})
 
         assert reward(self._RESPONSE, item_id=0) == 0.5
         assert reward(self._RESPONSE, item_id=1) == 2.0
 
     def test_names_passed_when_calling_win(self):
         """A list passed with the response overrides the per-item dict."""
-        reward = create_library_reward(local_modules={"a": ["helpers"]})
+        reward = create_library_reward(local_modules={"a": ["toolkit"]})
 
         components = reward.components(self._RESPONSE, item_id="a", local_modules=[])
         assert components["external_lib_used"]
@@ -203,7 +225,7 @@ class TestPerItemNames:
     def test_dict_and_list_options_can_be_mixed(self):
         """One option can be per item while the other is a shared list."""
         reward = create_library_reward(
-            local_modules={"a": ["helpers"]},
+            local_modules={"a": ["toolkit"]},
             appropriate_libraries=["requests"],
         )
 
@@ -211,27 +233,27 @@ class TestPerItemNames:
 
     def test_missing_item_id_raises(self):
         """Per-item names need an item id, rather than silently using no names."""
-        reward = create_library_reward(local_modules={"a": ["helpers"]})
+        reward = create_library_reward(local_modules={"a": ["toolkit"]})
 
         with pytest.raises(ValueError, match="pass item_id"):
             reward(self._RESPONSE)
 
     def test_unknown_item_id_raises(self):
         """An id missing from the dict is an error, rather than silently using no names."""
-        reward = create_library_reward(local_modules={"a": ["helpers"]})
+        reward = create_library_reward(local_modules={"a": ["toolkit"]})
 
         with pytest.raises(ValueError, match="No local_modules given for item_id 'z'"):
             reward(self._RESPONSE, item_id="z")
 
     def test_item_id_ignored_for_list_options(self):
         """Passing an item id is harmless when the names are plain lists."""
-        reward = create_library_reward(local_modules=["helpers"])
+        reward = create_library_reward(local_modules=["toolkit"])
 
         assert reward(self._RESPONSE, item_id="anything") == 0.5
 
     def test_dict_is_copied(self):
         """Changing the caller's dict afterwards doesn't change the reward."""
-        names = {"a": ["helpers"]}
+        names = {"a": ["toolkit"]}
         reward = create_library_reward(local_modules=names)
         names["a"].clear()
 

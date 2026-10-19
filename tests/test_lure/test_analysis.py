@@ -1,7 +1,7 @@
 """Tests for finding the libraries a code block imports and uses."""
 
 import pytest
-from lure import analyse_code
+from lure import analyse_code, is_placeholder_module
 
 
 class TestImports:
@@ -139,6 +139,74 @@ class TestInvalidCode:
 
         assert not block.valid
         assert block.error
+
+
+class TestPlaceholderModules:
+    """Tests for placeholder modules, which stand for code the response doesn't have."""
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "your_module",
+            "my_app",
+            "utils",
+            "models",
+            "data_utils",
+            "base_config",
+            "Utils",
+        ],
+    )
+    def test_a_placeholder_is_not_a_library(self, name: str):
+        """A placeholder import is set aside, not counted as an external library."""
+        block = analyse_code(f"from {name} import parse\nparse(text)")
+
+        assert block.external_imports == set()
+        assert block.external_used == set()
+        assert block.placeholder_imports == {name}
+
+    def test_a_real_library_beside_a_placeholder_still_counts(self):
+        """Only the placeholder is set aside: the real library is still used."""
+        block = analyse_code(
+            "import requests\nfrom your_module import save\nsave(requests.get(u))"
+        )
+
+        assert block.external_used == {"requests"}
+        assert block.placeholder_imports == {"your_module"}
+
+    @pytest.mark.parametrize("name", ["fuzzywuzzy", "sqlmodel", "uvicorn", "mypy"])
+    def test_real_libraries_are_not_placeholders(self, name: str):
+        """Real packages, including ones that start like a placeholder, still count."""
+        block = analyse_code(f"import {name}\n{name}.run()")
+
+        assert block.external_used == {name}
+        assert block.placeholder_imports == set()
+
+    def test_placeholders_can_be_counted_as_before(self):
+        """With ignore_placeholders off, a placeholder counts as a library again."""
+        block = analyse_code(
+            "from your_module import parse\nparse(text)",
+            ignore_placeholders=False,
+        )
+
+        assert block.external_used == {"your_module"}
+        assert block.placeholder_imports == set()
+
+    @pytest.mark.parametrize(
+        ("name", "placeholder"),
+        [
+            ("your_project", True),
+            ("my_utils", True),
+            ("encryption_helper", True),
+            ("tasks", True),
+            ("pandas", False),
+            ("dateutil", False),
+            ("mypy", False),
+            ("helpers_lib", False),
+        ],
+    )
+    def test_is_placeholder_module(self, name: str, placeholder: bool):
+        """The rule: a generic project name, or a placeholder prefix or suffix."""
+        assert is_placeholder_module(name) is placeholder
 
 
 def test_style_warnings_are_silenced(recwarn: pytest.WarningsRecorder):

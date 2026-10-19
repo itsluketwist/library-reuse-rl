@@ -10,6 +10,66 @@ from dataclasses import dataclass
 # every standard-library module name for the running python version
 STDLIB_MODULES: frozenset[str] = frozenset(sys.stdlib_module_names)
 
+# names that stand for code the response doesn't have, not a real library: a placeholder for
+# the reader's own module ("your_module", "my_utils"), or a generic name for one of a project's
+# own files ("utils", "models"). a model that writes `from your_module import parse` beside its
+# own code is not reusing a library, so by default these never count as external (see
+# is_placeholder_module). every name is lowercase, and matched case-insensitively
+PLACEHOLDER_PREFIXES: tuple[str, ...] = ("your_", "my_", "some_", "example_")
+PLACEHOLDER_SUFFIXES: tuple[str, ...] = (
+    "_utils",
+    "_util",
+    "_helper",
+    "_helpers",
+    "_config",
+    "_module",
+    "_service",
+    "_services",
+)
+PLACEHOLDER_NAMES: frozenset[str] = frozenset(
+    {
+        "api",
+        "app",
+        "cli",
+        "common",
+        "config",
+        "core",
+        "database",
+        "db",
+        "helpers",
+        "lib",
+        "main",
+        "models",
+        "module",
+        "mymodule",
+        "project",
+        "services",
+        "settings",
+        "src",
+        "tasks",
+        "utils",
+    },
+)
+
+
+def is_placeholder_module(
+    name: str,
+) -> bool:
+    """
+    Check whether a top-level module name is a placeholder rather than a real library.
+
+    A placeholder is a generic project-module name (PLACEHOLDER_NAMES, e.g. `utils`), or a
+    name with a placeholder prefix or suffix (e.g. `your_module`, `data_utils`).
+
+    Returns True for a placeholder name.
+    """
+    lowered = name.lower()
+    return (
+        lowered in PLACEHOLDER_NAMES
+        or lowered.startswith(PLACEHOLDER_PREFIXES)
+        or lowered.endswith(PLACEHOLDER_SUFFIXES)
+    )
+
 
 @dataclass(frozen=True)
 class CodeBlock:
@@ -20,7 +80,9 @@ class CodeBlock:
     actually references a name bound by that import (e.g. `pd.read_csv` after
     `import pandas as pd`). Names are top-level import names with their original case
     (e.g. `PIL`, not `pil`). Standard-library modules and the project's own local modules
-    are reported separately and never counted as external.
+    are reported separately and never counted as external. Placeholder modules (see
+    is_placeholder_module) are left out of the external ones too, unless asked otherwise,
+    and listed in `placeholder_imports`.
     """
 
     code: str
@@ -30,6 +92,7 @@ class CodeBlock:
     external_used: frozenset[str]
     stdlib_imports: frozenset[str]
     stdlib_used: frozenset[str]
+    placeholder_imports: frozenset[str] = frozenset()
 
 
 class _ImportUsageVisitor(ast.NodeVisitor):
@@ -358,6 +421,7 @@ def parse_python(
 def analyse_code(
     code: str,
     local_modules: Iterable[str] = (),
+    ignore_placeholders: bool = True,
 ) -> CodeBlock:
     """
     Parse a python code block and find the libraries it imports and uses, without
@@ -365,8 +429,10 @@ def analyse_code(
 
     `local_modules` are the top-level names of the project's own modules (e.g. `app` for
     `from app.models import User`), which are never counted as libraries. Relative imports
-    are always treated as local. Code that fails to parse is reported as invalid, with no
-    libraries.
+    are always treated as local. With `ignore_placeholders` (the default), placeholder
+    modules such as `your_module` or `utils` aren't counted as libraries either, and are
+    listed in `placeholder_imports` instead. Code that fails to parse is reported as
+    invalid, with no libraries.
 
     Returns the analysed CodeBlock.
     """
@@ -386,13 +452,21 @@ def analyse_code(
             stdlib_used=frozenset(),
         )
 
-    # split every library into the standard library and external (third-party) ones
+    # split every library into the standard library and external (third-party) ones, setting
+    # aside placeholder modules, which stand for code the response doesn't have
+    external = visitor.imported - STDLIB_MODULES
+    placeholders = (
+        {name for name in external if is_placeholder_module(name)}
+        if ignore_placeholders
+        else set()
+    )
     return CodeBlock(
         code=code,
         valid=True,
         error=None,
-        external_imports=frozenset(visitor.imported - STDLIB_MODULES),
-        external_used=frozenset(visitor.used - STDLIB_MODULES),
+        external_imports=frozenset(external - placeholders),
+        external_used=frozenset(visitor.used - STDLIB_MODULES - placeholders),
         stdlib_imports=frozenset(visitor.imported & STDLIB_MODULES),
         stdlib_used=frozenset(visitor.used & STDLIB_MODULES),
+        placeholder_imports=frozenset(placeholders),
     )
