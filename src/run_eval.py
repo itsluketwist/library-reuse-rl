@@ -8,7 +8,11 @@ from pathlib import Path
 from typing import Any, Literal, get_args
 
 from src.eval import evaluate_model
-from src.eval.generate_api import DEFAULT_MAX_TOKENS_PARAM, ApiSettings
+from src.eval.generate_api import (
+    DEFAULT_MAX_TOKENS_PARAM,
+    DEFAULT_MAX_WORKERS,
+    ApiSettings,
+)
 from src.prompts import PromptStyle, library_prompt_suffix
 from src.utils.config import load_full_yaml, load_model_settings, load_yaml_config
 from src.utils.log import log, log_header, silence_library_warnings
@@ -61,6 +65,7 @@ def build_api_settings(
         max_tokens_param=model_settings.get(
             "max_tokens_param", DEFAULT_MAX_TOKENS_PARAM
         ),
+        max_workers=model_settings.get("max_workers", DEFAULT_MAX_WORKERS),
     )
 
 

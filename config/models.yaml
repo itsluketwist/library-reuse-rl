@@ -8,7 +8,8 @@
 #
 # entries default to "provider: vllm" (local weights). "provider: api" entries are served
 # over an OpenAI-compatible api instead, and carry "api_key_env" (the .env variable holding
-# the key) plus optional "base_url", "extra_params" and "max_tokens_param" - see the README
+# the key) plus optional "base_url", "extra_params", "max_tokens_param" and "max_workers"
+# (requests in flight at once, default 8) - see the README
 # and src/eval/generate_api.py
 
 qwen3-debug:
@@ -54,6 +55,8 @@ deepseek-flash:
   base: "deepseek-flash"
   base_url: "https://api.deepseek.com"
   api_key_env: "DEEPSEEK_API_KEY"
+  # the account's concurrency limit is 5, and 5 requests at once were already refused
+  max_workers: 4
   path:
 
 gpt-5.6-luna:

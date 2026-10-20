@@ -5,6 +5,11 @@ of epochs. Each run's training metrics are in `{run_id}/grpo/` and each epoch's 
 `{run_id}/epoch{n}/`. Plots for either run come from `notebooks/01_grpo_run_analysis.ipynb` (set
 `RUN_ID`).
 
+The iteration also has the first results for a hosted frontier model (`deepseek-flash`) and for
+the control split. Results for models that weren't trained here are in `baselines/{model}/`. They
+were moved there from `output/baselines/`, where the eval writes them, so a rerun of the same eval
+won't find them and would regenerate them.
+
 ## What changed since iteration 01
 
 Iteration 01 found two problems: library use barely transferred to LibReuseBench (1.9% to about
@@ -117,6 +122,42 @@ are not directly comparable. There is no base-model run on v4 yet.
   3): repo 82.2% against 69.5%, simple 61.1% against 53.9%. `e650`'s evals used 8,192 tokens, not
   16,384, so treat this as approximate.
 
+**A frontier model on LibReuseBench v2** (`deepseek-flash`, scored on the provisional test split,
+`libreusebench_v2_test`). The table compares it with the open models on the 233 tasks it shares
+with `libreusebench_v2_full`, matched by seed id. All use 5 samples and 16,384 tokens.
+
+| | pass@1 | library use | … high value | … medium value | … low value | cut off |
+|---|---|---|---|---|---|---|
+| `deepseek-flash` | 96.8% | 3.4% | 7.0% | 2.9% | 1.3% | 2.5% |
+| Qwen3-4B | 71.2% | 18.9% | 42.3% | 14.1% | 7.8% | 6.6% |
+| Qwen3-8B | 76.3% | 15.6% | 40.8% | 9.7% | 4.9% | 6.0% |
+| Qwen3-14B | 80.5% | 19.0% | 48.7% | 11.6% | 7.2% | 2.6% |
+| Qwen3.5-9B | 55.5% | 10.1% | 26.3% | 6.4% | 3.1% | 2.8% |
+| domyn-small | 54.2% | 21.4% | 50.3% | 15.0% | 8.4% | 0.0% |
+| `8672` (v4 data), epoch 6 | 77.9% | 34.2% | 66.7% | 30.5% | 13.3% | 1.4% |
+
+Its first run stopped partway when the API account ran out of credit. The finished result comes
+from retrying only the failed requests (see `src/eval/evaluate.py`), with no request left failed.
+
+**LibReuseBench v2 control** (`libreusebench_v2_control`: 96 provisional control tasks, after the
+stricter agent review and before manual review; 5 samples, 16,384 tokens):
+
+| | pass@1 | pass@5 | library use |
+|---|---|---|---|
+| `deepseek-flash` | 98.5% | 100.0% | 0.0% |
+| Qwen3-4B | 79.4% | 88.5% | 0.0% |
+| Qwen3-8B | 81.0% | 89.6% | 0.0% |
+| Qwen3-14B | 83.8% | 92.7% | 0.0% |
+| Qwen3.5-9B | 76.2% | 95.8% | 0.0% |
+| domyn-small | 66.7% | 86.5% | 0.0% |
+| `4796` (v2 data), epoch 5 | 83.1% | 89.6% | 0.2% |
+| `e650` (v3 data), epoch 3 | 85.0% | 93.8% | 0.0% |
+| `8672` (v4 data), epoch 6 | 80.2% | 89.6% | 0.2% |
+
+The only library use in all 4,320 control responses is `cryptography`, twice, on one PBKDF2
+password-hashing task (LRB2/C042). `4796`'s control result stays in `output/01/` with the rest of
+that run.
+
 ## Takeaways
 
 - **The v4 data transfers best.** On LibReuseBench v2, library use rose from 15.6% to 34.2% with
@@ -143,6 +184,16 @@ are not directly comparable. There is no base-model run on v4 yet.
 - **`8672` trained cleanly and was still improving.** Rollouts using a library rose from 37% to 61%
   over the 6 epochs, and there were no KL spikes, unlike `4796` and `e650`. On the benchmark,
   though, most of the gain had arrived by epoch 2 (32.7%), and pass@1 was lowest at epoch 6.
+- **A frontier model writes almost everything by hand.** `deepseek-flash` passes 96.8% of the test
+  tasks, but uses a library on only 3.4% of responses, and 7.0% even where a library saves 15 or
+  more lines. The open base models use one on 10-21%, and the trained runs on 26-34%. Being the
+  best coder doesn't make a model reuse more. Its code is longer instead: 30.6 logical lines per
+  response, against 25.6 for Qwen3-8B and 23.1 for `8672`.
+- **No model over-reaches on control.** Library use on the control tasks is 0.0-0.2% for every
+  model, including `8672`, which uses a library on 34% of test responses. Training raised library
+  use where a library helps without making the models import one regardless. The control split
+  doesn't separate the models, though: even the stricter "plausible but unnecessary" review left
+  tasks that tempt none of them.
 - **Caveats.**
   - Each configuration was run with one seed. Epochs of the same run differ by 3-4 points on the
     benchmark, which is far more than sampling noise (about 0.5 points at 5 samples per task).

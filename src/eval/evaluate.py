@@ -6,7 +6,11 @@ from pathlib import Path
 import lure
 
 from src.data import load_eval_dataset
-from src.eval.generate_api import ApiSettings, generate_api_responses
+from src.eval.generate_api import (
+    FAILED_STOP_REASON,
+    ApiSettings,
+    generate_api_responses,
+)
 from src.eval.scoring import score_dataset
 from src.prompts import FIXED_SYSTEM_PROMPTS, PromptStyle, build_system_prompt
 from src.response.evaluate import resolve_eval_python
@@ -94,6 +98,60 @@ def load_unscored_generations(
         log(f"Ignoring saved generations that don't match this run: {path}")
         return None
     return responses
+
+
+def count_failed_samples(
+    responses: list[list[tuple[str, str, int | None]]],
+) -> int:
+    """
+    Count the samples whose API request failed (e.g. a rate limit, or an empty balance).
+
+    Returns the number of failed samples.
+    """
+    return sum(
+        stop_reason == FAILED_STOP_REASON
+        for samples in responses
+        for _response, stop_reason, _tokens in samples
+    )
+
+
+def retry_failed_api_samples(
+    responses: list[list[tuple[str, str, int | None]]],
+    prompts: list[list[dict]],
+    model: str,
+    api: ApiSettings,
+    decoding_settings: dict,
+) -> list[list[tuple[str, str, int | None]]]:
+    """
+    Ask the API again, once, for every sample whose request failed, keeping the others.
+
+    A failed request holds no answer, and scoring it would count it as a wrong one. So only
+    those samples are requested again, which also lets a run that stopped partway (e.g. when
+    the account ran out of credit) continue without paying again for what already succeeded.
+
+    Returns the responses, with each failed sample replaced by its retry.
+    """
+    failed = [
+        (row, sample)
+        for row, samples in enumerate(responses)
+        for sample, (_response, stop_reason, _tokens) in enumerate(samples)
+        if stop_reason == FAILED_STOP_REASON
+    ]
+    if not failed:
+        return responses
+
+    log(f"Asking again for the {len(failed)} sample(s) whose request failed")
+    retried = generate_api_responses(
+        model=model,
+        api=api,
+        prompts=[prompts[row] for row, _sample in failed],
+        decoding_settings={**decoding_settings, "n_samples": 1},
+        max_workers=api.max_workers,
+    )
+    filled = [list(samples) for samples in responses]
+    for (row, sample), retry in zip(failed, retried):
+        filled[row][sample] = retry[0]
+    return filled
 
 
 def evaluate_model(
@@ -216,9 +274,7 @@ def evaluate_model(
             n_samples=decoding_settings.get("n_samples", 1),
         )
         if responses is not None:
-            log(
-                f"Scoring the saved generations in {unscored_path}, not generating again"
-            )
+            log(f"Using the saved generations in {unscored_path}, not generating again")
         else:
             with log_timer("generation"):
                 if api is not None:
@@ -227,6 +283,7 @@ def evaluate_model(
                         api=api,
                         prompts=prompts,
                         decoding_settings=decoding_settings,
+                        max_workers=api.max_workers,
                     )
                 else:
                     # deferred alongside the vllm import above, for the same reason
@@ -239,6 +296,29 @@ def evaluate_model(
                     )
             # saved before scoring, so nothing that goes wrong while scoring loses them
             save_unscored_generations(responses, unscored_path)
+
+        # an api request that failed holds no answer: ask again for it (and for any an
+        # earlier run left), and score nothing while any request still fails, since a
+        # failed request would count as a wrong answer
+        if api is not None and count_failed_samples(responses):
+            with log_timer("retrying failed requests"):
+                responses = retry_failed_api_samples(
+                    responses,
+                    prompts,
+                    model=base,
+                    api=api,
+                    decoding_settings=decoding_settings,
+                )
+            save_unscored_generations(responses, unscored_path)
+            still_failed = count_failed_samples(responses)
+            if still_failed:
+                log(
+                    f"{still_failed} request(s) still failed, so {name} is not scored - its "
+                    f"generations are kept in {unscored_path}, and running the evaluation "
+                    "again asks for the failed ones only"
+                )
+                failed_datasets.append(name)
+                continue
 
         # score the responses the way this dataset's task is verified (execution for the
         # tested split, prose pick / import classification for the new splits); score_dataset
@@ -316,6 +396,7 @@ def evaluate_model(
 
     if failed_datasets:
         raise RuntimeError(
-            f"Scoring failed for {failed_datasets} - their generations are kept beside "
-            "their results (*.unscored.jsonl), and running the evaluation again scores them."
+            f"Not finished for {failed_datasets} - scoring failed, or api requests still "
+            "failed. Their generations are kept beside their results (*.unscored.jsonl), "
+            "and running the evaluation again retries any failed requests and scores them."
         )

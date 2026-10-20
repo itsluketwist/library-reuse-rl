@@ -19,17 +19,18 @@ models=(
     # "qwen3.5-9b"
     # "domyn-small"
     # "olmo3-7b"
-    "gpt-5.6-sol"
-    "gpt-5.6-terra"
-    "gpt-5.6-luna"
+    # "gpt-5.6-sol"
+    # "gpt-5.6-terra"
+    # "gpt-5.6-luna"
     "deepseek-flash"
-    "glm-5.2"
-    "kimi-k3"
+    # "glm-5.2"
+    # "kimi-k3"
 )
 
 # comma-separated eval dataset names (config/eval_datasets.yaml)
 # product_choice is gitignored and must have been built locally.
-datasets="libreusebench_test,libreusebench_control"
+# the provisional LibReuseBench v2 splits, before human review
+datasets="libreusebench_v2_test,libreusebench_v2_control"
 
 # completions sampled per prompt (see --n-samples in src/run_eval.py); eval-only, unrelated
 # to training rollouts. leave blank to use the default of 1.
@@ -38,7 +39,8 @@ n_samples=5
 # decoding profiles to evaluate with (eval_decoding_profiles in config/training.yaml)
 decoding_profiles=(
     # "greedy"
-    "default"
+    # "default"
+    "default_16k"  # as the LibReuseBench v2 results of the other models
     # "qwen3"
 )
 

@@ -1,0 +1,91 @@
+{
+  "metadata": {
+    "base": "deepseek-flash",
+    "weights": null,
+    "provider": "api",
+    "dataset": "libreusebench_v2_control",
+    "dataset_file": "benchmark/artefacts/provisional/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.1.3",
+    "python_executable": null,
+    "environment_root": ".libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": null,
+    "system_prompt": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 480,
+    "n_tasks": 96,
+    "n_responses": 480,
+    "k": 5,
+    "pass@1": 0.9854166666666666,
+    "pass@k": 1.0,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.0,
+          "avg_extlibs": 0.0,
+          "library_counts": {}
+        },
+        "per_response": {
+          "using_lib_rate": 0.0,
+          "avg_extlibs": 0.0,
+          "library_counts": {}
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.0,
+          "avg_extlibs": 0.0,
+          "library_counts": {}
+        },
+        "per_response": {
+          "using_lib_rate": 0.0,
+          "avg_extlibs": 0.0,
+          "library_counts": {}
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 480,
+        "avg_lloc": 11.352083333333333,
+        "avg_maintainability_index": 79.04795815999688
+      },
+      "passed": {
+        "n_measured": 473,
+        "avg_lloc": 11.482029598308667,
+        "avg_maintainability_index": 78.73788565919345
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "environment": {
+      "directory": "/Users/lukas.twist/code/library-reuse-rl/.libreuseeval-venvs/libreusebench-env-99hzrkl0",
+      "source": "response_imports",
+      "installed_packages": [],
+      "install_failed": [],
+      "task_packages": [],
+      "installed_package_versions": {
+        "pip": "25.0.1"
+      },
+      "package_imports": {}
+    },
+    "results_file": "/var/folders/hy/yx71lpqn0q7dwz53fkxvt3fc0000gn/T/libreusebench-eval-jcwb0phf/libreusebench_eval_2026-10-19T18:38:10.040039.json"
+  }
+}

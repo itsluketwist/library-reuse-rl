@@ -5,7 +5,11 @@ from pathlib import Path
 import pytest
 
 from src.eval import evaluate
-from src.eval.generate_api import DEFAULT_MAX_TOKENS_PARAM, ApiSettings
+from src.eval.generate_api import (
+    DEFAULT_MAX_TOKENS_PARAM,
+    DEFAULT_MAX_WORKERS,
+    ApiSettings,
+)
 from src.run_eval import apply_environment_root, build_api_settings, eval_results_path
 
 
@@ -155,6 +159,21 @@ class TestBuildApiSettings:
         assert api.base_url == "https://api.deepseek.com"
         assert api.max_tokens_param == DEFAULT_MAX_TOKENS_PARAM
         assert api.extra_params is None
+        assert api.max_workers == DEFAULT_MAX_WORKERS
+
+    def test_api_entry_can_cap_its_concurrent_requests(self) -> None:
+        """A provider with a low concurrency limit sets max_workers below it."""
+        api = build_api_settings(
+            {
+                "provider": "api",
+                "base": "deepseek-flash",
+                "api_key_env": "DEEPSEEK_API_KEY",
+                "max_workers": 4,
+            }
+        )
+
+        assert api is not None
+        assert api.max_workers == 4
 
     def test_unknown_provider_raises(self) -> None:
         """A typo is caught here rather than silently falling back to vllm, which would
@@ -306,3 +325,92 @@ def test_saved_generations_from_before_token_counts_still_load(tmp_path):
     assert evaluate.load_unscored_generations(path, n_prompts=1, n_samples=1) == [
         [("a", "eos", None)],
     ]
+
+
+class TestFailedApiRequests:
+    """A failed api request is asked for again, and nothing is scored while one still fails."""
+
+    def _evaluate(
+        self,
+        monkeypatch,
+        tmp_path: Path,
+        replies: list[list[list[tuple[str, str, int | None]]]],
+        n_samples: int = 1,
+    ) -> tuple[list[dict], list[list[list[tuple[str, str, int | None]]]]]:
+        """Run evaluate_model on one one-prompt dataset; each generation call returns the
+        next of `replies`.
+
+        Returns the generation calls made (their prompts and settings) and what was scored.
+        """
+        calls: list[dict] = []
+        scored: list[list[list[tuple[str, str, int | None]]]] = []
+
+        def generate(**kwargs):
+            calls.append(kwargs)
+            return replies[len(calls) - 1]
+
+        def score(**kwargs):
+            scored.append(kwargs["responses"])
+            return {"task": "library_usage", "n_total": 1}, [{"idx": 0}]
+
+        monkeypatch.setattr(
+            evaluate, "load_eval_dataset", lambda **_: {"prompt": ["p"]}
+        )
+        monkeypatch.setattr(evaluate, "generate_api_responses", generate)
+        monkeypatch.setattr(evaluate, "score_dataset", score)
+        evaluate.evaluate_model(
+            base="deepseek-flash",
+            weights_path=None,
+            dataset_configs={
+                "only": {"path": "only.jsonl", "evaluator": "library_usage"}
+            },
+            decoding_settings={"max_new_tokens": 16, "n_samples": n_samples},
+            output_paths={"only": tmp_path / "only.json"},
+            api=ApiSettings(api_key_env="FAKE_API_KEY"),
+        )
+        return calls, scored
+
+    def test_a_failed_request_is_retried_then_scored(self, monkeypatch, tmp_path):
+        calls, scored = self._evaluate(
+            monkeypatch,
+            tmp_path,
+            replies=[
+                [[("answer", "eos", 3), ("API request failed: 429", "error", None)]],
+                [[("retried answer", "eos", 4)]],  # the retry: the failed sample only
+            ],
+            n_samples=2,
+        )
+
+        assert calls[1]["prompts"] == ["p"]
+        assert calls[1]["decoding_settings"]["n_samples"] == 1
+        assert scored == [[[("answer", "eos", 3), ("retried answer", "eos", 4)]]]
+        assert (tmp_path / "only.json").exists()
+
+    def test_a_request_that_keeps_failing_leaves_the_dataset_unscored(
+        self,
+        monkeypatch,
+        tmp_path,
+    ):
+        failed = [[("API request failed: 402", "error", None)]]
+        with pytest.raises(RuntimeError, match=r"\['only'\]"):
+            self._evaluate(monkeypatch, tmp_path, replies=[failed, failed])
+
+        # a failed request would count as a wrong answer, so nothing is scored or saved
+        assert not (tmp_path / "only.json").exists()
+        assert (tmp_path / "only.unscored.jsonl").exists()
+
+    def test_a_later_run_asks_only_for_the_failed_samples(self, monkeypatch, tmp_path):
+        evaluate.save_unscored_generations(
+            [[("kept", "eos", 5), ("API request failed: 402", "error", None)]],
+            tmp_path / "only.unscored.jsonl",
+        )
+        calls, scored = self._evaluate(
+            monkeypatch,
+            tmp_path,
+            replies=[[[("new", "eos", 6)]]],
+            n_samples=2,
+        )
+
+        # only one call: the retry of the one failed sample, with nothing regenerated
+        assert len(calls) == 1
+        assert scored == [[[("kept", "eos", 5), ("new", "eos", 6)]]]

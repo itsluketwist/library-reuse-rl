@@ -36,12 +36,15 @@ class ApiSettings(NamedTuple):
     `base_url` of None keeps the SDK default (OpenAI's own API). `extra_params` is sent
     verbatim for provider-specific fields outside the standard schema (e.g. DeepSeek's
     "thinking"), and `max_tokens_param` names the field the length cap is sent under.
+    `max_workers` is how many requests are in flight at once: keep it under the provider's
+    concurrency limit, or the extra requests are refused.
     """
 
     api_key_env: str
     base_url: str | None = None
     extra_params: dict[str, Any] | None = None
     max_tokens_param: str = DEFAULT_MAX_TOKENS_PARAM
+    max_workers: int = DEFAULT_MAX_WORKERS
 
 
 def _build_client(

@@ -162,8 +162,11 @@ python scripts/summarize_eval.py
 Models can be evaluated over an OpenAI-compatible API instead of local weights, by giving
 their `config/models.yaml` entry `provider: api` and an `api_key_env` naming the `.env`
 variable that holds the key (copy [`.env.example`](.env.example) to `.env` and fill it in).
-`base_url` selects the provider, and `max_tokens_param` covers models that reject the
-legacy `max_tokens` field. These runs never import vllm, and only need network access - so
+`base_url` selects the provider, `max_tokens_param` covers models that reject the
+legacy `max_tokens` field, and `max_workers` (default 8) caps how many requests are in flight
+at once, for a provider with a low concurrency limit. A request that still fails is scored as a
+wrong answer, so check the run's warnings before trusting its results. These runs never
+import vllm, and only need network access - so
 they are not submitted to slurm (Isambard has no CPU partition); run them with
 [`scripts/run_eval_local.sh`](scripts/run_eval_local.sh). A hosted model has no local
 weights, so its registry `path` stays blank. See
