@@ -1,0 +1,112 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": null,
+    "provider": "vllm",
+    "dataset": "library_usage",
+    "dataset_file": "data/train/library_usage/test.jsonl",
+    "dataset_version": [
+      "v4"
+    ],
+    "evaluator": "library_usage",
+    "lure_version": "0.1.3",
+    "python_executable": null,
+    "environment_root": null,
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "library_usage",
+    "n_total": 725,
+    "n_valid_code": 670,
+    "n_external_lib_used": 208,
+    "n_appropriate_lib_used": 172,
+    "valid_code_rate": 0.9241379310344827,
+    "external_lib_rate": 0.296551724137931,
+    "external_lib_used_rate": 0.2868965517241379,
+    "appropriate_lib_rate": 0.23724137931034484,
+    "library_use": {
+      "using_lib_rate": 0.2868965517241379,
+      "avg_extlibs": 0.3972413793103448,
+      "library_counts": {
+        "pandas": 70,
+        "bs4": 32,
+        "numpy": 23,
+        "click": 22,
+        "watchdog": 19,
+        "sklearn": 16,
+        "fastapi": 16,
+        "barcode": 15,
+        "markdown": 13,
+        "pydantic": 12,
+        "requests": 12,
+        "nltk": 10,
+        "pytz": 8,
+        "geopy": 4,
+        "sqlalchemy": 4,
+        "qrcode": 3,
+        "typer": 2,
+        "dateutil": 2,
+        "matplotlib": 1,
+        "sqlmodel": 1,
+        "yourapp": 1,
+        "processing": 1,
+        "spacy": 1
+      },
+      "appropriate_lib_rate": 0.23724137931034484,
+      "appropriate_given_use_rate": 0.8269230769230769
+    },
+    "library_use_per_task": {
+      "using_lib_rate": 0.4068965517241379,
+      "avg_extlibs": 0.7034482758620689,
+      "library_counts": {
+        "pandas": 17,
+        "numpy": 12,
+        "bs4": 10,
+        "click": 10,
+        "fastapi": 8,
+        "watchdog": 6,
+        "sklearn": 5,
+        "pytz": 4,
+        "pydantic": 4,
+        "requests": 4,
+        "markdown": 3,
+        "barcode": 3,
+        "typer": 2,
+        "dateutil": 2,
+        "qrcode": 2,
+        "nltk": 2,
+        "sqlalchemy": 2,
+        "matplotlib": 1,
+        "geopy": 1,
+        "sqlmodel": 1,
+        "processing": 1,
+        "yourapp": 1,
+        "spacy": 1
+      },
+      "appropriate_lib_rate": 0.31724137931034485,
+      "appropriate_given_use_rate": 0.7796610169491526
+    },
+    "external_lib_used_rate_by_phrasing_mode": {
+      "function": 0.08518518518518518,
+      "repo": 0.41454545454545455,
+      "simple": 0.39444444444444443
+    },
+    "appropriate_lib_rate_by_phrasing_mode": {
+      "function": 0.08518518518518518,
+      "repo": 0.29454545454545455,
+      "simple": 0.37777777777777777
+    }
+  }
+}
