@@ -7,7 +7,8 @@ output/
         epoch1/, epoch2/, ...       each epoch checkpoint's eval results
     {iteration}/                    a numbered round of experiments (01/, 02/, ...), written
         README.md                   up in its README - its runs are moved here from their
-        {run_id}/                   base model's folder, in the same layout
+        {run_id}/                   base model's folder, in the same layout, and base
+        baselines/{model}/          model results it reports may be moved here too
     debug/                          debug (--debug) eval results, in the same layout as above
 
 Eval results are two files per dataset (see src/eval/evaluate.py). The checkpoints
@@ -40,6 +41,25 @@ def baseline_dir(model: str) -> Path:
     Returns output/baselines/{model}.
     """
     return OUTPUT_DIR / "baselines" / model
+
+
+def moved_baseline_result(
+    model: str,
+    file_name: str,
+) -> Path | None:
+    """
+    Find a base model's result file that was moved out of output/baselines/{model}/ into an
+    iteration's folder (output/{iteration}/baselines/{model}/) when that iteration of
+    experiments was written up. Debug results (output/debug/) are never counted.
+
+    Returns the moved file (the earliest iteration's, if there are several), or None.
+    """
+    moved = [
+        path
+        for path in sorted(OUTPUT_DIR.glob(f"*/baselines/{model}/{file_name}"))
+        if path.relative_to(OUTPUT_DIR).parts[0] != "debug"
+    ]
+    return moved[0] if moved else None
 
 
 def training_run_dir(

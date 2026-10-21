@@ -16,7 +16,7 @@ from src.eval.generate_api import (
 from src.prompts import PromptStyle, library_prompt_suffix
 from src.utils.config import load_full_yaml, load_model_settings, load_yaml_config
 from src.utils.log import log, log_header, silence_library_warnings
-from src.utils.paths import debug_output_dir, model_output_dir
+from src.utils.paths import debug_output_dir, model_output_dir, moved_baseline_result
 
 
 # tiny model (see config/models.yaml) used to smoke-test --debug runs
@@ -346,10 +346,16 @@ def run_eval(
     # runs are cheap smoke tests, so they always rerun regardless of what is on disk
     datasets_to_run = {}
     for name, path in output_paths.items():
-        if update or debug or not path.exists():
+        # a base model's result also counts if it was moved into an iteration's folder
+        existing = (
+            path
+            if path.exists()
+            else moved_baseline_result(model=model, file_name=path.name)
+        )
+        if update or debug or existing is None:
             datasets_to_run[name] = path
         else:
-            log(f"  - {name}: results already exist at {path}, skipping")
+            log(f"  - {name}: results already exist at {existing}, skipping")
     if not datasets_to_run:
         log(
             "All requested datasets already have results - nothing to do (use --update to regenerate)."

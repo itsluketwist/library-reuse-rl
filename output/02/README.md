@@ -7,8 +7,8 @@ of epochs. Each run's training metrics are in `{run_id}/grpo/` and each epoch's 
 
 The iteration also has the first results for a hosted frontier model (`deepseek-flash`) and for
 the control split. Results for models that weren't trained here are in `baselines/{model}/`. They
-were moved there from `output/baselines/`, where the eval writes them, so a rerun of the same eval
-won't find them and would regenerate them.
+were moved there from `output/baselines/`, where the eval writes them. The eval still finds them
+here, so a rerun skips them unless `--update` is set.
 
 ## What changed since iteration 01
 

@@ -22,20 +22,24 @@ TIME="12:00:00"
 #
 # api-served models are not submitted here: isambard has no cpu partition, and they only
 # need network access - run them with scripts/run_eval_local.sh instead.
+#
+# currently set to fill in run 8672's summary figure: the base model on the v4 held-out
+# splits, and 8672's epochs on the control split. every other combination already has
+# results, so it is skipped (see `update` below)
 models=(
     # "vllm:qwen3-debug"
-    "vllm:qwen3-4b"
+    # "vllm:qwen3-4b"
     "vllm:qwen3-8b"
-    "vllm:qwen3-14b"
+    # "vllm:qwen3-14b"
     # "vllm:qwen3-32b"  # both ran out of the 12h limit on libreusebench_v2_full
     # "vllm:olmo3-7b"
-    "vllm:qwen3.5-9b"
-    "vllm:domyn-small"
+    # "vllm:qwen3.5-9b"
+    # "vllm:domyn-small"
     # the final epoch of each training run, for a quick check - training_runs below adds every
     # epoch instead
-    "vllm:qwen3-8b-4796-epoch5"
-    "vllm:qwen3-8b-e650-epoch3"
-    "vllm:qwen3-8b-8672-epoch6"
+    # "vllm:qwen3-8b-4796-epoch5"
+    # "vllm:qwen3-8b-e650-epoch3"
+    # "vllm:qwen3-8b-8672-epoch6"
 )
 
 # training runs to evaluate, by run id (e.g. "qwen3-8b-4796"). each is added to the models
@@ -44,7 +48,7 @@ models=(
 training_runs=(
     # "qwen3-8b-4796"
     # "qwen3-8b-e650"
-    # "qwen3-8b-8672"
+    "qwen3-8b-8672"
 )
 
 # EVAL_MODELS replaces both lists above (a space-separated string of models), which is how
@@ -57,8 +61,8 @@ training_runs=(
 # eval dataset names (config/eval_datasets.yaml). leave empty to evaluate every dataset in
 # that file. product_choice is gitignored and must have been built locally.
 datasets=(
-    # "library_usage"
-    # "library_usage_val"
+    "library_usage"
+    "library_usage_val"
     # "library_usage_train"
     # "library_usage_script_pilot"
     # "libreusebench_test"
@@ -97,8 +101,9 @@ debug=false
 
 # true = regenerate results even if already saved (see --update in src/run_eval.py).
 # false skips a model/dataset/decoding-profile/prompt-style combination whose result file
-# already exists under output/ (see src/utils/paths.py), so resubmitting only fills in
-# what is missing.
+# already exists under output/ (see src/utils/paths.py) - including a base model's result
+# moved into an iteration's baselines/ folder - so resubmitting only fills in what is
+# missing.
 update=false
 
 ###############################################################################

@@ -46,8 +46,11 @@ training_jobs=(
 eval_datasets=(
     "library_usage"
     "library_usage_val"
-    # libreusebench v2 before manual review, until its test / control splits are built
+    # libreusebench v2 before manual review, until its test split is built
     "libreusebench_v2_full"
+    # its provisional control split, where no library is needed - library use should stay
+    # near zero and pass@1 shouldn't drop
+    "libreusebench_v2_control"
     # "libreusebench_test"
     # "libreusebench_control"
 )

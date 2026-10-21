@@ -4,10 +4,12 @@ from pathlib import Path
 
 import pytest
 
+from src.utils import paths
 from src.utils.paths import (
     baseline_dir,
     debug_output_dir,
     model_output_dir,
+    moved_baseline_result,
     training_run_dir,
 )
 
@@ -89,3 +91,24 @@ def test_debug_results_mirror_the_normal_layout_under_debug() -> None:
     assert debug_output_dir(training_run_dir("qwen3-debug", "run")) == Path(
         "output/debug/qwen3-debug/run"
     )
+
+
+def test_a_moved_baseline_result_is_found_but_a_debug_one_is_not(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Results moved into an iteration's folder still exist; debug results never count."""
+    monkeypatch.setattr(paths, "OUTPUT_DIR", tmp_path)
+    name = "libreusebench_v2_control-default_16k-base.json"
+    assert moved_baseline_result(model="qwen3-8b", file_name=name) is None
+
+    debug = tmp_path / "debug" / "baselines" / "qwen3-8b" / name
+    debug.parent.mkdir(parents=True)
+    debug.write_text("{}")
+    assert moved_baseline_result(model="qwen3-8b", file_name=name) is None
+
+    moved = tmp_path / "02" / "baselines" / "qwen3-8b" / name
+    moved.parent.mkdir(parents=True)
+    moved.write_text("{}")
+    assert moved_baseline_result(model="qwen3-8b", file_name=name) == moved
+    assert moved_baseline_result(model="qwen3-4b", file_name=name) is None
