@@ -51,6 +51,8 @@ eval_datasets=(
     # its provisional control split, where no library is needed - library use should stay
     # near zero and pass@1 shouldn't drop
     "libreusebench_v2_control"
+    # regression test of general coding ability - pass@1 shouldn't drop
+    "humaneval_plus"
     # "libreusebench_test"
     # "libreusebench_control"
 )

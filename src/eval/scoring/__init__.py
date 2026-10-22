@@ -3,12 +3,14 @@
 The eval loop (src/eval/evaluate.py) generates one response per prompt; this package turns
 those responses into per-row results and an analysis summary using the evaluator explicitly
 configured beside the dataset. Tested-implementation datasets execute code, product-choice
-and library-usage use the deterministic checks their rewards use, and LibReuseBench
-delegates to its official scorer. One file per task type, mirroring src/grpo/rewards/.
+and library-usage use the deterministic checks their rewards use, LibReuseBench
+delegates to its official scorer, and HumanEval+ runs each task's check() function. One
+file per task type, mirroring src/grpo/rewards/.
 """
 
 from typing import Iterable
 
+from src.eval.scoring.humaneval import score_humaneval
 from src.eval.scoring.library_usage import score_library_usage
 from src.eval.scoring.libreusebench import score_libreusebench
 from src.eval.scoring.product_choice import score_product_choice
@@ -24,6 +26,7 @@ _SINGLE_SAMPLE_SCORERS = {
 _MULTI_SAMPLE_SCORERS = {
     "library_usage": score_library_usage,
     "libreusebench": score_libreusebench,
+    "humaneval": score_humaneval,
 }
 _SCORERS = {**_SINGLE_SAMPLE_SCORERS, **_MULTI_SAMPLE_SCORERS}
 

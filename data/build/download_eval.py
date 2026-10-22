@@ -1,6 +1,6 @@
 """Download and format the code evaluation datasets used by the project.
 
-Both datasets are reformatted into the same stdin/stdout schema, so the same
+LiveCodeBench and APPS are reformatted into the same stdin/stdout schema, so the same
 evaluator (src/response/evaluate.py) can run against either of them:
 
 - LiveCodeBench (v5 + v6) - competitive programming problems, filtered to the
@@ -11,13 +11,16 @@ evaluator (src/response/evaluate.py) can run against either of them:
   themselves exists, so APPS introductory is used instead for consistency of
   test format).
 
+HumanEval+ is kept in its own function-call format, as a regression test of general
+coding ability (scored by src/eval/scoring/humaneval.py).
+
 Usage: python data/build/download_eval.py
 """
 
 import json
 import random
 
-from datasets import Dataset, concatenate_datasets
+from datasets import Dataset, concatenate_datasets, load_dataset
 from huggingface_hub import hf_hub_download
 from llm_cgr import load_jsonl, save_jsonl
 
@@ -28,6 +31,8 @@ from data.build.paths import EVAL_DIR as OUTPUT_DIR
 REVISIONS = {
     "livecodebench": "0fe84c3912ea0c4d4a78037083943e8f0c4dd505",
     "apps": "21e74ddf8de1a21436da12e3e653065c5213e9d1",
+    # the same pin as library-adoption-rl and llm-training, so a task scores the same in each
+    "humaneval_plus": "d32357c",
 }
 
 # used to deterministically sample apps down to the same size as livecodebench
@@ -187,9 +192,44 @@ def download_apps(
     return records
 
 
+def download_humaneval_plus() -> list[dict]:
+    """Download HumanEval+ (all 164 tasks) in its own function-call format.
+
+    Source: https://huggingface.co/datasets/evalplus/humanevalplus
+    (Liu et al., NeurIPS 2023, Apache-2.0; built on OpenAI's HumanEval, MIT.)
+
+    Each prompt is a function signature and docstring, given to the model as-is, as in
+    library-adoption-rl. Each `test` defines a `check(candidate)` function holding the
+    original HumanEval tests plus EvalPlus's extra ones, so nothing needs converting.
+    One task, HumanEval/32, fails even its own canonical solution at this revision (its
+    check() unpacks a float), so the best possible pass@1 is 163/164.
+
+    Returns the HumanEval+ records.
+    """
+    rows = load_dataset(
+        "evalplus/humanevalplus",
+        split="test",
+        revision=REVISIONS["humaneval_plus"],
+    )
+    print(f"loaded {len(rows)} humaneval+ problems")
+
+    return [
+        {
+            "task_id": row["task_id"],
+            "prompt": row["prompt"],
+            "entry_point": row["entry_point"],
+            "test": row["test"],
+            "source": "humaneval_plus",
+        }
+        for row in rows
+    ]
+
+
 def main() -> None:
-    """Download, format, and save the livecodebench and apps evaluation datasets."""
+    """Download, format, and save the livecodebench, apps and humaneval+ evaluation datasets."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    save_jsonl(download_humaneval_plus(), str(OUTPUT_DIR / "humaneval_plus.jsonl"))
 
     lcb_records = download_livecodebench()
     save_jsonl(lcb_records, str(OUTPUT_DIR / "livecodebench.jsonl"))

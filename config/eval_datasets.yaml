@@ -13,6 +13,13 @@ skywork_test:
   path: "data/train/skywork/test.jsonl"
   evaluator: implement_tested
   python_executable: ".venv-eval/bin/python"
+# regression test of general coding ability (built by data/build/download_eval.py): 164
+# function tasks, scored by running each task's check() on the answer's function, in a venv
+# built like LibReuseBench's (numpy for the tests, plus whatever the answers import)
+humaneval_plus:
+  path: "data/eval/humaneval_plus.jsonl"
+  evaluator: humaneval
+  environment_root: ".libreuseeval-venvs"
 
 # library-reuse held-out test splits (built by data/build/amplify/build.py and
 # data/build/library/build.py); scored by the prose pick / import classification rather than

@@ -23,9 +23,9 @@ TIME="12:00:00"
 # api-served models are not submitted here: isambard has no cpu partition, and they only
 # need network access - run them with scripts/run_eval_local.sh instead.
 #
-# currently set to fill in run 8672's summary figure: the base model on the v4 held-out
-# splits, and 8672's epochs on the control split. every other combination already has
-# results, so it is skipped (see `update` below)
+# currently set to fill in HumanEval+ on run 8672's summary figure: the base model and
+# every 8672 epoch. every other combination already has results, so it is skipped (see
+# `update` below)
 models=(
     # "vllm:qwen3-debug"
     # "vllm:qwen3-4b"
@@ -61,8 +61,8 @@ training_runs=(
 # eval dataset names (config/eval_datasets.yaml). leave empty to evaluate every dataset in
 # that file. product_choice is gitignored and must have been built locally.
 datasets=(
-    "library_usage"
-    "library_usage_val"
+    # "library_usage"
+    # "library_usage_val"
     # "library_usage_train"
     # "library_usage_script_pilot"
     # "libreusebench_test"
@@ -72,7 +72,9 @@ datasets=(
     # "libreusebench_v2_full"
     # "libreusebench_v2_test"  # v2_full's 233 tasks + 1, renumbered (match results by seed id)
     # the provisional control split, before human review (benchmark/artefacts/provisional/)
-    "libreusebench_v2_control"
+    # "libreusebench_v2_control"
+    # regression test of general coding ability
+    "humaneval_plus"
 )
 
 # completions sampled per prompt (see --n-samples in src/run_eval.py); eval-only, unrelated
