@@ -1,10 +1,11 @@
 """Score HumanEval+ responses: run each answer's function against the task's check()."""
 
+import re
 from typing import Any, Iterable
 
 from libreusebench.environment import Environment, execute
 from libreusebench.evaluate import plan_installs
-from lure import parse_response
+from lure import CodeBlock, parse_response
 
 from src.eval.scoring.base import _average, _library_statistics, _rate
 
@@ -12,6 +13,28 @@ from src.eval.scoring.base import _average, _library_statistics, _rate
 # the only third-party package the HumanEval+ tests import (163 of the 164 use it); the
 # prompts and reference solutions use just the standard library
 TEST_PACKAGE = "numpy"
+
+
+def select_block(
+    response: str,
+    stop_reason: str,
+    entry_point: str,
+) -> CodeBlock | None:
+    """
+    Pick the code block to test: the longest one that defines the function under test.
+
+    Answers often follow the function with a longer block of example calls or asserts, so
+    the longest block alone can be one that never defines the function. When no block
+    defines it, the longest block is used, and fails the test as it should.
+
+    Returns the chosen CodeBlock, or None when the answer has no code.
+    """
+    parsed = parse_response(response, stop_reason=stop_reason)
+    definition = re.compile(rf"^\s*def\s+{re.escape(entry_point)}\s*\(", re.MULTILINE)
+    defining = [block for block in parsed.code_blocks if definition.search(block.code)]
+    if not defining:
+        return parsed.longest_block
+    return max(defining, key=lambda block: len(block.code.splitlines()))
 
 
 def build_test_program(
@@ -44,8 +67,9 @@ def score_humaneval(
     environment_cache_dir: str | None = None,
 ) -> tuple[dict, list[dict]]:
     """
-    Score HumanEval+ responses, every sample of every task, by running the answer's longest
-    code block against the task's tests (original HumanEval cases plus EvalPlus's extras).
+    Score HumanEval+ responses, every sample of every task, by running the answer's code block
+    (see select_block) against the task's tests (original HumanEval cases plus EvalPlus's
+    extras).
 
     The code runs in a venv built the way LibReuseBench builds one (see
     libreusebench.environment.Environment): disposable under `environment_root`, or reused
@@ -92,7 +116,11 @@ def score_humaneval(
             for sample, (response, stop_reason, completion_tokens) in enumerate(
                 samples
             ):
-                block = parse_response(response, stop_reason=stop_reason).longest_block
+                block = select_block(
+                    response=response,
+                    stop_reason=stop_reason,
+                    entry_point=row["entry_point"],
+                )
                 # no code means nothing to run, so the sample fails
                 passed, output = False, None
                 if block is not None:

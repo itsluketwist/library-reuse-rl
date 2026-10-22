@@ -22,15 +22,16 @@
       "enable_thinking": true,
       "n_samples": 5
     },
-    "debug": false
+    "debug": false,
+    "rescored": "2026-10-22: re-scored locally from these generations after the scorer was fixed to run the code block defining the function, not just the longest block"
   },
   "analysis": {
     "task": "humaneval",
     "n_total": 820,
     "n_tasks": 164,
-    "n_passed": 691,
-    "pass@1": 0.8426829268292683,
-    "pass@5": 0.926829268292683,
+    "n_passed": 735,
+    "pass@1": 0.8963414634146342,
+    "pass@5": 0.9329268292682927,
     "n_no_code": 5,
     "n_overflow": 5,
     "using_lib_rate": 0.0,

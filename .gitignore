@@ -234,3 +234,5 @@ CLAUDE.md
 
 # ignore until final analysis when notebooks will be committed!
 notebooks/*
+# except the per-run summary figure, shared with supervisors
+!notebooks/01_grpo_training_summary.ipynb

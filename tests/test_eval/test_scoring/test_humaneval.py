@@ -97,6 +97,15 @@ class TestScoreHumanEval:
 
         assert results[0]["passed"], results[0]["output"]
 
+    def test_runs_the_block_defining_the_function_not_a_longer_example(self):
+        """A longer block of example calls after the function doesn't replace it."""
+        examples = (
+            "```python\nprint(add(1, 2))\nprint(add(3, 4))\nprint(add(5, 6))\n```"
+        )
+        _analysis, results = _score(CORRECT + "\n\nExamples:\n\n" + examples)
+
+        assert results[0]["passed"], results[0]["output"]
+
     def test_installs_numpy_and_the_answers_libraries(self):
         """The venv gets numpy for the tests, plus each package an answer imports."""
         answer = "```python\nimport sympy\n\ndef add(a, b):\n    return a + b\n```"
