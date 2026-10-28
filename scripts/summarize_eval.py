@@ -21,14 +21,35 @@ from src.utils.paths import OUTPUT_DIR
 # metrics to show per task, as the path to each within the result's "analysis" block (see
 # src/eval/scoring.py for where they are computed). "n_total" is always included first.
 _TASK_METRICS: dict[str, dict[str, tuple[str, ...]]] = {
+    # imported vs used shows the import-only hack: a library imported but never used
     "library_usage": {
         "valid_code_rate": ("valid_code_rate",),
+        "external_lib_rate": ("external_lib_rate",),
         "external_lib_used_rate": ("external_lib_used_rate",),
-        "appropriate_lib_rate": ("appropriate_lib_rate",),
+        "target_lib_used_rate": ("target_lib_used_rate",),
     },
     "libreusebench": {
         "pass@1": ("pass@1",),
         "lib_used_rate": ("library_use", "used", "per_task", "using_lib_rate"),
+        # per response, like the library_usage rates above
+        "lib_imported_per_response": (
+            "library_use",
+            "imported",
+            "per_response",
+            "using_lib_rate",
+        ),
+        "lib_used_per_response": (
+            "library_use",
+            "used",
+            "per_response",
+            "using_lib_rate",
+        ),
+    },
+    # general coding ability - pass@1 shouldn't drop with training (5 samples per task)
+    "humaneval": {
+        "pass@1": ("pass@1",),
+        "pass@5": ("pass@5",),
+        "lib_imported_rate": ("using_lib_rate",),
     },
     # the function-style pilot reports the same summary fields as the stdin/stdout benchmark
     "libreusebench_function": {

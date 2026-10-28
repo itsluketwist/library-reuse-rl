@@ -26,7 +26,8 @@ class TestLibraryComponents:
             "passes_syntax_check": True,
             "external_lib_imported": True,
             "external_lib_used": True,
-            "appropriate_lib_used": False,
+            "target_lib_imported": False,
+            "target_lib_used": False,
         }
         assert tuple(components) == COMPONENTS
 
@@ -83,32 +84,44 @@ class TestLibraryComponents:
         assert not library_components("<think>still thinking")["correct_format"]
 
     @pytest.mark.parametrize("library", ["PIL", "pil", "Pillow", "pillow"])
-    def test_appropriate_matches_import_or_pip_name(self, library: str):
-        """Appropriate libraries match either name, ignoring case."""
+    def test_target_matches_import_or_pip_name(self, library: str):
+        """Target libraries match either name, ignoring case."""
         components = library_components(
             _response("from PIL import Image\nImage.open(p)"),
-            appropriate_libraries=[library],
+            target_libraries=[library],
         )
 
-        assert components["appropriate_lib_used"]
+        assert components["target_lib_used"]
 
-    def test_appropriate_needs_usage(self):
-        """Importing an appropriate library without using it isn't enough."""
+    def test_target_needs_usage(self):
+        """Importing a target library without using it earns the import, not the use."""
         components = library_components(
             _response("import pandas"),
-            appropriate_libraries=["pandas"],
+            target_libraries=["pandas"],
         )
 
-        assert not components["appropriate_lib_used"]
+        assert components["target_lib_imported"]
+        assert not components["target_lib_used"]
+
+    def test_other_library_is_not_a_target(self):
+        """A library outside the target list earns the external checks only."""
+        components = library_components(
+            _response("import requests\nrequests.get(u)"),
+            target_libraries=["httpx"],
+        )
+
+        assert components["external_lib_used"]
+        assert not components["target_lib_imported"]
+        assert not components["target_lib_used"]
 
 
-def test_is_appropriate_library():
+def test_is_target_library():
     """Import and pypi names both match, ignoring case."""
-    from lure import is_appropriate_library
+    from lure import is_target_library
 
-    assert is_appropriate_library("PIL", ["pillow"])
-    assert is_appropriate_library("requests", ["Requests"])
-    assert not is_appropriate_library("numpy", ["pandas"])
+    assert is_target_library("PIL", ["pillow"])
+    assert is_target_library("requests", ["Requests"])
+    assert not is_target_library("numpy", ["pandas"])
 
 
 class TestCreateLibraryReward:
@@ -131,12 +144,12 @@ class TestCreateLibraryReward:
 
     def test_reward_is_weighted_sum_of_components(self):
         """The reward equals the sum of the weights of the satisfied components."""
-        reward = create_library_reward(appropriate_lib_used=3.0)
+        reward = create_library_reward(target_lib_used=3.0)
         response = _response("import numpy as np\nnp.mean(x)")
 
-        components = reward.components(response, appropriate_libraries=["numpy"])
+        components = reward.components(response, target_libraries=["numpy"])
         expected = sum(reward.weights[name] for name, ok in components.items() if ok)
-        assert reward(response, appropriate_libraries=["numpy"]) == expected == 5.0
+        assert reward(response, target_libraries=["numpy"]) == expected == 5.0
 
     def test_returns_float(self):
         """The reward is always a float, even when nothing is satisfied."""
@@ -192,7 +205,7 @@ class TestCreateLibraryReward:
 
 
 class TestPerItemNames:
-    """Tests for giving local_modules / appropriate_libraries as dicts keyed by item id."""
+    """Tests for giving local_modules / target_libraries as dicts keyed by item id."""
 
     # scores 0.5 (format + syntax) when toolkit is local, or 2.0 when it's a library
     _RESPONSE = _response("import toolkit\ntoolkit.solve()")
@@ -201,12 +214,12 @@ class TestPerItemNames:
         """Each response uses the names given for its own item id."""
         reward = create_library_reward(
             local_modules={"a": ["toolkit"], "b": []},
-            appropriate_libraries={"a": [], "b": ["toolkit"]},
-            appropriate_lib_used=1.0,
+            target_libraries={"a": [], "b": ["toolkit"]},
+            target_lib_used=1.0,
         )
 
         assert not reward.components(self._RESPONSE, item_id="a")["external_lib_used"]
-        assert reward.components(self._RESPONSE, item_id="b")["appropriate_lib_used"]
+        assert reward.components(self._RESPONSE, item_id="b")["target_lib_used"]
 
     def test_integer_ids(self):
         """Any hashable id works, e.g. dataset row indices."""
@@ -226,7 +239,7 @@ class TestPerItemNames:
         """One option can be per item while the other is a shared list."""
         reward = create_library_reward(
             local_modules={"a": ["toolkit"]},
-            appropriate_libraries=["requests"],
+            target_libraries=["requests"],
         )
 
         assert reward(self._RESPONSE, item_id="a") == 0.5

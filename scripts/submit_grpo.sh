@@ -32,30 +32,41 @@ models=(
 # training jobs are dataset|reward-profile|prompt-style|learning-rate. keeping these together
 # avoids silently applying a reward or a python-specific system prompt to the wrong task. the
 # learning rate is optional - leave it off (e.g. "...|lu-v1|base") to use the recipe's.
+#
+# experiment 01 (qwen3-8b): the import, usage and target rewards, each at three shaping
+# weights (see config/rewards.yaml). the pilot run goes first and is checked end to end,
+# then the other two main runs, then the six ablations
 training_jobs=(
-    # "data/train/library_usage|lu-v1|base"
-    "data/train/library_usage|lu-v1|base|3e-6"
-    # with the fixed system prompt nudging towards third-party libraries (see src/prompts.py) -
-    # its epochs are still evaluated as submit_eval.sh sets (base prompt)
-    # "data/train/library_usage|lu-v1|ext|3e-6"
-    # "data/train/skywork|full|lib"
+    # pilot
+    "data/train/library_usage|lu-usage|base|3e-6"
+    # wave 1: the other main runs
+    # "data/train/library_usage|lu-import|base|3e-6"
+    # "data/train/library_usage|lu-target|base|3e-6"
+    # wave 2: the shaping-weight ablations (set eval_epochs="final" below)
+    # "data/train/library_usage|lu-import-s25|base|3e-6"
+    # "data/train/library_usage|lu-import-s0|base|3e-6"
+    # "data/train/library_usage|lu-usage-s50|base|3e-6"
+    # "data/train/library_usage|lu-usage-s0|base|3e-6"
+    # "data/train/library_usage|lu-target-s50|base|3e-6"
+    # "data/train/library_usage|lu-target-s0|base|3e-6"
 )
 
-# the eval datasets (config/eval_datasets.yaml) each epoch checkpoint is scored on. every other
-# eval setting (samples, decoding, prompt style) comes from submit_eval.sh
+# the eval datasets (config/eval_datasets.yaml) each epoch checkpoint is scored on, always with
+# the plain "base" prompt. every other eval setting (samples, decoding) comes from
+# submit_eval.sh. the training
+# data's own val and test splits are not here: training scores them every few steps itself
+# (split_eval_steps in the recipe)
 eval_datasets=(
-    "library_usage"
-    "library_usage_val"
-    # libreusebench v2 before manual review, until its test split is built
-    "libreusebench_v2_full"
-    # its provisional control split, where no library is needed - library use should stay
-    # near zero and pass@1 shouldn't drop
-    "libreusebench_v2_control"
+    # LibReuseBench, test and control
+    "libreusebench_test"
+    "libreusebench_control"
     # regression test of general coding ability - pass@1 shouldn't drop
     "humaneval_plus"
-    # "libreusebench_test"
-    # "libreusebench_control"
 )
+
+# which epoch checkpoints get those eval jobs: "all", or "final" for just the last epoch -
+# enough for the ablations, whose training curves come from the split eval instead
+eval_epochs="all"
 
 # grpo training recipe - hyperparameters, including the decoding settings used to
 # generate responses during rollout (see config/training.yaml)
@@ -113,7 +124,7 @@ echo "Training ${#models[@]} models x ${#training_jobs[@]} dataset configuration
 echo "  Recipe: $recipe_config"
 echo "  Sharding: $accelerate_config (${GPUS} gpus)"
 echo "  Seed: $seed"
-echo "  Epoch eval datasets: ${eval_datasets[*]}"
+echo "  Epoch eval datasets: ${eval_datasets[*]} (epochs: $eval_epochs)"
 echo "  Checkpoints: $OUTPUT_BASE"
 
 # one timestamped directory per invocation, holding the training logs and the logs of the
@@ -160,7 +171,8 @@ for model in "${models[@]}"; do
 
 source ./scripts/setup_job.sh
 
-# requeue on the time-limit warning signal - training resumes from its last epoch checkpoint
+# requeue on the time-limit warning signal - training resumes from its newest checkpoint (one
+# every resume_save_steps steps, see the recipe), so at most those steps are redone
 trap 'echo "time limit approaching - requeuing \$SLURM_JOB_ID"; scontrol requeue \$SLURM_JOB_ID; exit 0' USR1
 
 # --module runs src.run_grpo as "python -m" would; the flags after it are the script's.
@@ -190,13 +202,18 @@ EOF
         # submit_eval.sh owns the other eval settings (samples, decoding, prompt style), so
         # they are configured in one place only; the datasets are eval_datasets above.
         if [ "$debug" != true ]; then
+            first_epoch=1
+            if [ "$eval_epochs" = "final" ]; then
+                first_epoch=$epochs
+            fi
             eval_models=""
-            for epoch in $(seq 1 "$epochs"); do
+            for epoch in $(seq "$first_epoch" "$epochs"); do
                 eval_models="$eval_models vllm:${run_id}-epoch${epoch}"
             done
-            echo "  Queueing eval jobs for $epochs epoch checkpoints (after $train_job_id)"
+            echo "  Queueing eval jobs for epochs $first_epoch-$epochs (after $train_job_id)"
             EVAL_MODELS="$eval_models" \
                 EVAL_DATASETS="${eval_datasets[*]}" \
+                EVAL_PROMPT_STYLES="base" \
                 EVAL_DEPENDENCY="afterok:${train_job_id}" \
                 EVAL_LOG_DIR="$log_dir" \
                 bash scripts/submit_eval.sh

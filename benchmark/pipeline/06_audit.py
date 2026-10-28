@@ -6,12 +6,15 @@ review decided, and the spread of the shipped splits by reuse tier, library and 
 reporting stage - it changes no data.
 
 --provisional reports on the provisional splits (benchmark/artefacts/provisional/) in place of the
-final ones (benchmark/libreusebench/data/).
+final ones (benchmark/libreusebench/data/). --check-golds also runs every shipped task's reference
+solutions, and a wrong answer, through the evaluation harness, and reports how many pass. It
+installs the tasks' packages into a temporary environment, so it takes a few minutes.
 
-Usage: python benchmark/pipeline/06_audit.py [--provisional]
+Usage: python benchmark/pipeline/06_audit.py [--provisional] [--check-golds]
 """
 
 import argparse
+import tempfile
 from collections import Counter
 from pathlib import Path
 from statistics import median
@@ -28,7 +31,8 @@ from build import (
     latest_records,
     track_artefact_path,
 )
-from review import approved_tasks, pending, verdicts
+from libreusebench.evaluate import evaluate_responses
+from review import REVIEWERS, approved_tasks, pending, task_verdicts, verdicts
 
 from src.utils.io import load_jsonl
 
@@ -63,6 +67,51 @@ def _load_split(
     """
     path = directory / f"{name}.jsonl"
     return load_jsonl(path) if path.exists() else []
+
+
+def _agreement(
+    tasks: list[dict],
+    all_verdicts: dict[str, dict[str, dict]],
+) -> list[str]:
+    """Describe how far the two human reviewers agreed on a pool of tasks.
+
+    A verdict is either reject, or not (keep and update both ship the task). Raw agreement is
+    the share of tasks given the same verdict by both reviewers. Cohen's kappa corrects that for
+    the agreement chance alone would give: when nearly every task is kept, two reviewers agree
+    on most tasks by chance, so a few disagreements pull kappa down a long way.
+
+    Returns the markdown lines (none if any task is missing a reviewer's verdict).
+    """
+    first, second = REVIEWERS
+    pairs = []
+    for task in tasks:
+        by_author = task_verdicts(task, all_verdicts)
+        if first not in by_author or second not in by_author:
+            return []
+        pairs.append(
+            tuple(
+                "reject" if by_author[author]["verdict"] == "reject" else "keep"
+                for author in (first, second)
+            )
+        )
+    if not pairs:
+        return []
+    observed = sum(a == b for a, b in pairs) / len(pairs)
+    keep_first = sum(a == "keep" for a, _ in pairs) / len(pairs)
+    keep_second = sum(b == "keep" for _, b in pairs) / len(pairs)
+    chance = keep_first * keep_second + (1 - keep_first) * (1 - keep_second)
+    kappa = (observed - chance) / (1 - chance) if chance < 1 else 1.0
+    lines = [
+        "**04 agreement between the reviewers** (update counts as keep)",
+        "",
+        f"- both keep: {pairs.count(('keep', 'keep'))}",
+        f"- both reject: {pairs.count(('reject', 'reject'))}",
+        f"- {first} keeps, {second} rejects: {pairs.count(('keep', 'reject'))}",
+        f"- {first} rejects, {second} keeps: {pairs.count(('reject', 'keep'))}",
+        f"- raw agreement: {observed:.1%}; Cohen's kappa: {kappa:.2f}",
+        "",
+    ]
+    return lines
 
 
 def _reuse_summary(
@@ -103,6 +152,9 @@ def track_section(
         f"- 03 agent review: {verdict_counts['keep']} keep, {verdict_counts['fix']} fix, "
         f"{verdict_counts['reject']} reject, {len(kept) - len(reviews)} not yet reviewed"
     )
+    unreviewed = [task["seed_id"] for task in kept if task["seed_id"] not in reviews]
+    if unreviewed:
+        lines.append(f"  - not reviewed by the agent: {', '.join(unreviewed)}")
     human_counts = Counter(row["verdict"] for row in individual)
     lines.append(
         f"- 04 human review: {human_counts['keep']} keep, {human_counts['update']} update, "
@@ -146,6 +198,7 @@ def track_section(
             "04 reviews by author",
             Counter(row["author"] for row in individual),
         )
+        lines += _agreement(agent_kept, human)
 
     for name, rows in splits.items():
         if not rows:
@@ -154,10 +207,77 @@ def track_section(
         if track == "reuse":
             lines += [f"Reuse value: {_reuse_summary(rows)}.", ""]
             lines += _md_counts(
+                "By reuse tier",
+                Counter(row["reuse_tier"] for row in rows),
+            )
+            lines += _md_counts(
                 "By library",
                 Counter(row["source"]["primary_library"] for row in rows),
             )
         lines += _md_counts("By domain", Counter(row["domain"] for row in rows))
+    return lines
+
+
+def check_golds(
+    split_dir: Path,
+) -> list[str]:
+    """Run every shipped task's reference solutions, and a wrong answer, through the harness.
+
+    Each task is answered with its standard-library solution, its library solution (test tasks
+    only) and a function that returns the wrong thing, then scored by the released harness
+    (libreusebench.evaluate_responses) in a fresh environment, with the latest version of every
+    package. Every reference solution should pass, and every wrong answer fail. Nothing is
+    written to the repository: the environment and the results go to a temporary folder.
+
+    Returns the markdown lines for the report.
+    """
+    labels = ("standard-library solution", "library solution", "wrong answer")
+    lines = ["## Reference solutions, through the evaluation harness", ""]
+    for track, names in TRACK_SPLITS.items():
+        for name in names:
+            rows = _load_split(split_dir, name)
+            if not rows:
+                continue
+            responses = {}
+            for row in rows:
+                golds = row["ground_truth"]
+                wrong = f"def {row['function_name']}(*args, **kwargs):\n    return 'wrong'\n"
+                answers = [golds["gold_stdlib"], golds.get("gold_extlib"), wrong]
+                # a control task has no library solution, so its slot is left out
+                responses[row["task_id"]] = [
+                    f"```python\n{code}\n```" for code in answers if code is not None
+                ]
+            with tempfile.TemporaryDirectory() as scratch:
+                results = evaluate_responses(
+                    responses,
+                    output_dir=scratch,
+                    env_root=scratch,
+                    confirm=None,  # install without asking: these are the tasks' own packages
+                    records=rows,
+                )
+            passed: Counter[str] = Counter()
+            used: Counter[str] = Counter()
+            total: Counter[str] = Counter()
+            for result in results["results"]:
+                n_answers = len(responses[result["task_id"]])
+                # a control task's answers are the standard-library solution and the wrong one
+                label = labels[result["idx"] if n_answers == 3 else result["idx"] * 2]
+                total[label] += 1
+                passed[label] += result["passed"]
+                used[label] += result["external_lib_used"]
+            lines += [f"**The {name} split ({len(rows)} tasks)**", ""]
+            lines += [
+                f"- {label}: passed {passed[label]} of {total[label]}, "
+                f"used a library {used[label]} of {total[label]}"
+                for label in labels
+                if total[label]
+            ]
+            environment = results["environment"]
+            lines += [
+                f"- packages installed: {len(environment['installed_packages'])}, "
+                f"failed to install: {len(environment['install_failed'])}",
+                "",
+            ]
     return lines
 
 
@@ -169,10 +289,15 @@ def main() -> None:
         action="store_true",
         help="report on the provisional splits, built before human review",
     )
+    parser.add_argument(
+        "--check-golds",
+        action="store_true",
+        help="also run every reference solution through the harness (installs packages)",
+    )
     args = parser.parse_args()
     split_dir = PROVISIONAL_DIR if args.provisional else DATA_DIR
 
-    lines = ["# LibReuseBench v2 build report", ""]
+    lines = ["# LibReuseBench build report", ""]
     lines += [
         "The splits reported here are "
         + (
@@ -184,6 +309,8 @@ def main() -> None:
     ]
     for track in TRACK_SPLITS:
         lines += track_section(track, split_dir)
+    if args.check_golds:
+        lines += check_golds(split_dir)
 
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
     REPORT_PATH.write_text("\n".join(lines).rstrip("\n") + "\n")

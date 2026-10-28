@@ -23,7 +23,7 @@ pip install libreusebench
 The package exposes the following functions:
 
 - **`load_dataset(split=None)`** — load the bundled benchmark, returns a dictionary of splits
-  (`test`, `control`), each a list of task records. Pass a split name to load just one.
+  (`test`, 216 tasks, and `control`, 84 tasks), each a list of task records. Pass a split name to load just one.
   `control` is a no-reuse-expected counterpart to `test`: tasks where library reuse isn't
   expected to help, so a good solution shouldn't need one.
 
@@ -66,8 +66,8 @@ Responses are keyed by `task_id`, as a `.json` or `.jsonl` file (one JSON record
 `.jsonl`, a JSON array of records for `.json`). Two record formats are supported:
 
 ```json
-{"task_id": "LRB2/T000", "responses": ["response 1", "response 2"]}
-{"task_id": "LRB2/T000", "response": "a single response (multiple lines per id are collated)"}
+{"task_id": "LRB/T000", "responses": ["response 1", "response 2"]}
+{"task_id": "LRB/T000", "response": "a single response (multiple lines per id are collated)"}
 ```
 
 ## *environment*

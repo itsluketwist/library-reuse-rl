@@ -16,7 +16,8 @@ _WEIGHTS = {
     "passes_syntax_check": 0.25,
     "external_lib_imported": 0.5,
     "external_lib_used": 1.0,
-    "appropriate_lib_used": 0.0,
+    "target_lib_imported": 0.0,
+    "target_lib_used": 0.0,
 }
 
 
@@ -45,10 +46,10 @@ class TestBuildRewardFunctions:
             [{"content": _completion("import requests\nrequests.get('http://x')")}],
             [{"content": _completion("import math\nprint(math.sqrt(4))")}],
         ]
-        columns = {"local_modules": [[], []], "useful_libs": [["requests"], []]}
+        columns = {"local_modules": [[], []], "target_libs": [["requests"], []]}
 
         assert by_name["external_lib_used"](completions, **columns) == [1.0, 0.0]
-        assert by_name["appropriate_lib_used"](completions, **columns) == [1.0, 0.0]
+        assert by_name["target_lib_used"](completions, **columns) == [1.0, 0.0]
 
     def test_weighted_sum_matches_scoring_the_whole_profile(self):
         """trl sums weight x function, which must equal the single reward's score."""
@@ -56,7 +57,7 @@ class TestBuildRewardFunctions:
         completions = [
             [{"content": _completion("import requests\nrequests.get('http://x')")}]
         ]
-        columns = {"local_modules": [[]], "useful_libs": [["requests"]]}
+        columns = {"local_modules": [[]], "target_libs": [["requests"]]}
 
         total = sum(
             weight * function(completions, **columns)[0]
@@ -96,7 +97,7 @@ def test_every_reward_reports_exactly_its_supported_components(monkeypatch):
     )
     row = {
         "local_modules": [],
-        "useful_libs": [],
+        "target_libs": [],
         "allowlist": [],
         "aliases": {},
         "diy_terms": [],

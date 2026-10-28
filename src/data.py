@@ -66,27 +66,34 @@ def load_train_dataset(
     system_prompt: str | None,
     train_n: int | None = None,
     val_n: int | None = None,
+    test_n: int | None = None,
 ) -> DatasetDict:
-    """Load the train/val splits from `dataset_dir` and build chat prompts.
+    """Load the train/val (and test, when present) splits from `dataset_dir` and build
+    chat prompts.
 
-    `dataset_dir` must contain train.jsonl and val.jsonl files. Two schemas are handled:
+    `dataset_dir` must contain train.jsonl and val.jsonl files; a test.jsonl is loaded too
+    when there is one (training scores val and test as it goes, see
+    src/grpo/split_eval.py). Two schemas are handled:
     the skywork format from data/download_skywork.py ({prompt, ground_truth: {inputs,
     outputs}, ...}, flattened via _make_conversation), and the new library-reuse datasets
     ({prompt, task_type, allowlist, ...}), whose reward-reference columns pass straight
     through for the reward function to read.
 
-    `train_n`/`val_n` truncate the train/val splits to at most that many rows (e.g. for
+    `train_n`/`val_n`/`test_n` truncate the splits to at most that many rows (e.g. for
     a quick debug smoke test) - leave as None to use the full split.
 
-    Returns a DatasetDict with "train" and "val" splits, each with the raw "prompt"
+    Returns a DatasetDict with "train", "val" and (when present) "test" splits, each with
+    the raw "prompt"
     column replaced by a chat-messages list, and "inputs"/"expected_outputs" columns
     added for the reward function to evaluate against.
     """
     dataset_dir = Path(dataset_dir)
-    split_n = {"train": train_n, "val": val_n}
+    split_n = {"train": train_n, "val": val_n, "test": test_n}
     dataset = DatasetDict()
-    for split in ("train", "val"):
+    for split in ("train", "val", "test"):
         split_file = dataset_dir / f"{split}.jsonl"
+        if split == "test" and not split_file.exists():
+            continue
         logger.info(f"Loading {split} split from {split_file}")
         # a local json load gives a DatasetDict with a single "train" split
         split_dataset = datasets.load_dataset(
@@ -122,6 +129,7 @@ def load_eval_dataset(
     dataset_file: str | Path,
     system_prompt: str | None,
     n: int | None = None,
+    task_suffix: str | None = None,
 ) -> Dataset:
     """Load an evaluation dataset file and build chat prompts.
 
@@ -132,6 +140,9 @@ def load_eval_dataset(
 
     `n` truncates the dataset to at most that many rows (e.g. for a quick debug
     smoke test) - leave as None to use the full dataset.
+
+    `task_suffix`, when given, is added as a new paragraph at the end of every prompt (the
+    prompt-engineering baselines, see TASK_SUFFIXES in src/prompts.py).
 
     Returns the dataset with its raw "prompt" column replaced by a chat-messages
     list, and "inputs"/"expected_outputs" columns present at the top level.
@@ -148,6 +159,11 @@ def load_eval_dataset(
     if n is not None:
         dataset = dataset.select(range(min(n, len(dataset))))
         logger.info(f"Truncated dataset to {len(dataset)} rows")
+
+    if task_suffix is not None:
+        dataset = dataset.map(
+            lambda example: {"prompt": f"{example['prompt']}\n\n{task_suffix}"},
+        )
 
     # libreusebench ground_truth contains gold programs, not the executable test cases;
     # detect its top-level test_inputs before treating ground_truth as skywork format.

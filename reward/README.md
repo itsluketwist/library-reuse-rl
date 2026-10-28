@@ -39,21 +39,22 @@ The reward is the sum of the weights of the components the response satisfies:
 | `passes_syntax_check` | 0.25 | the answer contains python code, and every code block is valid |
 | `external_lib_imported` | 0.5 | the code imports an external (non-standard-library) library |
 | `external_lib_used` | 1.0 | the code imports an external library and actually uses it |
-| `appropriate_lib_used` | 0.0 | the code uses one of `appropriate_libraries` |
+| `target_lib_imported` | 0.0 | the code imports one of `target_libraries` |
+| `target_lib_used` | 0.0 | the code imports one of `target_libraries` and actually uses it |
 
 Every weight is a keyword argument, and setting a weight to 0 switches that component off:
 
 ```python
 reward_func = create_library_reward(
     external_lib_used=1.0,
-    appropriate_lib_used=0.5,
-    appropriate_libraries=["requests", "httpx"],  # import or pypi names, any case
-    local_modules=["app"],                        # the project's own code is never a library
-    require_reasoning=False,                      # for non-thinking models
+    target_lib_used=0.5,
+    target_libraries=["requests", "httpx"],  # import or pypi names, any case
+    local_modules=["app"],                   # the project's own code is never a library
+    require_reasoning=False,                 # for non-thinking models
 )
 
-# local_modules and appropriate_libraries can also be set per response
-reward_func(response, stop_reason="stop", appropriate_libraries=["pandas"])
+# local_modules and target_libraries can also be set per response
+reward_func(response, stop_reason="stop", target_libraries=["pandas"])
 
 # see which components a response satisfied, e.g. for logging
 reward_func.components(response)
@@ -62,14 +63,14 @@ reward_func.components(response)
 reward_func.max_reward
 ```
 
-When each dataset item has its own local modules or appropriate libraries, give them as a
+When each dataset item has its own local modules or target libraries, give them as a
 dict keyed by item id, and pass each response's `item_id` when scoring it:
 
 ```python
 reward_func = create_library_reward(
-    appropriate_lib_used=0.5,
+    target_lib_used=0.5,
     local_modules={"task-1": ["app"], "task-2": ["server", "utils"]},
-    appropriate_libraries={"task-1": ["requests", "httpx"], "task-2": ["pandas"]},
+    target_libraries={"task-1": ["requests", "httpx"], "task-2": ["pandas"]},
 )
 
 reward_func(response, stop_reason="stop", item_id="task-2")
@@ -95,7 +96,7 @@ trainer = GRPOTrainer(
         reward=create_library_reward(),
         eos_token_id=tokenizer.eos_token_id,  # detects truncated completions
     ),
-    train_dataset=dataset,  # optional columns: local_modules, appropriate_libraries
+    train_dataset=dataset,  # optional columns: local_modules, target_libraries
     ...
 )
 ```

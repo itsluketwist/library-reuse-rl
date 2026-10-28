@@ -15,11 +15,11 @@ benchmark/libreusebench/data/ (where they are bundled as the released benchmark)
 refuses to run while any task is still missing a verdict.
 
 --pilot is for evaluating a pilot run. It writes the same splits as --provisional, into
-benchmark/artefacts/pilot/, with ids starting LRB2-PILOT/, so that a pilot's results are never
+benchmark/artefacts/pilot/, with ids starting LRB-PILOT/, so that a pilot's results are never
 mistaken for the benchmark's.
 
-Each task gets a dataset-unique id after a seeded shuffle: LRB2/T000... (test) and
-LRB2/C000... (control).
+Each task gets a dataset-unique id after a seeded shuffle: LRB/T000... (test) and
+LRB/C000... (control).
 
 Usage: python benchmark/pipeline/05_build.py [--provisional | --pilot]
 """
@@ -109,7 +109,7 @@ def build_splits(
     return number_tasks(
         chosen,
         random.Random(SEED),
-        prefix="LRB2-PILOT" if pilot else "LRB2",
+        prefix="LRB-PILOT" if pilot else "LRB",
     )
 
 

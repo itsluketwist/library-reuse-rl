@@ -44,7 +44,7 @@ def create_trl_reward(
     reward: LibraryReward | None = None,
     eos_token_id: int | Iterable[int] | None = None,
     local_modules_column: str = "local_modules",
-    appropriate_libraries_column: str = "appropriate_libraries",
+    target_libraries_column: str = "target_libraries",
     item_id_column: str = "id",
 ) -> Callable[..., list[float]]:
     """
@@ -53,7 +53,7 @@ def create_trl_reward(
     TRL calls reward functions with a batch of completions, their token ids, and every
     dataset column as a keyword argument. Pass the tokenizer's `eos_token_id` so truncated
     completions can be detected. If the dataset has `local_modules` or
-    `appropriate_libraries` columns (the names can be changed), each row's values are used
+    `target_libraries` columns (the names can be changed), each row's values are used
     for its completion. If instead the reward was created with dicts keyed by item id, each
     row's id is read from the `item_id_column`. By default the reward uses
     create_library_reward's weights.
@@ -75,7 +75,7 @@ def create_trl_reward(
         Returns one reward per completion.
         """
         local_modules = columns.get(local_modules_column)
-        appropriate_libraries = columns.get(appropriate_libraries_column)
+        target_libraries = columns.get(target_libraries_column)
         item_ids = columns.get(item_id_column)
 
         rewards = []
@@ -90,8 +90,8 @@ def create_trl_reward(
                     stop_reason=stop_reason,
                     item_id=item_ids[index] if item_ids else None,
                     local_modules=local_modules[index] if local_modules else None,
-                    appropriate_libraries=(
-                        appropriate_libraries[index] if appropriate_libraries else None
+                    target_libraries=(
+                        target_libraries[index] if target_libraries else None
                     ),
                 ),
             )

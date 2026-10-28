@@ -22,27 +22,28 @@ COMPONENTS: tuple[str, ...] = (
     "passes_syntax_check",
     "external_lib_imported",
     "external_lib_used",
-    "appropriate_lib_used",
+    "target_lib_imported",
+    "target_lib_used",
 )
 
 
-def is_appropriate_library(
+def is_target_library(
     library: str,
-    appropriate_libraries: Iterable[str],
+    target_libraries: Iterable[str],
 ) -> bool:
     """
-    Check whether a library is one of the appropriate libraries. The check ignores case
+    Check whether a library is one of the target libraries. The check ignores case
     and accepts either the import name or the PyPI name (so `PIL` matches "pillow").
 
-    Returns True when the library matches one of the appropriate libraries.
+    Returns True when the library matches one of the target libraries.
     """
-    wanted = {name.casefold() for name in appropriate_libraries}
+    wanted = {name.casefold() for name in target_libraries}
     return library.casefold() in wanted or pip_package(library).casefold() in wanted
 
 
 def components_from_parsed(
     parsed: ParsedResponse,
-    appropriate_libraries: Iterable[str] = (),
+    target_libraries: Iterable[str] = (),
     require_reasoning: bool = True,
 ) -> dict[str, bool]:
     """
@@ -55,15 +56,18 @@ def components_from_parsed(
     has_reasoning = bool(parsed.reasoning) or not require_reasoning
     correct_format = has_reasoning and bool(parsed.answer) and not parsed.truncated
 
-    appropriate = list(appropriate_libraries)
+    targets = list(target_libraries)
     return {
         "correct_format": correct_format,
         "passes_syntax_check": parsed.valid,
         "external_lib_imported": bool(parsed.external_imports),
         "external_lib_used": bool(parsed.external_used),
-        "appropriate_lib_used": any(
-            is_appropriate_library(library, appropriate)
-            for library in parsed.external_used
+        # the same two checks again, counting only the target libraries
+        "target_lib_imported": any(
+            is_target_library(library, targets) for library in parsed.external_imports
+        ),
+        "target_lib_used": any(
+            is_target_library(library, targets) for library in parsed.external_used
         ),
     }
 
@@ -72,7 +76,7 @@ def library_components(
     response: str | None,
     stop_reason: str | None = None,
     local_modules: Iterable[str] = (),
-    appropriate_libraries: Iterable[str] = (),
+    target_libraries: Iterable[str] = (),
     require_reasoning: bool = True,
     reasoning_tags: ReasoningTags = DEFAULT_REASONING_TAGS,
     ignore_placeholders: bool = True,
@@ -95,7 +99,7 @@ def library_components(
     )
     return components_from_parsed(
         parsed,
-        appropriate_libraries=appropriate_libraries,
+        target_libraries=target_libraries,
         require_reasoning=require_reasoning,
     )
 
@@ -147,7 +151,7 @@ class LibraryReward:
     A reward function that scores an LLM response for reusing external libraries.
 
     Calling it with a response returns the total weight of the components the response
-    satisfies. The `local_modules` and `appropriate_libraries` given when it is created are
+    satisfies. The `local_modules` and `target_libraries` given when it is created are
     either one list for every response, or a dict of lists keyed by dataset item id (then
     each call passes its `item_id`). A list passed when calling overrides both.
     """
@@ -156,7 +160,7 @@ class LibraryReward:
         self,
         weights: dict[str, float],
         local_modules: NamesOption = (),
-        appropriate_libraries: NamesOption = (),
+        target_libraries: NamesOption = (),
         require_reasoning: bool = True,
         reasoning_tags: ReasoningTags = DEFAULT_REASONING_TAGS,
         ignore_placeholders: bool = True,
@@ -169,7 +173,7 @@ class LibraryReward:
 
         self.weights = dict(weights)
         self.local_modules = _freeze(local_modules)
-        self.appropriate_libraries = _freeze(appropriate_libraries)
+        self.target_libraries = _freeze(target_libraries)
         self.require_reasoning = require_reasoning
         self.ignore_placeholders = ignore_placeholders
         # checked now, so bad tags fail when the reward is created rather than mid-training
@@ -194,7 +198,7 @@ class LibraryReward:
         stop_reason: str | None = None,
         item_id: Hashable | None = None,
         local_modules: Iterable[str] | None = None,
-        appropriate_libraries: Iterable[str] | None = None,
+        target_libraries: Iterable[str] | None = None,
     ) -> dict[str, bool]:
         """
         Check each reward component for one response.
@@ -210,10 +214,10 @@ class LibraryReward:
                 default=self.local_modules,
                 item_id=item_id,
             ),
-            appropriate_libraries=_choose_names(
-                "appropriate_libraries",
-                given=appropriate_libraries,
-                default=self.appropriate_libraries,
+            target_libraries=_choose_names(
+                "target_libraries",
+                given=target_libraries,
+                default=self.target_libraries,
                 item_id=item_id,
             ),
             require_reasoning=self.require_reasoning,
@@ -227,7 +231,7 @@ class LibraryReward:
         stop_reason: str | None = None,
         item_id: Hashable | None = None,
         local_modules: Iterable[str] | None = None,
-        appropriate_libraries: Iterable[str] | None = None,
+        target_libraries: Iterable[str] | None = None,
     ) -> float:
         """
         Score one response.
@@ -239,7 +243,7 @@ class LibraryReward:
             stop_reason=stop_reason,
             item_id=item_id,
             local_modules=local_modules,
-            appropriate_libraries=appropriate_libraries,
+            target_libraries=target_libraries,
         )
         return float(
             sum(
@@ -256,9 +260,10 @@ def create_library_reward(
     passes_syntax_check: float = 0.25,
     external_lib_imported: float = 0.5,
     external_lib_used: float = 1.0,
-    appropriate_lib_used: float = 0.0,
+    target_lib_imported: float = 0.0,
+    target_lib_used: float = 0.0,
     local_modules: NamesOption = (),
-    appropriate_libraries: NamesOption = (),
+    target_libraries: NamesOption = (),
     require_reasoning: bool = True,
     reasoning_tags: ReasoningTags = DEFAULT_REASONING_TAGS,
     ignore_placeholders: bool = True,
@@ -274,13 +279,14 @@ def create_library_reward(
     - passes_syntax_check: the answer has python code, and all of it is valid.
     - external_lib_imported: the code imports an external (non-standard-library) library.
     - external_lib_used: the code imports an external library and then actually uses it.
-    - appropriate_lib_used: the code uses one of `appropriate_libraries`.
+    - target_lib_imported: the code imports one of `target_libraries`.
+    - target_lib_used: the code imports one of `target_libraries` and then actually uses it.
 
     `local_modules` are the project's own modules, which are never counted as libraries.
     With `ignore_placeholders` (the default), neither are placeholder modules such as
     `your_module` or `utils`, which stand for code the response doesn't have (see
     analysis.is_placeholder_module) - set it to False to count every import as before.
-    Both `local_modules` and `appropriate_libraries` can be one list for every response, or
+    Both `local_modules` and `target_libraries` can be one list for every response, or
     a dict mapping each dataset item's id to its own list - then pass the response's
     `item_id` when scoring it. `reasoning_tags` are the (opening, closing) pairs that wrap
     the model's reasoning, e.g. [("[THINK]", "[/THINK]")], defaulting to <think>-style tags.
@@ -294,10 +300,11 @@ def create_library_reward(
             "passes_syntax_check": passes_syntax_check,
             "external_lib_imported": external_lib_imported,
             "external_lib_used": external_lib_used,
-            "appropriate_lib_used": appropriate_lib_used,
+            "target_lib_imported": target_lib_imported,
+            "target_lib_used": target_lib_used,
         },
         local_modules=local_modules,
-        appropriate_libraries=appropriate_libraries,
+        target_libraries=target_libraries,
         require_reasoning=require_reasoning,
         reasoning_tags=reasoning_tags,
         ignore_placeholders=ignore_placeholders,

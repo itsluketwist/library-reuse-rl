@@ -38,12 +38,14 @@ fi
 accelerate_config="config/accelerate_configs/fsdp2.yaml"
 recipe_config="config/training.yaml"
 dataset="data/train/library_usage"
-reward_profile="lu-v1"
+# the import-only reward lists every component at a nonzero or zero weight, so a debug run
+# checks all six are logged (see config/rewards.yaml)
+reward_profile="lu-import"
 prompt_style="base"
 seed=42
 
 # datasets the eval mode scores (see config/eval_datasets.yaml)
-eval_datasets="library_usage,library_usage_val,libreusebench_test,libreusebench_control"
+eval_datasets="libreusebench_test,libreusebench_control,humaneval_plus"
 
 ###############################################################################
 #                            mode selection                                   #

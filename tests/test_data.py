@@ -53,6 +53,23 @@ class TestLoadTrainDataset:
         assert len(dataset["train"]) == 1
         assert len(dataset["val"]) == 1
 
+    def test_loads_test_split_when_present(self, tmp_path: Path):
+        """A test.jsonl beside train/val is loaded too, and truncated by test_n."""
+        for split in ("train", "val"):
+            _write_jsonl(
+                tmp_path / f"{split}.jsonl",
+                [_make_skywork_record(f"{split} prompt", ["1\n"], ["1\n"])],
+            )
+        _write_jsonl(
+            tmp_path / "test.jsonl",
+            [_make_skywork_record(f"test {i}", ["1\n"], ["1\n"]) for i in range(3)],
+        )
+
+        dataset = load_train_dataset(tmp_path, system_prompt=None, test_n=2)
+
+        assert set(dataset.keys()) == {"train", "val", "test"}
+        assert len(dataset["test"]) == 2
+
     def test_flattens_ground_truth_into_top_level_inputs_and_expected_outputs(
         self, tmp_path: Path
     ):
@@ -259,6 +276,24 @@ class TestLoadEvalDataset:
         assert example["prompt"] == [
             {"role": "system", "content": "be helpful"},
             {"role": "user", "content": "solve this"},
+        ]
+
+    def test_task_suffix_ends_every_prompt(self, tmp_path: Path):
+        """A prompt-engineering suffix is added to the task as its own paragraph."""
+        dataset_file = tmp_path / "eval.jsonl"
+        _write_jsonl(
+            dataset_file,
+            [_make_eval_record("solve this", ["1\n"], ["1\n"])],
+        )
+
+        dataset = load_eval_dataset(
+            dataset_file,
+            system_prompt=None,
+            task_suffix="Use a library.",
+        )
+
+        assert dataset[0]["prompt"] == [
+            {"role": "user", "content": "solve this\n\nUse a library."},
         ]
 
     def test_loads_libreusebench_without_treating_gold_solutions_as_tests(

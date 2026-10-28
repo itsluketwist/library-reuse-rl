@@ -54,14 +54,14 @@ class TestCreateTrlReward:
     def test_per_row_dataset_columns(self):
         """Each completion uses its own row's columns, and other columns are ignored."""
         reward = create_trl_reward(
-            reward=create_library_reward(appropriate_lib_used=1.0),
-            appropriate_libraries_column="useful_libs",
+            reward=create_library_reward(target_lib_used=1.0),
+            target_libraries_column="target_libs",
         )
 
         rewards = reward(
             completions=[_RESPONSE, _RESPONSE, _RESPONSE],
             local_modules=[[], ["requests"], None],
-            useful_libs=[["requests"], ["requests"], ["numpy"]],
+            target_libs=[["requests"], ["requests"], ["numpy"]],
             trainer_state=object(),
         )
 

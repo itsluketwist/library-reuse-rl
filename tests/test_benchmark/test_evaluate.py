@@ -582,7 +582,7 @@ class _LocalEnv(Environment):
 
 # one task in each format: a function task (it has a function_name) and a stdin/stdout task
 _FUNCTION_RECORD = {
-    "task_id": "LRB2/T000",
+    "task_id": "LRB/T001",
     "function_name": "double",
     "test_inputs": ["[1]", "[3]"],
     "expected_outputs": ["2", "6"],
@@ -604,12 +604,12 @@ class TestFunctionTasks:
         result = evaluate.score_responses(
             responses={
                 # the right function, then a program that never defines it
-                "LRB2/T000": [function_answer, "```python\nprint(2)\n```"],
+                "LRB/T001": [function_answer, "```python\nprint(2)\n```"],
                 # the right program, then a function that prints nothing
                 "LRB/T000": [program_answer, function_answer],
             },
             benchmark={
-                "LRB2/T000": _FUNCTION_RECORD,
+                "LRB/T001": _FUNCTION_RECORD,
                 "LRB/T000": _PROGRAM_RECORD,
             },
             env=_LocalEnv(),

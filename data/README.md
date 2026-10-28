@@ -23,10 +23,11 @@ shadows the HuggingFace `datasets` library.
   exists but a model might write the code by hand. They are defined in `build/library/`
   (`taxonomy.yaml`, `tasks.yaml`).
 - **Reward:** the response's imports, minus the standard library and the project's own modules
-  (`local_modules`). Any remaining import the code uses counts as library use. See
+  (`local_modules`). Any remaining import the code uses counts as library use. The target
+  components count only the libraries on the row's `target_libs` list. See
   `src/grpo/rewards/library_usage.py`.
 - **Wordings:** each task is asked in three modes, up to 8 rows per task in the current
-  version (v4):
+  version (v5, worded as v4):
   - `repo`, 3 rows: a template inside a real project's files, the same request with no project
     shown, and a claude-written request inside the project.
   - `simple`, 2 rows: a template and a claude-written request.
@@ -87,6 +88,6 @@ run_eval -m <model> -d library_usage,product_choice
 ```
 
 Eval datasets are named in `config/eval_datasets.yaml`, each with its path and evaluator. The
-library-usage evaluator reports valid-code, library-use and appropriate-library rates, overall
+library-usage evaluator reports valid-code, library-use and target-library rates, overall
 and by mode. LibReuseBench uses its own package's evaluator, which installs what the responses
 import and runs the tests.

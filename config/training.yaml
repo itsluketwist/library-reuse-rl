@@ -7,15 +7,18 @@
 
 # libraries_requirements_file: setup/requirements/v1.txt  # libraries listed in the system prompt, see src/prompts.py
 
-num_train_epochs: 6
+num_train_epochs: 8
 
-num_generations: 8  # rollouts sampled per prompt - the group grpo scores against each other
+# rollouts sampled per prompt - the group grpo scores against each other. 16 rather than 8
+# leaves fewer groups where every rollout makes the same library choice (and so teaches
+# nothing): at 5% library use, 44% of groups have no contrast at 16 rollouts, 66% at 8
+num_generations: 16
 num_iterations: 1  # grpo's mu: optimizer passes that reuse each rollout batch before resampling
 
 # one completion per forward/backward pass: at 8b two left the gpus almost full (see the
-# scale test). the step still sums the same 256 completions, so the update is unchanged
+# scale test). the step still sums every completion of its prompts, so the update is unchanged
 per_device_train_batch_size: 1  # completions per backward micro-batch - the main training-memory lever
-gradient_accumulation_steps: 64  # micro-batches summed per optimizer step; 1 x 4 gpus x 64 = 256 completions (32 prompts)
+gradient_accumulation_steps: 128  # micro-batches summed per optimizer step; 1 x 4 gpus x 128 = 512 completions (32 prompts)
 
 beta: 0.01  # strength of the kl penalty holding the policy near the reference model
 learning_rate: 1.0e-06
@@ -26,10 +29,15 @@ rollout_decoding_profile: default  # which eval_decoding_profiles entry rollouts
 # evaluation
 # ==============================================================================
 
-# no validation during training. each epoch's checkpoint is scored on the validation split
-# afterwards, by the same eval jobs that score the test sets (library_usage_val in
-# config/eval_datasets.yaml) - far faster there, where vllm batches every prompt at once
+# trl's own validation stays off: it generates a few prompts at a time, far too slowly to
+# repeat often. instead the val and test splits are scored with the reward's components
+# before training and every split_eval_steps optimizer steps, all prompts in one vllm batch
+# (see SplitEvalCallback in src/grpo/train_model.py), to track how the reward generalises.
+# the benchmarks (LibReuseBench, HumanEval+) are scored per epoch checkpoint afterwards, by
+# the eval jobs scripts/submit_grpo.sh queues
 eval_strategy: "no"
+split_eval_steps: 5
+split_eval_samples: 5  # answers per prompt, as in the main evals
 
 # named decoding profiles, shared by training rollouts (see rollout_decoding_profile
 # above) and run_eval.py (--decoding-profile/--decoding-config). how many completions
@@ -45,7 +53,7 @@ eval_decoding_profiles:
     top_k: 0  # disabled
     max_new_tokens: 8192
     enable_thinking: true
-  # the default profile with twice the room. on the first LibReuseBench v2 pilots, 15-81% of
+  # the default profile with twice the room. on the first LibReuseBench pilots, 15-81% of
   # responses used all 8192 tokens reasoning and never reached their code. evaluation only:
   # training rollouts keep the default profile (see rollout_decoding_profile above)
   default_16k:
@@ -131,7 +139,7 @@ log_completions: false  # log sample rollout completions to wandb
 log_level: info
 log_level_replica: error  # the other gpus' processes only report errors, so each line appears once
 logging_first_step: true
-logging_steps: 1  # only ~28 steps per epoch, and each takes minutes - log them all
+logging_steps: 1  # only ~38 steps per epoch, and each takes minutes - log them all
 logging_strategy: steps
 report_to:
 - wandb
@@ -139,6 +147,10 @@ wandb_project: library-reuse-rl  # runs are named after their run id (see train_
 
 # one checkpoint per epoch: each is evaluated afterwards, and the newest also lets a run
 # cancelled by the slurm time limit resume (see PruneResumeStateCallback, which strips the
-# optimizer state from the older ones so five epochs don't cost hundreds of gigabytes)
+# optimizer state from the older ones so eight epochs don't cost hundreds of gigabytes)
 save_strategy: "epoch"
 save_total_limit: null  # keep every epoch
+# an extra checkpoint every 10 steps, only for resuming: a run takes 2-3 slurm jobs, and a
+# requeue then loses at most 10 steps (~2 hours) rather than up to a whole epoch (~8 hours).
+# only the newest is kept, ~100GB (fp32 weights plus adam state), and none is evaluated
+resume_save_steps: 10

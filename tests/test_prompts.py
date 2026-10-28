@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from src.prompts import (
+    TASK_SUFFIXES,
     build_libraries_system_prompt,
     build_system_prompt,
     library_prompt_suffix,
@@ -192,3 +193,20 @@ class TestLibraryPromptSuffix:
         """The "ext" style produces a fixed "-ext" suffix, with or without a file."""
         assert library_prompt_suffix(None, style="ext") == "-ext"
         assert library_prompt_suffix("setup/requirements/v1.txt", style="ext") == "-ext"
+
+
+class TestTaskSuffixStyles:
+    """Tests for the prompt-engineering styles, which add a sentence to the task."""
+
+    def test_no_system_prompt_even_with_a_requirements_file(self):
+        """The suffix styles never add a system prompt."""
+        for style in TASK_SUFFIXES:
+            assert build_system_prompt("setup/requirements/v1.txt", style=style) is None
+
+    def test_fixed_output_suffix(self):
+        """Each suffix style gets its own fixed output suffix, with or without a file."""
+        for style in TASK_SUFFIXES:
+            assert library_prompt_suffix(None, style=style) == f"-{style}"
+            assert library_prompt_suffix("setup/requirements/v1.txt", style=style) == (
+                f"-{style}"
+            )

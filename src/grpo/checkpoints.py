@@ -72,7 +72,7 @@ def epoch_checkpoints(output_dir: str | Path) -> dict[int, Path]:
         if epoch is None:
             continue
         # epoch is a float that lands on a whole number at an epoch-end save (within
-        # float rounding - one step is ~1/28 of an epoch, far larger than the tolerance)
+        # float rounding - one step is ~1/37 of an epoch, far larger than the tolerance)
         whole_epoch = round(epoch)
         if whole_epoch >= 1 and abs(epoch - whole_epoch) < 1e-3:
             found[whole_epoch] = checkpoint
@@ -81,13 +81,34 @@ def epoch_checkpoints(output_dir: str | Path) -> dict[int, Path]:
 
 def prune_resume_state(output_dir: str | Path) -> None:
     """
-    Delete the resume state from every checkpoint except the newest one.
+    Tidy a run's checkpoints after a save, so only the newest one stays resumable.
 
-    Each epoch's weights are kept so every epoch can be evaluated, but only the newest
-    checkpoint stays resumable - five copies of an 8b model's optimizer state would add
-    hundreds of gigabytes for no benefit.
+    The newest complete checkpoint (the one just saved) is kept whole, since a requeued job
+    resumes from it. Every older epoch checkpoint keeps its weights, so each epoch can still
+    be evaluated, but loses its resume state - eight copies of an 8b model's optimizer state
+    would add hundreds of gigabytes. Every older checkpoint that isn't an epoch's is deleted
+    outright: the extra ones saved partway through an epoch only so a requeue loses less work
+    (see resume_save_steps in the recipe), and any a job was killed partway through saving.
     """
-    for checkpoint in sorted_checkpoints(output_dir)[:-1]:
+    checkpoints = sorted_checkpoints(output_dir)
+    complete = [
+        checkpoint
+        for checkpoint in checkpoints
+        if (checkpoint / "trainer_state.json").exists()
+    ]
+    if not complete:
+        return
+    newest_step = _checkpoint_step(complete[-1])
+    epoch_ends = set(epoch_checkpoints(output_dir).values())
+
+    for checkpoint in checkpoints:
+        # the newest complete checkpoint is kept whole. a half-saved one from a later step
+        # (a job killed while saving it) is a step the run will reach and save again, over it
+        if _checkpoint_step(checkpoint) >= newest_step:
+            continue
+        if checkpoint not in epoch_ends:
+            shutil.rmtree(checkpoint)
+            continue
         for pattern in _RESUME_ONLY_FILES:
             for path in checkpoint.glob(pattern):
                 # fsdp writes some of these as directories rather than files

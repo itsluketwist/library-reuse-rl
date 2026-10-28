@@ -49,6 +49,34 @@ class GRPOConfig(trl.GRPOConfig):
             ),
         },
     )
+    resume_save_steps: Optional[int] = field(
+        default=None,
+        metadata={
+            "help": (
+                "Also save a checkpoint every this many optimizer steps, beside each "
+                "epoch's, so a run requeued at the time limit loses at most this many "
+                "steps of work. Only the newest is kept (see prune_resume_state). Null "
+                "saves at epoch ends only."
+            ),
+        },
+    )
+    split_eval_steps: Optional[int] = field(
+        default=None,
+        metadata={
+            "help": (
+                "Score the dataset's val and test splits with the reward's components "
+                "before training and every this many optimizer steps, to track how the "
+                "reward generalises (see SplitEvalCallback in src/grpo/train_model.py). "
+                "Null turns it off."
+            ),
+        },
+    )
+    split_eval_samples: int = field(
+        default=5,
+        metadata={
+            "help": "How many times each val/test prompt is answered in a split eval.",
+        },
+    )
     chat_template: Optional[str] = field(
         default=None, metadata={"help": "The chat template to use."}
     )

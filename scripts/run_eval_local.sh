@@ -29,8 +29,8 @@ models=(
 
 # comma-separated eval dataset names (config/eval_datasets.yaml)
 # product_choice is gitignored and must have been built locally.
-# the provisional LibReuseBench v2 splits, before human review
-datasets="libreusebench_v2_test,libreusebench_v2_control"
+# LibReuseBench, test and control
+datasets="libreusebench_test,libreusebench_control"
 
 # completions sampled per prompt (see --n-samples in src/run_eval.py); eval-only, unrelated
 # to training rollouts. leave blank to use the default of 1.
@@ -40,7 +40,7 @@ n_samples=5
 decoding_profiles=(
     # "greedy"
     # "default"
-    "default_16k"  # as the LibReuseBench v2 results of the other models
+    "default_16k"  # as the LibReuseBench results of the other models
     # "qwen3"
 )
 

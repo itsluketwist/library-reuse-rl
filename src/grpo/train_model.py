@@ -15,6 +15,7 @@
 """The GRPO training loop, wired to this project's reward and dataset format."""
 
 import logging
+import math
 import os
 import sys
 from dataclasses import fields
@@ -23,11 +24,15 @@ from pathlib import Path
 
 import datasets
 import lure
+import torch
 import transformers
-from transformers import AutoTokenizer, TrainerCallback, set_seed
+from accelerate.utils import gather_object
+from transformers import AutoTokenizer, Trainer, TrainerCallback, set_seed
 from transformers.trainer_callback import TrainerControl, TrainerState
 from transformers.training_args import TrainingArguments
 from trl import GRPOTrainer, TrlParser
+from trl.chat_template_utils import parse_response as parse_chat_response
+from trl.trainer.utils import RepeatSampler
 
 from src.data import load_train_dataset
 from src.grpo.checkpoints import (
@@ -36,7 +41,17 @@ from src.grpo.checkpoints import (
     prune_resume_state,
 )
 from src.grpo.config import GRPOConfig
-from src.grpo.rewards import build_reward_functions, infer_reward_kind
+from src.grpo.rewards import (
+    LibraryReward,
+    build_reward,
+    build_reward_functions,
+    infer_reward_kind,
+)
+from src.grpo.split_eval import (
+    judge_completion,
+    split_eval_entries,
+    summarise_split_eval,
+)
 from src.grpo.wandb_logging import init_wandb_training
 from src.prompts import PromptStyle, build_system_prompt
 from src.utils.config import check_config_keys, load_full_yaml
@@ -53,8 +68,8 @@ DEBUG_VAL_SAMPLES = 4
 # long enough for qwen3's reasoning to finish, so debug rollouts actually earn rewards
 DEBUG_MAX_COMPLETION_LENGTH = 2048
 DEBUG_EPOCHS = 2
-# 1 completion per gpu x 4 gpus x 4 = 16 completions (2 prompts) per step, so a handful
-# of prompts still make whole steps (see config/training.yaml)
+# 1 completion per gpu x 4 gpus x 4 = 16 completions (one prompt's rollouts) per step, so a
+# handful of prompts still make whole steps (see config/training.yaml)
 DEBUG_GRADIENT_ACCUMULATION_STEPS = 4
 
 # recipe keys this file (and src/run_eval.py) read directly rather than trl - every other
@@ -87,7 +102,8 @@ class SaveTrainerStateCallback(TrainerCallback):
 
 class PruneResumeStateCallback(TrainerCallback):
     """
-    Keeps only the newest checkpoint resumable, as each epoch's checkpoint is saved.
+    Keeps only the newest checkpoint resumable, as each checkpoint is saved: older epoch
+    checkpoints keep just their weights, and older mid-epoch ones are deleted.
 
     See prune_resume_state - this runs it on rank zero after every save.
     """
@@ -101,6 +117,81 @@ class PruneResumeStateCallback(TrainerCallback):
     ) -> None:
         if state.is_world_process_zero:
             prune_resume_state(args.output_dir)
+
+
+class ResumeCheckpointCallback(TrainerCallback):
+    """
+    Saves an extra checkpoint every `save_steps` optimizer steps, besides each epoch's, so a
+    job requeued at the slurm time limit loses at most that many steps of work rather than
+    up to a whole epoch. Only the newest of these is kept (see prune_resume_state), and they
+    are never evaluated or registered - epoch_checkpoints skips them.
+    """
+
+    def __init__(self, save_steps: int) -> None:
+        self.save_steps = save_steps
+
+    def on_step_end(
+        self,
+        args: TrainingArguments,
+        state: TrainerState,
+        control: TrainerControl,
+        **kwargs,
+    ) -> None:
+        if state.global_step % self.save_steps == 0:
+            control.should_save = True
+
+
+def _find_repeat_sampler(dataloader: object) -> RepeatSampler:
+    """
+    Find trl's RepeatSampler (which shuffles the prompts) inside the training dataloader,
+    where accelerate wraps it in its own batch samplers.
+
+    Returns the sampler.
+    """
+    pending = [dataloader]
+    while pending:
+        current = pending.pop()
+        if isinstance(current, RepeatSampler):
+            return current
+        for name in ("batch_sampler", "sampler"):
+            inner = getattr(current, name, None)
+            if inner is not None:
+                pending.append(inner)
+    raise RuntimeError(
+        "No RepeatSampler found in the training dataloader - trl's sampling has changed, so "
+        "a resumed run can no longer replay its shuffles (see ResumeShuffleCallback)."
+    )
+
+
+class ResumeShuffleCallback(TrainerCallback):
+    """
+    Makes a resumed run see the prompts in the same order an uninterrupted run would.
+
+    trl's sampler draws one fresh shuffle of the prompts per epoch, from a generator seeded
+    once when the job starts. A job resumed from a checkpoint would otherwise start that
+    sequence again - repeating the first epoch's order, and, resumed partway through an
+    epoch, skipping the wrong prompts. Before training starts, this replays the shuffles of
+    the epochs already finished, so the generator is where an uninterrupted run's would be.
+    The sampler is looked up on every start, so a change in trl fails the first (smoke) run
+    rather than only a resumed one.
+    """
+
+    def on_train_begin(
+        self,
+        args: TrainingArguments,
+        state: TrainerState,
+        control: TrainerControl,
+        train_dataloader: object = None,
+        **kwargs,
+    ) -> None:
+        sampler = _find_repeat_sampler(train_dataloader)
+        if not sampler.shuffle:
+            return
+        # the epochs finished before this job started (0 for a fresh run). state.epoch is
+        # restored from the checkpoint, and lands on a whole number at an epoch's end
+        finished_epochs = math.floor((state.epoch or 0) + 1e-6)
+        for _ in range(finished_epochs):
+            torch.randperm(sampler.num_samples, generator=sampler.generator)
 
 
 class LogGPUMemoryCallback(TrainerCallback):
@@ -119,6 +210,137 @@ class LogGPUMemoryCallback(TrainerCallback):
     ) -> None:
         if state.is_world_process_zero and state.global_step == 1:
             log_gpu_memory("after first optimizer step", device=args.device.index)
+
+
+class SplitEvalCallback(TrainerCallback):
+    """
+    Scores the val and test splits with the reward's components as training goes: once
+    before the first step (the base model), then every `eval_steps` optimizer steps.
+
+    Each round, every prompt is answered `n_samples` times by the colocated vllm engine,
+    sampling exactly as the rollouts do, and every answer is judged by the run's own
+    reward (see src/grpo/split_eval.py). The rates are logged as e.g.
+    "eval_test/external_lib_used", so the curves show whether what the reward teaches
+    carries over to prompts training never sees.
+
+    trl's own evaluation is not used: it generates a few prompts at a time and runs a loss
+    pass over each batch, far too slow to repeat every few steps. This calls the same trl
+    methods the rollouts use instead (tokenising, then generating - which first copies the
+    latest weights into vllm), so it relies on those methods of trl 1.13's GRPOTrainer.
+    """
+
+    def __init__(
+        self,
+        trainer: GRPOTrainer,
+        reward: LibraryReward,
+        splits: dict[str, datasets.Dataset],
+        eval_steps: int,
+        n_samples: int,
+    ) -> None:
+        self.trainer = trainer
+        self.reward = reward
+        self.splits = {name: list(split) for name, split in splits.items()}
+        self.eval_steps = eval_steps
+        self.n_samples = n_samples
+
+    def on_train_begin(
+        self,
+        args: TrainingArguments,
+        state: TrainerState,
+        control: TrainerControl,
+        **kwargs,
+    ) -> None:
+        # a run resumed after a requeue already scored its earlier steps
+        if state.global_step == 0:
+            self._evaluate()
+
+    def on_step_end(
+        self,
+        args: TrainingArguments,
+        state: TrainerState,
+        control: TrainerControl,
+        **kwargs,
+    ) -> None:
+        if state.global_step % self.eval_steps == 0:
+            self._evaluate()
+
+    def _decode(
+        self,
+        prompt_ids: list[list[int]],
+        completion_ids: list[list[int]],
+    ) -> list[str]:
+        """
+        Decode the completions into text exactly as trl's _generate does for rollouts, so
+        the reward reads the same text it does in training.
+
+        Returns one completion text per completion.
+        """
+        tokenizer = self.trainer._tokenizer
+        if (
+            getattr(tokenizer, "response_template", None) is not None
+            or getattr(tokenizer, "response_schema", None) is not None
+        ):
+            return [
+                parse_chat_response(tokenizer, ids, prefix=prompt)["content"]
+                for prompt, ids in zip(prompt_ids, completion_ids)
+            ]
+        return self.trainer.processing_class.batch_decode(
+            completion_ids,
+            skip_special_tokens=True,
+        )
+
+    def _evaluate(self) -> None:
+        """
+        Run one round: every gpu answers its share of the prompts, the judgements are
+        gathered, and every process logs the same rates.
+        """
+        trainer = self.trainer
+        with log_timer(
+            f"split eval at step {trainer.state.global_step}",
+            enabled=trainer.is_world_process_zero(),
+        ):
+            entries = split_eval_entries(
+                splits=self.splits,
+                n_samples=self.n_samples,
+                process_index=trainer.accelerator.process_index,
+                num_processes=trainer.accelerator.num_processes,
+            )
+            # every gpu must take part, since copying the weights into vllm is collective
+            if not entries:
+                raise ValueError(
+                    "Split eval has fewer answers than gpus - raise split_eval_samples."
+                )
+
+            prompt_ids, _images, _fields = trainer._tokenize_prompts(
+                [row["prompt"] for _split, row in entries]
+            )
+            # text-only prompts: no images or extra multimodal fields to pass on
+            completion_ids, _logprobs = trainer._generate_single_turn(
+                prompt_ids,
+                None,
+                {},
+            )
+            texts = self._decode(prompt_ids, completion_ids)
+
+            judgements = [
+                judge_completion(
+                    reward=self.reward,
+                    split=split,
+                    row=row,
+                    text=text,
+                    completion_ids=list(ids),
+                )
+                for (split, row), text, ids in zip(entries, texts, completion_ids)
+            ]
+            metrics = summarise_split_eval(
+                judgements=gather_object(judgements),
+                components=sorted(self.reward.weights),
+            )
+
+        # transformers' own Trainer.log, not GRPOTrainer's: that one also logs (and clears)
+        # the metrics trl has gathered for the current training step, which would then be
+        # missing from the step's own log entry, written straight after this callback
+        Trainer.log(trainer, metrics)
 
 
 def _periodic_eval_history(log_history: list[dict]) -> dict[str, dict]:
@@ -302,15 +524,16 @@ def train_model_with_grpo(
         system_prompt=system_prompt,
         train_n=DEBUG_TRAIN_SAMPLES if debug else None,
         val_n=DEBUG_VAL_SAMPLES if debug else None,
+        test_n=DEBUG_VAL_SAMPLES if debug else None,
     )
 
     ################
     # select reward
     ################
-    # require one task type across train and validation; otherwise one reward callable
-    # would score some rows with the wrong semantics.
+    # require one task type across every split; otherwise one reward callable would score
+    # some rows with the wrong semantics.
     reward_kinds: set[str] = set()
-    for split in ("train", "val"):
+    for split in dataset:
         split_dataset = dataset[split]
         if "task_type" not in split_dataset.column_names:
             reward_kinds.add(infer_reward_kind({}))
@@ -367,9 +590,35 @@ def train_model_with_grpo(
             callbacks=[
                 SaveTrainerStateCallback(metrics_dir=metrics_dir),
                 PruneResumeStateCallback(),
+                ResumeShuffleCallback(),
                 LogGPUMemoryCallback(),
             ],
         )
+    # an extra, resume-only checkpoint every few steps, so a requeue loses little work
+    if training_args.resume_save_steps:
+        trainer.add_callback(ResumeCheckpointCallback(training_args.resume_save_steps))
+
+    # score the val and test splits as training goes (see SplitEvalCallback), with a
+    # reward of its own so judging them never touches the training reward's batch cache
+    if training_args.split_eval_steps:
+        trainer.add_callback(
+            SplitEvalCallback(
+                trainer=trainer,
+                reward=build_reward(
+                    kind=reward_kind,
+                    weights=reward_weights,
+                    eos_token_id=tokenizer.eos_token_id,
+                ),
+                splits={
+                    split: dataset[split]
+                    for split in ("val", "test")
+                    if split in dataset
+                },
+                eval_steps=training_args.split_eval_steps,
+                n_samples=training_args.split_eval_samples,
+            )
+        )
+
     # the trainer loads the model and the reference model (beta > 0), so this shows what
     # is left for optimizer states and activations before training starts
     if is_main_process:
@@ -413,10 +662,9 @@ def train_model_with_grpo(
     ##########
     # Evaluate
     ##########
-    # the recipe turns in-training validation off (the eval jobs score each epoch's
-    # checkpoint instead), so this only writes anything if a recipe re-enables it. with
-    # eval_strategy "epoch", the last round already scored the final model and is reused
-    # rather than generating the whole split again
+    # every round of validation logged during training (SplitEvalCallback's "eval_*"
+    # rates, or trl's own if a recipe turns eval_strategy on), by step, so the curves can
+    # be drawn from the repo. "final" is the round at the last step, when there was one
     eval_step_history = _periodic_eval_history(trainer.state.log_history)
     if eval_step_history:
         final_metrics = eval_step_history.get(str(trainer.state.global_step))

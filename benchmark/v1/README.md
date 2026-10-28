@@ -1,9 +1,10 @@
 # LibReuseBench v1 (archived)
 
-This folder is the first version of LibReuseBench, kept as a frozen record. Version 2 replaces
-it: see `benchmark/docs/V2_PLAN.md` for why, and for what changes.
+This folder is an earlier design of LibReuseBench, kept as a frozen record. It is not the
+benchmark: LibReuseBench is the dataset in `benchmark/libreusebench/`, which replaced this design.
+See `benchmark/HISTORY.md` for why.
 
-Version 1 rewrote BigCodeBench tasks as stdin/stdout programs that name no library. Each task
+This design rewrote BigCodeBench tasks as stdin/stdout programs that name no library. Each task
 can be solved with a third-party library or with the standard library alone.
 
 ## What is here
@@ -22,21 +23,23 @@ The data is evaluation-only. `data/CANARY.txt` marks it as such.
 ## The same data is on PyPI
 
 `pip install libreusebench==0.1.1` ships exactly these three splits, with the harness that
-scores them. Later releases of the package ship version 2.
+scores them. Later releases of the package ship the current benchmark instead.
 
-## Running v1 evaluations from this repository
+## Results in this repository
 
-These dataset names in `config/eval_datasets.yaml` still score against the archived files, so
-results stay comparable with the existing files in `output/`:
+These files are no longer in `config/eval_datasets.yaml`, whose LibReuseBench keys
+(`libreusebench_test`, `libreusebench_control`) now score the current benchmark. Earlier results on
+them stay in `output/`, under these names:
 
-| Dataset name | File |
+| Results name | File |
 |---|---|
-| `libreusebench_test` | `data/test.jsonl` |
-| `libreusebench_control` | `data/control.jsonl` |
+| `libreusebench_v1_test` | `data/test.jsonl` |
+| `libreusebench_v1_control` | `data/control.jsonl` |
 | `libreusebench_function_test` | `pipeline/function_pilot/test.jsonl` |
 | `libreusebench_function_control` | `pipeline/function_pilot/control.jsonl` |
 
-All four use the `libreusebench` evaluator, which scores a task as a function task when its
+To score against one of them again, add an entry with its results name to
+`config/eval_datasets.yaml`. All four use the `libreusebench` evaluator, which scores a task as a function task when its
 record has a `function_name`, and as a stdin/stdout task otherwise.
 
 ## What no longer runs
@@ -48,4 +51,4 @@ were written to run from `benchmark/pipeline/`, so they will not run from here u
 - `pipeline/function_pilot/generate.py` imports `src/eval/scoring/libreusebench_function.py`,
   which has moved into the package as `libreusebench/functions.py`.
 
-The version 2 pipeline in `benchmark/pipeline/` copies what it needs from here.
+The pipeline in `benchmark/pipeline/` copies what it needs from here.

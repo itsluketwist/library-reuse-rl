@@ -4,10 +4,11 @@ import re
 from typing import Any, Iterable
 
 from libreusebench.environment import Environment, execute
-from libreusebench.evaluate import plan_installs
+from libreusebench.evaluate import _code_stats, plan_installs
 from lure import CodeBlock, parse_response
 
 from src.eval.scoring.base import _average, _library_statistics, _rate
+from src.response.metrics import code_metrics
 
 
 # the only third-party package the HumanEval+ tests import (163 of the 164 use it); the
@@ -78,8 +79,8 @@ def score_humaneval(
     than on what happened to be installed. Each run uses LibReuseBench's sandbox, with its
     30 s time limit, its memory cap and numeric libraries held to one thread.
 
-    Returns the analysis (pass@1, pass@k for k = samples per task, library use, the venv's
-    packages) and one result per response.
+    Returns the analysis (pass@1, pass@k for k = samples per task, library use, code size as
+    LibReuseBench measures it, the venv's packages) and one result per response.
     """
     del python_executable
     rows = list(dataset)
@@ -133,6 +134,10 @@ def score_humaneval(
                         python_executable=env.python,
                     )
                 passes.append(passed)
+                # the tested block's size, measured as libreusebench measures its answers
+                lloc, maintainability_index = (
+                    code_metrics(block.code) if block is not None else (None, None)
+                )
                 results.append(
                     {
                         "task_id": row["task_id"],
@@ -145,6 +150,8 @@ def score_humaneval(
                         # the error message when the code failed (stdout when it passed)
                         "output": output,
                         "ext_libs": sorted(block.external_imports) if block else [],
+                        "lloc": lloc,
+                        "maintainability_index": maintainability_index,
                     }
                 )
             task_passes.append(passes)
@@ -169,5 +176,10 @@ def score_humaneval(
         "n_no_code": sum(not result["has_code"] for result in results),
         "n_overflow": sum(result["stop_reason"] == "length" for result in results),
         **_library_statistics([set(result["ext_libs"]) for result in results]),
+        # the same shape as libreusebench's, so the two can be read the same way
+        "code_metrics": {
+            "all": _code_stats(results),
+            "passed": _code_stats([result for result in results if result["passed"]]),
+        },
         "environment": environment,
     }, results

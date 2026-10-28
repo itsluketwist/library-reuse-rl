@@ -113,11 +113,11 @@ class TestBuildSplits:
 
     def test_task_ids(self, splits) -> None:
         assert [row["task_id"] for row in splits["test"]][:2] == [
-            "LRB2/T000",
-            "LRB2/T001",
+            "LRB/T000",
+            "LRB/T001",
         ]
-        assert splits["test"][-1]["task_id"] == "LRB2/T039"
-        assert splits["control"][0]["task_id"] == "LRB2/C000"
+        assert splits["test"][-1]["task_id"] == "LRB/T039"
+        assert splits["control"][0]["task_id"] == "LRB/C000"
         ids = [row["task_id"] for rows in splits.values() for row in rows]
         assert len(set(ids)) == len(ids)
 
@@ -175,8 +175,8 @@ def test_a_pilot_build_ships_every_task_under_its_own_ids() -> None:
         "control": 2,
     }
     assert {row["reuse_tier"] for row in splits["test"]} == {"high", "medium", "low"}
-    assert splits["test"][0]["task_id"] == "LRB2-PILOT/T000"
-    assert splits["control"][1]["task_id"] == "LRB2-PILOT/C001"
+    assert splits["test"][0]["task_id"] == "LRB-PILOT/T000"
+    assert splits["control"][1]["task_id"] == "LRB-PILOT/C001"
 
 
 class TestPools:

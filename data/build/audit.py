@@ -55,11 +55,11 @@ def _load_split(
 def _reference_key(
     row: dict,
 ) -> str:
-    """The row field the reward matches against (allowlist for product choice, else useful_libs).
+    """The row field the reward matches against (allowlist for product choice, else target_libs).
 
     Returns the field name.
     """
-    return "allowlist" if row.get("task_type") == "product_choice" else "useful_libs"
+    return "allowlist" if row.get("task_type") == "product_choice" else "target_libs"
 
 
 def _dataset_section(

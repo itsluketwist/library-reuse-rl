@@ -7,8 +7,9 @@ from typing import Literal
 # system prompt styles: "lib" lists the installed libraries, "use" also pushes the model
 # to prefer them, "std" pushes the model to prefer the standard library, "ext" pushes it
 # to prefer any third-party library, "base" skips the system prompt entirely (see
-# build_system_prompt)
-PromptStyle = Literal["lib", "use", "std", "ext", "base"]
+# build_system_prompt). "always" and "appropriate" are not system prompts: they add one
+# sentence to the end of each task instead (see TASK_SUFFIXES)
+PromptStyle = Literal["lib", "use", "std", "ext", "base", "always", "appropriate"]
 
 # templates for the styles that list the requirements-file libraries (lib/use); the
 # {libraries} placeholder is filled by build_libraries_system_prompt
@@ -39,6 +40,15 @@ FIXED_SYSTEM_PROMPTS: dict[PromptStyle, str] = {
         "third-party libraries over writing your own implementations - before writing "
         "any non-trivial logic, check whether a library already provides it."
     ),
+}
+
+
+# the prompt-engineering baselines: the simplest way to ask for library use, added to the
+# end of each task (eval only - training never uses these styles). "always" forces a
+# library on every task, "appropriate" leaves the choice to the model, as training aims to
+TASK_SUFFIXES: dict[PromptStyle, str] = {
+    "always": "Always use an external library in your solution.",
+    "appropriate": "Use an external library when appropriate.",
 }
 
 
@@ -87,14 +97,15 @@ def build_system_prompt(
     """
     Build the effective system prompt for a training or evaluation run.
 
-    "base" always returns None (no system prompt). "std"/"ext" return their fixed prompt
+    "base" and the task-suffix styles (see TASK_SUFFIXES) always return None (no system
+    prompt). "std"/"ext" return their fixed prompt
     (see FIXED_SYSTEM_PROMPTS) regardless of `libraries_requirements_file`, since they
     name no specific libraries. "lib"/"use" list the file's libraries (see
     build_libraries_system_prompt), and return None when no file is given.
 
     Returns the system prompt string, or None.
     """
-    if style == "base":
+    if style == "base" or style in TASK_SUFFIXES:
         return None
 
     if style in FIXED_SYSTEM_PROMPTS:
@@ -112,14 +123,15 @@ def library_prompt_suffix(
 ) -> str:
     """
     Compute the output-path suffix for a run's system-prompt setting, e.g. "-libv1"/
-    "-usev1" for requirements file "v1.txt", or a fixed "-std"/"-ext" for those styles.
+    "-usev1" for requirements file "v1.txt", or a fixed "-std"/"-ext"/"-always"/
+    "-appropriate" for those styles.
 
     Used by eval_results_path so runs under different (file, style) combinations land in
     distinct output paths.
 
     Returns "" when `style` is "base", or when "lib"/"use" have no requirements file.
     """
-    if style in FIXED_SYSTEM_PROMPTS:
+    if style in FIXED_SYSTEM_PROMPTS or style in TASK_SUFFIXES:
         # file-independent, so a fixed suffix (no requirements-file version stem)
         return f"-{style}"
 

@@ -156,3 +156,35 @@ class TestPruneResumeState:
         prune_resume_state(tmp_path)
 
         assert (only / "optimizer.bin").exists()
+
+    def test_a_mid_epoch_checkpoint_is_deleted_once_superseded(self, tmp_path) -> None:
+        """The extra checkpoints saved within an epoch are only for resuming."""
+        epoch_end = _checkpoint(tmp_path, step=37, epoch=1.0)
+        mid_epoch = _checkpoint(tmp_path, step=40, epoch=40 / 37)
+        newest = _checkpoint(tmp_path, step=50, epoch=50 / 37)
+
+        prune_resume_state(tmp_path)
+
+        assert not mid_epoch.exists()
+        # the epoch is still evaluable, and the newest is what a requeue resumes from
+        assert (epoch_end / "model.safetensors").exists()
+        assert not (epoch_end / "optimizer.bin").exists()
+        assert (newest / "optimizer.bin").exists()
+        assert last_resumable_checkpoint(tmp_path) == newest
+
+    def test_a_half_saved_later_checkpoint_never_counts_as_the_newest(
+        self, tmp_path
+    ) -> None:
+        """A job killed while saving leaves a later, incomplete checkpoint behind - the one
+        just saved after resuming must still keep its resume state."""
+        older_junk = _checkpoint(tmp_path, step=20, epoch=None)
+        just_saved = _checkpoint(tmp_path, step=40, epoch=40 / 37)
+        half_saved = _checkpoint(tmp_path, step=60, epoch=None)
+
+        prune_resume_state(tmp_path)
+
+        assert (just_saved / "optimizer.bin").exists()
+        assert last_resumable_checkpoint(tmp_path) == just_saved
+        # an older half-saved checkpoint is junk; a later one will be saved over
+        assert not older_junk.exists()
+        assert half_saved.exists()

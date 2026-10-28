@@ -42,7 +42,8 @@ _SUPPORTED_COMPONENTS: dict[str, frozenset[str]] = {
             "passes_syntax_check",
             "external_lib_imported",
             "external_lib_used",
-            "appropriate_lib_used",
+            "target_lib_imported",
+            "target_lib_used",
         }
     ),
     "product_choice": frozenset(
@@ -173,7 +174,8 @@ def build_reward_functions(
     reward is identical to scoring with build_reward.
 
     A zero-weighted component is included too: it contributes nothing to the total but is
-    still worth watching (the lu-v1 profile sets appropriate_lib_used to 0).
+    still worth watching (every library-usage profile lists all six components, so
+    e.g. the import-only reward still logs how often the imported library is used).
 
     Returns the reward functions and their matching weights, in the same order.
     """

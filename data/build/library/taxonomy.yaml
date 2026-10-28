@@ -4,7 +4,7 @@
 # tempted to hand-roll the functionality. these drive the library-usage split, whose reward
 # is programmatic (extract imports, subtract stdlib + the project's own modules, and any
 # remaining used import is genuine reuse). seed_libraries are pip *import* names (e.g. PIL,
-# not Pillow) - they become each row's useful_libs and feed the appropriate_lib_used bonus.
+# not Pillow) - they become each row's target_libs, which the target reward components count.
 #
 # benchmark_aligned marks the categories whose skills LibReuseBench actually measures (see
 # EXPANSION.md for how they were derived) - these categories were given more/deeper tasks in
@@ -19,76 +19,80 @@ code:
   - id: datetime
     name: Date/Time Handling
     stacks: [python]
-    seed_libraries: [dateutil, arrow, pendulum, pytz]
+    seed_libraries: [dateutil, arrow, pendulum, pytz, pandas, dateparser, iso8601, ciso8601,
+      humanize, timeago, holidays, workalendar]
     diy_temptation: parsing or arithmetic on dates by hand instead of a date library
     repo_hint: pytoolbox
     benchmark_aligned: true
   - id: http-requests
     name: HTTP Requests
     stacks: [python]
-    seed_libraries: [requests, httpx, aiohttp]
+    seed_libraries: [requests, httpx, aiohttp, urllib3]
     diy_temptation: building requests with urllib/sockets instead of an http client
     repo_hint: python-api
   - id: retries
     name: Retries & Backoff
     stacks: [python]
-    seed_libraries: [tenacity, backoff]
+    seed_libraries: [tenacity, backoff, retrying, stamina, urllib3]
     diy_temptation: hand-written retry loops with time.sleep instead of a retry library
     repo_hint: python-api
   - id: yaml-config
     name: YAML/TOML Config
     stacks: [python]
-    seed_libraries: [yaml, pyyaml, tomli, toml, dynaconf]
+    seed_libraries: [yaml, pyyaml, tomli, toml, dynaconf, omegaconf, ruamel, tomlkit,
+      deepmerge]
     diy_temptation: parsing config text by hand instead of a config parser
     repo_hint: pytoolbox
   - id: data-validation
     name: Data Validation
     stacks: [python]
-    seed_libraries: [pydantic, marshmallow, cerberus, jsonschema]
+    seed_libraries: [pydantic, marshmallow, cerberus, jsonschema, voluptuous, msgspec]
     diy_temptation: hand-written type/shape checks instead of a validation library
     repo_hint: python-api
   - id: csv-excel
     name: CSV/Excel
     stacks: [python]
-    seed_libraries: [pandas, openpyxl, xlsxwriter]
+    seed_libraries: [pandas, openpyxl, xlsxwriter, polars, tablib, xlrd, pyarrow, jsonlines]
     diy_temptation: splitting csv lines by hand instead of a csv/dataframe library
     repo_hint: python-api
     benchmark_aligned: true
   - id: pdf
     name: PDF
     stacks: [python]
-    seed_libraries: [pypdf, pdfplumber, fitz, reportlab]
+    seed_libraries: [pypdf, pdfplumber, fitz, reportlab, PyPDF2, pymupdf, pdfminer, fpdf,
+      weasyprint]
     diy_temptation: reading pdf bytes by hand instead of a pdf library
     repo_hint: pytoolbox
   - id: cli-parsing
     name: CLI Parsing
     stacks: [python]
-    seed_libraries: [click, typer, argparse]
+    seed_libraries: [click, typer, fire, docopt]
     diy_temptation: parsing sys.argv by hand instead of a cli library
     repo_hint: pytoolbox
   - id: html-parsing
     name: HTML Parsing
     stacks: [python]
-    seed_libraries: [bs4, beautifulsoup4, lxml, selectolax]
+    seed_libraries: [bs4, beautifulsoup4, lxml, selectolax, pandas, html5lib, parsel, pyquery]
     diy_temptation: regex over html instead of an html parser
     repo_hint: pytoolbox
   - id: fuzzy-matching
     name: Fuzzy Matching
     stacks: [python]
-    seed_libraries: [rapidfuzz, thefuzz, jellyfish, Levenshtein]
+    seed_libraries: [rapidfuzz, thefuzz, jellyfish, Levenshtein, fuzzywuzzy, textdistance]
     diy_temptation: hand-written edit-distance instead of a fuzzy-matching library
     repo_hint: python-api
     benchmark_aligned: true
   - id: graphs
     name: Graph Algorithms
     stacks: [python]
-    seed_libraries: [networkx, igraph]
+    seed_libraries: [networkx, igraph, rustworkx, toposort, scipy]
     diy_temptation: hand-written graph traversal instead of a graph library
     repo_hint: pytoolbox
   - id: crypto-hashing
     name: Crypto & Hashing
     stacks: [python]
-    seed_libraries: [cryptography, bcrypt, passlib, pyjwt]
+    seed_libraries: [cryptography, bcrypt, passlib, pyjwt, Crypto, Cryptodome, argon2, nacl,
+      jose, itsdangerous]
     diy_temptation: rolling your own hashing/token logic instead of a crypto library
     repo_hint: python-api
     benchmark_aligned: true
@@ -102,80 +106,80 @@ code:
   - id: templating
     name: Templating
     stacks: [python]
-    seed_libraries: [jinja2, mako]
+    seed_libraries: [jinja2, mako, chevron, pystache]
     diy_temptation: string concatenation/format instead of a templating engine
     repo_hint: pytoolbox
   - id: structured-logging
     name: Structured Logging
     stacks: [python]
-    seed_libraries: [structlog, loguru]
+    seed_libraries: [structlog, loguru, pythonjsonlogger, logbook]
     diy_temptation: print statements instead of a structured logging library
     repo_hint: python-api
   - id: progress-bars
     name: Progress Bars
     stacks: [python]
-    seed_libraries: [tqdm, rich]
+    seed_libraries: [tqdm, rich, alive_progress, progressbar, enlighten]
     diy_temptation: manual percentage prints instead of a progress-bar library
     repo_hint: pytoolbox
   - id: image-processing
     name: Image Processing
     stacks: [python]
-    seed_libraries: [PIL, cv2, wand]
+    seed_libraries: [PIL, cv2, wand, skimage, imageio, pyvips]
     diy_temptation: manipulating raw pixel bytes by hand instead of an image library
     repo_hint: pytoolbox
   - id: timezones
     name: Timezone Conversion
     stacks: [python]
-    seed_libraries: [pytz, tzlocal, dateutil]
+    seed_libraries: [pytz, tzlocal, dateutil, pandas, pendulum, arrow]
     diy_temptation: hardcoding utc offsets instead of a timezone database
     repo_hint: pytoolbox
     benchmark_aligned: true
   - id: uuid-slugs
     name: UUIDs & Slugs
     stacks: [python]
-    seed_libraries: [shortuuid, slugify, nanoid]
+    seed_libraries: [shortuuid, slugify, nanoid, unidecode, hashids, ulid]
     diy_temptation: assembling id/slug strings by hand instead of a dedicated library
     repo_hint: pytoolbox
   - id: env-config
     name: Environment Config
     stacks: [python]
-    seed_libraries: [dotenv, environs, decouple]
+    seed_libraries: [dotenv, environs, decouple, pydantic_settings, dynaconf, environ]
     diy_temptation: parsing a .env file by hand instead of a config loader
     repo_hint: python-api
   - id: json-schema
     name: JSON Schema Validation
     stacks: [python]
-    seed_libraries: [jsonschema, fastjsonschema]
+    seed_libraries: [jsonschema, fastjsonschema, jsonschema_rs]
     diy_temptation: hand-written recursive schema checks instead of a json-schema validator
     repo_hint: python-api
   - id: compression
     name: Compression
     stacks: [python]
-    seed_libraries: [zstandard, lz4, brotli]
+    seed_libraries: [zstandard, lz4, brotli, py7zr, patoolib, rarfile, snappy]
     diy_temptation: hand-rolling a compression scheme instead of a compression library
     repo_hint: pytoolbox
   - id: url-parsing
     name: URL Parsing & Building
     stacks: [python]
-    seed_libraries: [furl, yarl]
+    seed_libraries: [furl, yarl, hyperlink, rfc3986, w3lib, tldextract]
     diy_temptation: splitting and joining urls with string ops instead of a url library
     repo_hint: pytoolbox
   - id: email-validation
     name: Email Validation & Parsing
     stacks: [python]
-    seed_libraries: [email_validator, mailparser]
+    seed_libraries: [email_validator, mailparser, dns, validators]
     diy_temptation: regex over raw email text instead of an email library
     repo_hint: python-api
   - id: rate-limiting
     name: Rate Limiting
     stacks: [python]
-    seed_libraries: [ratelimit, limits, pyrate_limiter]
+    seed_libraries: [ratelimit, limits, pyrate_limiter, ratelimiter, aiolimiter, token_bucket]
     diy_temptation: hand-written token-bucket timers instead of a rate-limit library
     repo_hint: python-api
   - id: caching-memoize
     name: Caching & Memoization
     stacks: [python]
-    seed_libraries: [cachetools, diskcache]
+    seed_libraries: [cachetools, diskcache, cachier, expiringdict, dogpile]
     diy_temptation: hand-rolled dicts with manual eviction instead of a cache library
     repo_hint: python-api
   - id: phone-numbers
@@ -193,82 +197,82 @@ code:
   - id: markdown-render
     name: Markdown Rendering
     stacks: [python]
-    seed_libraries: [markdown, mistune, markdown_it]
+    seed_libraries: [markdown, mistune, markdown_it, mistletoe, commonmark, markdown2, marko]
     diy_temptation: regex-replacing markdown to html instead of a markdown library
     repo_hint: pytoolbox
   - id: color-manipulation
     name: Color Manipulation
     stacks: [python]
-    seed_libraries: [colour, webcolors]
+    seed_libraries: [colour, webcolors, colormath, coloraide]
     diy_temptation: hand-coding hex/rgb/hsl conversions instead of a color library
     repo_hint: pytoolbox
   - id: geo-distance
     name: Geospatial Distance
     stacks: [python]
-    seed_libraries: [geopy, haversine]
+    seed_libraries: [geopy, haversine, pyproj, geographiclib]
     diy_temptation: hand-coding the haversine formula instead of a geo library
     repo_hint: python-api
     benchmark_aligned: true
   - id: hypothesis-testing
     name: Statistical Testing
     stacks: [python]
-    seed_libraries: [scipy, statsmodels, pingouin]
+    seed_libraries: [scipy, statsmodels, pingouin, pandas]
     diy_temptation: hand-implementing statistical tests instead of a stats library
     repo_hint: python-api
     benchmark_aligned: true
   - id: plotting
     name: Plotting & Charts
     stacks: [python]
-    seed_libraries: [matplotlib, plotly, seaborn]
+    seed_libraries: [matplotlib, plotly, seaborn, bokeh, altair, pygal, plotnine]
     diy_temptation: emitting svg/ascii charts by hand instead of a plotting library
     repo_hint: pytoolbox
   - id: xml-parsing
     name: XML Parsing
     stacks: [python]
-    seed_libraries: [lxml, xmltodict]
+    seed_libraries: [lxml, xmltodict, defusedxml, untangle, bs4]
     diy_temptation: regex over xml instead of an xml parser
     repo_hint: pytoolbox
   - id: sql-builder
     name: SQL Building
     stacks: [python]
-    seed_libraries: [sqlalchemy, sqlmodel, peewee, pandasql]
+    seed_libraries: [sqlalchemy, sqlmodel, peewee, pandasql, pypika, pony]
     diy_temptation: string-concatenating sql instead of a query builder/orm
     repo_hint: python-api
     benchmark_aligned: true
   - id: file-watching
     name: File Watching
     stacks: [python]
-    seed_libraries: [watchdog, watchfiles]
+    seed_libraries: [watchdog, watchfiles, watchgod, pyinotify, inotify_simple]
     diy_temptation: polling file mtimes in a loop instead of a file-watching library
     repo_hint: pytoolbox
   - id: fast-serialization
     name: Fast Serialization
     stacks: [python]
-    seed_libraries: [orjson, msgpack, ujson]
+    seed_libraries: [orjson, msgpack, ujson, msgspec, cbor2, rapidjson, ormsgpack]
     diy_temptation: hand-rolled binary/text serialization instead of a serialization library
     repo_hint: python-api
   - id: subprocess-shell
     name: Subprocess & Shell
     stacks: [python]
-    seed_libraries: [sh, plumbum]
+    seed_libraries: [sh, plumbum, invoke, sarge]
     diy_temptation: building os.system command strings by hand instead of a subprocess library
     repo_hint: pytoolbox
   - id: natural-sort
     name: Natural Sorting
     stacks: [python]
-    seed_libraries: [natsort]
+    seed_libraries: [natsort, packaging, semver]
     diy_temptation: hand-written key functions to sort strings with numbers naturally
     repo_hint: pytoolbox
   - id: unit-conversion
     name: Unit Conversion
     stacks: [python]
-    seed_libraries: [pint]
+    seed_libraries: [pint, quantities, astropy, unyt]
     diy_temptation: hardcoding conversion factors instead of a units library
     repo_hint: pytoolbox
   - id: qr-barcode
     name: QR & Barcodes
     stacks: [python]
-    seed_libraries: [qrcode, barcode]
+    seed_libraries: [qrcode, barcode, segno, pyqrcode, treepoem]
     diy_temptation: drawing barcode/qr matrices by hand instead of a barcode library
     repo_hint: pytoolbox
   - id: fake-data
@@ -280,50 +284,50 @@ code:
   - id: encoding-detect
     name: Text Encoding Detection
     stacks: [python]
-    seed_libraries: [chardet, charset_normalizer]
+    seed_libraries: [chardet, charset_normalizer, cchardet]
     diy_temptation: guessing byte encodings by hand instead of a detection library
     repo_hint: python-api
   - id: structured-diff
     name: Structured Diffing
     stacks: [python]
-    seed_libraries: [deepdiff]
+    seed_libraries: [deepdiff, dictdiffer, jsondiff, jsonpatch]
     diy_temptation: recursively comparing nested structures by hand instead of a diff library
     repo_hint: pytoolbox
   - id: scheduling
     name: Job Scheduling
     stacks: [python]
-    seed_libraries: [schedule, apscheduler, croniter]
+    seed_libraries: [schedule, apscheduler, croniter, crontab, rocketry, cronsim]
     diy_temptation: a sleep loop checking the clock instead of a scheduler library
     repo_hint: python-api
   - id: terminal-tables
     name: Terminal Tables
     stacks: [python]
-    seed_libraries: [tabulate, prettytable]
+    seed_libraries: [tabulate, prettytable, rich, texttable, terminaltables, beautifultable]
     diy_temptation: manual column padding to align a table instead of a table library
     repo_hint: pytoolbox
   - id: audio
     name: Audio Processing
     stacks: [python]
-    seed_libraries: [pydub, soundfile]
+    seed_libraries: [pydub, soundfile, librosa, mutagen, scipy, audioread, ffmpeg, tinytag]
     diy_temptation: parsing wav bytes by hand instead of an audio library
     repo_hint: pytoolbox
   - id: geometry
     name: Computational Geometry
     stacks: [python]
-    seed_libraries: [shapely]
+    seed_libraries: [shapely, sympy]
     diy_temptation: hand-coding point-in-polygon/intersection instead of a geometry library
     repo_hint: pytoolbox
   - id: nlp-tokenize
     name: NLP Tokenization
     stacks: [python]
-    seed_libraries: [nltk, spacy, textblob]
+    seed_libraries: [nltk, spacy, textblob, gensim, sklearn, stanza, pysbd, stop_words]
     diy_temptation: regex tokenizing/stemming instead of an nlp library
     repo_hint: pytoolbox
     benchmark_aligned: true
   - id: ip-address
     name: IP Address Handling
     stacks: [python]
-    seed_libraries: [netaddr]
+    seed_libraries: [netaddr, IPy]
     diy_temptation: parsing CIDR ranges by hand instead of an ip-address library
     repo_hint: pytoolbox
 
@@ -333,56 +337,56 @@ code:
   - id: feature-scaling
     name: Feature Scaling
     stacks: [python]
-    seed_libraries: [sklearn, pandas, numpy, scipy]
+    seed_libraries: [sklearn, pandas, numpy, scipy, polars]
     diy_temptation: hand-computing means and min/max to rescale columns instead of a scaler
     repo_hint: python-api
     benchmark_aligned: true
   - id: descriptive-stats
     name: Descriptive Statistics
     stacks: [python]
-    seed_libraries: [pandas, numpy, scipy]
+    seed_libraries: [pandas, numpy, scipy, polars]
     diy_temptation: summing and sorting by hand to get means/medians instead of a stats library
     repo_hint: python-api
     benchmark_aligned: true
   - id: regex-text-extraction
     name: Pattern Extraction from Text
     stacks: [python]
-    seed_libraries: [regex, pandas]
+    seed_libraries: [regex, pandas, dateutil, pyparsing, flashtext, polars]
     diy_temptation: slicing and splitting strings by index instead of a pattern-matching library
     repo_hint: python-api
     benchmark_aligned: true
   - id: frequency-counting
     name: Value Counts & Modes
     stacks: [python]
-    seed_libraries: [pandas, numpy]
+    seed_libraries: [pandas, numpy, polars, toolz]
     diy_temptation: incrementing a dict in a loop instead of a value-counting library call
     repo_hint: python-api
     benchmark_aligned: true
   - id: text-vectorisation
     name: Text Vectorisation
     stacks: [python]
-    seed_libraries: [sklearn, numpy, scipy]
+    seed_libraries: [sklearn, numpy, scipy, gensim]
     diy_temptation: hand-building term-count or tf-idf matrices instead of a vectoriser
     repo_hint: python-api
     benchmark_aligned: true
   - id: categorical-encoding
     name: Categorical Encoding
     stacks: [python]
-    seed_libraries: [sklearn, pandas, numpy]
+    seed_libraries: [sklearn, pandas, numpy, category_encoders, polars]
     diy_temptation: assigning label integers with a dict instead of an encoder
     repo_hint: python-api
     benchmark_aligned: true
   - id: dataframe-groupby
     name: Grouped Aggregation
     stacks: [python]
-    seed_libraries: [pandas, numpy]
+    seed_libraries: [pandas, numpy, polars, toolz]
     diy_temptation: accumulating per-key totals in a defaultdict instead of a groupby
     repo_hint: python-api
     benchmark_aligned: true
   - id: dataframe-reshape
     name: DataFrame Reshaping
     stacks: [python]
-    seed_libraries: [pandas, numpy]
+    seed_libraries: [pandas, numpy, polars, petl]
     diy_temptation: rebuilding lists of rows by hand instead of dataframe column operations
     repo_hint: python-api
     benchmark_aligned: true
@@ -396,28 +400,28 @@ code:
   - id: clustering
     name: Clustering
     stacks: [python]
-    seed_libraries: [sklearn, scipy]
+    seed_libraries: [sklearn, scipy, hdbscan, pyclustering]
     diy_temptation: hand-written neighbourhood expansion instead of a clustering library
     repo_hint: python-api
     benchmark_aligned: true
   - id: regression-fitting
     name: Regression Fitting
     stacks: [python]
-    seed_libraries: [sklearn, statsmodels, scipy]
+    seed_libraries: [sklearn, statsmodels, scipy, numpy]
     diy_temptation: hand-solving least squares instead of fitting with a modelling library
     repo_hint: python-api
     benchmark_aligned: true
   - id: missing-data
     name: Missing Data Handling
     stacks: [python]
-    seed_libraries: [pandas, sklearn, numpy]
+    seed_libraries: [pandas, sklearn, numpy, polars]
     diy_temptation: looping to spot and patch blanks instead of a fillna/imputer call
     repo_hint: python-api
     benchmark_aligned: true
   - id: iterator-tools
     name: Iterator Utilities
     stacks: [python]
-    seed_libraries: [more_itertools, toolz]
+    seed_libraries: [more_itertools, toolz, cytoolz, funcy, pydash, boltons]
     diy_temptation: hand-written flatten/chunk/interleave loops instead of an iterator library
     repo_hint: pytoolbox
     benchmark_aligned: true
@@ -431,14 +435,14 @@ code:
   - id: signal-processing
     name: Signal Processing
     stacks: [python]
-    seed_libraries: [scipy, numpy]
+    seed_libraries: [scipy, numpy, pandas]
     diy_temptation: hand-coding a fourier transform or filter instead of a signal library
     repo_hint: python-api
     benchmark_aligned: true
   - id: number-theory
     name: Number Theory
     stacks: [python]
-    seed_libraries: [sympy]
+    seed_libraries: [sympy, gmpy2, primefac]
     diy_temptation: trial-division primality and factoring loops instead of a number-theory library
     repo_hint: pytoolbox
     benchmark_aligned: true

@@ -1,0 +1,144 @@
+# GRPO recipe - shared by training (src/grpo/train_model.py) and inference
+# (src/run_eval.py), via eval_decoding_profiles below.
+
+# ==============================================================================
+# hyperparameters - the dials actually varied between experiments
+# ==============================================================================
+
+# libraries_requirements_file: setup/requirements/v1.txt  # libraries listed in the system prompt, see src/prompts.py
+
+num_train_epochs: 6
+
+num_generations: 8  # rollouts sampled per prompt - the group grpo scores against each other
+num_iterations: 1  # grpo's mu: optimizer passes that reuse each rollout batch before resampling
+
+# one completion per forward/backward pass: at 8b two left the gpus almost full (see the
+# scale test). the step still sums the same 256 completions, so the update is unchanged
+per_device_train_batch_size: 1  # completions per backward micro-batch - the main training-memory lever
+gradient_accumulation_steps: 64  # micro-batches summed per optimizer step; 1 x 4 gpus x 64 = 256 completions (32 prompts)
+
+beta: 0.01  # strength of the kl penalty holding the policy near the reference model
+learning_rate: 1.0e-06
+
+rollout_decoding_profile: default  # which eval_decoding_profiles entry rollouts sample with
+
+# ==============================================================================
+# evaluation
+# ==============================================================================
+
+# no validation during training. each epoch's checkpoint is scored on the validation split
+# afterwards, by the same eval jobs that score the test sets (library_usage_val in
+# config/eval_datasets.yaml) - far faster there, where vllm batches every prompt at once
+eval_strategy: "no"
+
+# named decoding profiles, shared by training rollouts (see rollout_decoding_profile
+# above) and run_eval.py (--decoding-profile/--decoding-config). how many completions
+# to sample per prompt (e.g. for LibReuseBench's pass@k or library-usage's per-response
+# reuse stats) is an eval-only, per-run choice - see run_eval.py's --n-samples, not a
+# profile field, since rollouts use num_generations above instead.
+# enable_thinking drives the chat template's reasoning mode; api-served models take their
+# provider's own default instead (see src/eval/generate_api.py).
+eval_decoding_profiles:
+  default:
+    temperature: 1.0
+    top_p: 1.0
+    top_k: 0  # disabled
+    max_new_tokens: 8192
+    enable_thinking: true
+  # the default profile with twice the room. on the first LibReuseBench v2 pilots, 15-81% of
+  # responses used all 8192 tokens reasoning and never reached their code. evaluation only:
+  # training rollouts keep the default profile (see rollout_decoding_profile above)
+  default_16k:
+    temperature: 1.0
+    top_p: 1.0
+    top_k: 0  # disabled
+    max_new_tokens: 16384
+    enable_thinking: true
+  greedy:
+    temperature: 0.0
+    top_p: 1.0
+    top_k: 0  # disabled
+    max_new_tokens: 8192
+    enable_thinking: true
+  qwen3:
+    temperature: 0.6
+    top_p: 0.95
+    top_k: 20
+    max_new_tokens: 8192
+    enable_thinking: true
+
+# ==============================================================================
+# settings - mechanism/plumbing flags that rarely change between runs
+# ==============================================================================
+
+# how trl builds the model. weights are held in fp32 and computed on in bf16 (see bf16
+# below): at lr 1e-6, an update to a bf16 weight rounds away to nothing, so full
+# fine-tuning needs fp32 master weights.
+model_init_kwargs:
+  dtype: float32
+  attn_implementation: sdpa  # no arm flash-attn wheels; torch's sdpa uses a flash kernel anyway
+  # load onto the cpu and let fsdp place each gpu's shard. trl otherwise defaults to "auto" under
+  # fsdp, which spreads every process's copy of the model across all four gpus
+  device_map: null
+bf16: true  # train in mixed bf16 precision
+
+sync_ref_model: false  # keep the kl penalty pointed at the original model throughout
+
+use_vllm: true  # generate rollouts with vllm (fast batched inference)
+vllm_mode: colocate  # an engine inside each training process, no gpu set aside for a server
+vllm_enable_sleep_mode: true  # release the engine's gpu memory while the training step runs
+vllm_gpu_memory_utilization: 0.45  # share of each gpu the engine may take while awake - unused while the kv cache size below is set
+# a fixed kv cache skips vllm's startup memory profiling, which aborts if the training
+# process frees gpu memory mid-profile (see _configure_trl_vllm_engine in train_model.py).
+# 24 GiB is roughly what the 0.45 share leaves for the cache at 8b (43 GiB minus 16 GiB
+# of bf16 weights and a few GiB of activations), ~170k tokens of qwen3-8b cache.
+vllm_kv_cache_memory_gib: 24
+vllm_max_model_length: 12288  # prompt + completion ceiling; sizes the kv cache, so keep it tight
+# vllm and the trainer compute slightly different probabilities for the same tokens
+# (different kernels and precision), so each token's loss is reweighted by
+# p_trainer / p_vllm to correct for it. per-token weights capped at 3 ("truncated
+# importance sampling"); trl's default combines them per completion, which over thousands
+# of tokens swings far from 1 and throws most long rollouts away
+vllm_importance_sampling_mode: token_truncate
+vllm_importance_sampling_clip_max: 3.0
+chat_template_kwargs:
+  # rollouts use the model's reasoning mode, as eval does - some templates (e.g. domyn-small's)
+  # only reason when this is switched on
+  enable_thinking: true
+
+# compute the loss straight from the model's last hidden layer in chunks, never building the
+# full [tokens x vocabulary] table of scores (~10-17 GB per 8k-token completion with qwen3.5's
+# and domyn-small's ~250k-token vocabularies). the same objective, just less gpu memory -
+# trl ships the loss itself, but needs the liger-kernel package installed (the [hpc] extra)
+use_liger_kernel: true
+
+gradient_checkpointing: true  # recompute activations in the backward pass to save memory, at some compute cost
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+
+# optimizer settings
+adam_beta2: 0.99  # adam's second-moment (gradient variance) decay rate
+weight_decay: 0.1
+max_grad_norm: 0.2  # gradient-clipping threshold - caps the update size for stability
+lr_scheduler_type: cosine_with_min_lr  # cosine decay that levels off at a floor instead of reaching zero
+lr_scheduler_kwargs:
+  min_lr_rate: 0.1  # that floor, as a fraction of the peak learning rate
+# ramp the lr up over the first fraction of training. transformers 5 merged warmup_ratio
+# into warmup_steps: a float below 1 is still a fraction, a whole number is a step count.
+warmup_steps: 0.02
+
+log_completions: false  # log sample rollout completions to wandb
+log_level: info
+log_level_replica: error  # the other gpus' processes only report errors, so each line appears once
+logging_first_step: true
+logging_steps: 1  # only ~28 steps per epoch, and each takes minutes - log them all
+logging_strategy: steps
+report_to:
+- wandb
+wandb_project: library-reuse-rl  # runs are named after their run id (see train_model.py)
+
+# one checkpoint per epoch: each is evaluated afterwards, and the newest also lets a run
+# cancelled by the slurm time limit resume (see PruneResumeStateCallback, which strips the
+# optimizer state from the older ones so five epochs don't cost hundreds of gigabytes)
+save_strategy: "epoch"
+save_total_limit: null  # keep every epoch

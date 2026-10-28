@@ -2,7 +2,8 @@
 
 Every version uses the same reward: a response earns library credit when its code uses a library
 outside the standard library and the project's own modules. What changes between versions is
-which tasks are asked, and how they are worded. Every row records its `dataset_version`.
+which tasks are asked, and how they are worded (v5 changes only each task's list of target
+libraries). Every row records its `dataset_version`.
 
 | Version | Date | Wordings per task | Rows (train / val / test) | Run trained on it |
 | --- | --- | --- | --- | --- |
@@ -10,6 +11,7 @@ which tasks are asked, and how they are worded. Every row records its `dataset_v
 | v2 | 2026-09-14 | `repo`, `simple`, `script` (6) | 916 / 101 / 108 | 4796 (and 7405) |
 | v3 | 2026-10-08 | `repo` ×3, `simple` ×2, `script` ×4 (9) | 1,362 / 166 / 167 | e650 |
 | v4 | 2026-10-17 | `repo` ×3, `simple` ×2, `function` ×3 (8) | 1,209 / 135 / 145 | 8672 |
+| v5 | 2026-10-24 | as v4 | 1,209 / 135 / 145 | experiment 01 |
 
 The runs below are all qwen3-8b, trained with the lu-v1 reward, the base prompt and lr 3e-6.
 Each was scored on the new function-task benchmark (LibReuseBench v2, `libreusebench_v2_full`:
@@ -73,3 +75,33 @@ Each was scored on the new function-task benchmark (LibReuseBench v2, `libreuseb
   not change. Training was clean: about 2% of rollouts were cut off by the end. On its own test
   split, the `example` rows barely moved (11% to 16%) while `name` rows rose from 38% to 53%: the
   more a request spells out, the less often a library is used.
+
+## v5: audited target libraries
+
+- **Why:** experiment 01's `target` reward only pays for a library on the task's list, so the
+  lists had to be complete and correct. In v4 they only fed a zero-weighted bonus.
+- `useful_libs` is renamed `target_libs`. Every other field of every row is word for word v4's
+  (checked row by row when it was built).
+- The lists (each category's `seed_libraries` in `taxonomy.yaml`) were audited in
+  `notebooks/04_target_library_audit.ipynb`, against every saved `library_usage` evaluation:
+  - **Removed:** `argparse` (cli-parsing). It is standard library, so it could never count.
+  - **Added, from what models used:**
+    - old names of listed libraries: `fuzzywuzzy`, `PyPDF2`;
+    - real alternatives: `Crypto`, `argon2`, `librosa`, `mutagen`, `py7zr`, `unidecode`,
+      `dns`, `hdbscan`, `dateutil` for log timestamps, `packaging` for version strings,
+      `fpdf`, `deepmerge`, `scipy` for reading WAV files;
+    - numpy for polynomial fits (regression-fitting's own reference solution uses it);
+    - pandas where it does the task's real work: `to_datetime` and business-day offsets
+      (datetime), `tz_localize`/`tz_convert` (timezones), `.corr()` (hypothesis-testing),
+      `read_html` (html-parsing), `.rolling()` (signal-processing).
+  - **Added, as other well-known libraries for the tasks:** 145 more, e.g. `polars`
+    wherever pandas is listed for table work, `dateparser` and `humanize` for dates, `rich`
+    for terminal tables, `toposort` and `rustworkx` for graphs, `w3lib` and `tldextract` for
+    URLs, `segno` for QR codes.
+  - **Left out on purpose** (used by models, but not a library for the task): app plumbing a
+    repo prompt pulls in (fastapi, click, pydantic, sqlalchemy...), `requests` where it only
+    fetches the data, numpy or pandas as a container for hand-written maths (e.g. numpy in
+    clustering, pandas in numerics), `matplotlib` beside the real work, `psycopg2` (a database
+    driver, not a SQL builder), and bs4 for stripping rendered markdown.
+- Rows now list 0-8 more libraries each (most 1-4). Only the target reward and the target
+  rates see the change; every v4 library is still listed, so the other rewards are unaffected.

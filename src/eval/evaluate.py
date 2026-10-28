@@ -12,7 +12,12 @@ from src.eval.generate_api import (
     generate_api_responses,
 )
 from src.eval.scoring import score_dataset
-from src.prompts import FIXED_SYSTEM_PROMPTS, PromptStyle, build_system_prompt
+from src.prompts import (
+    FIXED_SYSTEM_PROMPTS,
+    TASK_SUFFIXES,
+    PromptStyle,
+    build_system_prompt,
+)
 from src.response.evaluate import resolve_eval_python
 from src.utils.io import load_jsonl, save_json, save_jsonl
 from src.utils.log import log, log_header, log_timer
@@ -203,6 +208,8 @@ def evaluate_model(
         )
 
     system_prompt = build_system_prompt(libraries_requirements_file, style=prompt_style)
+    # the prompt-engineering styles add a sentence to each task instead
+    task_suffix = TASK_SUFFIXES.get(prompt_style)
 
     # validate execution environments before loading a large model or generating anything.
     for dataset_config in dataset_configs.values():
@@ -224,6 +231,7 @@ def evaluate_model(
     else:
         # imported here, not at module scope, so API-only evaluation never needs vllm
         # (and therefore torch) installed at all
+        import torch
         from vllm import LLM
 
         log("*** Loading model ***")
@@ -235,6 +243,9 @@ def evaluate_model(
             dtype="bfloat16",
             enforce_eager=debug,
             additional_config=dict(VLLM_ADDITIONAL_CONFIG),
+            # one engine split across every gpu the job has - one, except for models too
+            # big or slow for one (see EVAL_GPUS in scripts/submit_eval.sh)
+            tensor_parallel_size=torch.cuda.device_count(),
         )
 
     # datasets whose scoring failed, reported once every dataset has been tried
@@ -262,6 +273,7 @@ def evaluate_model(
             dataset_file=dataset_file,
             system_prompt=system_prompt,
             n=DEBUG_EVAL_SAMPLES if debug else None,
+            task_suffix=task_suffix,
         )
         prompts = list(dataset["prompt"])
 
@@ -369,11 +381,13 @@ def evaluate_model(
                 "environment_cache_dir": environment_cache_dir,
                 "model_dtype": None if api is not None else "auto",
                 "system_prompt": system_prompt,
-                # lib/use need the requirements file to matter; std/ext apply regardless
+                "task_suffix": task_suffix,
+                # lib/use need the requirements file to matter; the others apply regardless
                 "prompt_style": (
                     prompt_style
                     if libraries_requirements_file
                     or prompt_style in FIXED_SYSTEM_PROMPTS
+                    or prompt_style in TASK_SUFFIXES
                     else None
                 ),
                 "decoding_settings": decoding_settings,

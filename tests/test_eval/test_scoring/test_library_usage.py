@@ -30,7 +30,7 @@ class TestScoreLibraryUsage:
         base = {
             "task_type": "library_usage",
             "category_id": "pdf",
-            "useful_libs": ["pypdf"],
+            "target_libs": ["pypdf"],
         }
         dataset = [
             {**base, "idx": 0, "local_modules": []},
@@ -52,17 +52,57 @@ class TestScoreLibraryUsage:
         assert analysis["task"] == "library_usage"
         # only the first row reused an external library
         assert analysis["external_lib_used_rate"] == 1 / 3
-        assert analysis["appropriate_lib_rate"] == 1 / 3
+        assert analysis["target_lib_used_rate"] == 1 / 3
         assert analysis["library_use"] == {
             "using_lib_rate": 1 / 3,
             "avg_extlibs": 1 / 3,
             "library_counts": {"pypdf": 1},
-            "appropriate_lib_rate": 1 / 3,
-            "appropriate_given_use_rate": 1.0,
+            "target_lib_rate": 1 / 3,
+            "target_given_use_rate": 1.0,
         }
-        assert results[0]["external_lib_used"] and results[0]["appropriate_lib_used"]
-        assert not results[1]["external_lib"]  # local import doesn't count
-        assert not results[2]["external_lib"]  # stdlib doesn't count
+        assert results[0]["external_lib_used"] and results[0]["target_lib_used"]
+        assert results[0]["used_target_libs"] == ["pypdf"]
+        assert not results[1]["external_lib_imported"]  # local import doesn't count
+        assert not results[2]["external_lib_imported"]  # stdlib doesn't count
+
+    def test_reports_every_reward_component(self):
+        """Each result carries the training reward's components, so an import-only hack
+        (importing a library it never uses) shows as imported minus used."""
+        base = {
+            "task_type": "library_usage",
+            "local_modules": [],
+            "target_libs": ["numpy"],
+        }
+        dataset = [{**base, "idx": 0}, {**base, "idx": 1}]
+        responses = _responses(
+            "r</think>\n```python\nimport numpy\nprint(sum([1, 2]))\n```",
+            "r</think>\n```python\nimport pandas as pd\npd.Series([1]).sum()\n```",
+        )
+
+        analysis, results = score_dataset(dataset, responses, evaluator="library_usage")
+
+        assert {
+            name: [result[name] for result in results]
+            for name in (
+                "correct_format",
+                "passes_syntax_check",
+                "external_lib_imported",
+                "external_lib_used",
+                "target_lib_imported",
+                "target_lib_used",
+            )
+        } == {
+            "correct_format": [True, True],
+            "passes_syntax_check": [True, True],
+            "external_lib_imported": [True, True],
+            "external_lib_used": [False, True],
+            "target_lib_imported": [True, False],
+            "target_lib_used": [False, False],
+        }
+        assert analysis["external_lib_rate"] == 1.0
+        assert analysis["external_lib_used_rate"] == 0.5
+        assert analysis["target_lib_imported_rate"] == 0.5
+        assert analysis["target_lib_used_rate"] == 0.0
 
     def test_aggregates_all_code_blocks(self):
         """Every block contributes imports, usage, and validity statistics."""
@@ -71,7 +111,7 @@ class TestScoreLibraryUsage:
                 "idx": 0,
                 "task_type": "library_usage",
                 "category_id": "http-requests",
-                "useful_libs": ["requests"],
+                "target_libs": ["requests"],
                 "local_modules": ["app"],
             }
         ]
@@ -116,7 +156,7 @@ Item()
                 "idx": 0,
                 "task_type": "library_usage",
                 "category_id": "http-requests",
-                "useful_libs": [],
+                "target_libs": [],
                 "local_modules": [],
             }
         ]
@@ -151,7 +191,7 @@ def broken(:
                 "idx": 0,
                 "task_type": "library_usage",
                 "category_id": "http-requests",
-                "useful_libs": ["requests"],
+                "target_libs": ["requests"],
                 "local_modules": [],
             }
         ]
@@ -179,7 +219,7 @@ def broken(:
         assert analysis["library_use"]["using_lib_rate"] == 0.5
         # per-task: this task's samples used it at least once
         assert analysis["library_use_per_task"]["using_lib_rate"] == 1.0
-        assert analysis["library_use_per_task"]["appropriate_lib_rate"] == 1.0
+        assert analysis["library_use_per_task"]["target_lib_rate"] == 1.0
 
 
 class TestScoreEmptyDataset:

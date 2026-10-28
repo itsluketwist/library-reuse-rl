@@ -79,6 +79,16 @@ class TestScoreHumanEval:
         assert analysis["n_no_code"] == 1
         assert "AssertionError" in results[1]["output"]
 
+    def test_code_size_is_measured_as_libreusebench_measures_it(self):
+        """Each answer's tested block gets its logical lines, averaged like libreusebench."""
+        analysis, results = _score(CORRECT, "no code at all")
+
+        # `def add` and its `return` are two logical lines; no code is not measured
+        assert [result["lloc"] for result in results] == [2, None]
+        assert analysis["code_metrics"]["all"]["n_measured"] == 1
+        assert analysis["code_metrics"]["all"]["avg_lloc"] == 2
+        assert analysis["code_metrics"]["passed"]["avg_lloc"] == 2
+
     def test_answer_names_cannot_clash_with_the_test(self):
         """An answer's own `check` and a demo block reading stdin don't break the test."""
         answer = (

@@ -26,8 +26,9 @@ REWARD_COMPONENTS = frozenset(
         "external_lib_imported",
         "internal_lib_used",
         "external_lib_used",
-        # library-usage bonus (external lib is an appropriate one for the task)
-        "appropriate_lib_used",
+        # library-usage: the same checks, counting only the task's target libraries
+        "target_lib_imported",
+        "target_lib_used",
         # product-choice (prose pick)
         "names_external_lib",
         "mentions_external_lib",

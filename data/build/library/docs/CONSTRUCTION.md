@@ -160,12 +160,12 @@ python data/build/audit.py           # -> REPORT.md (this dir - other datasets g
   "language": "python",
   "context_id": "none",
   "local_modules": [],
-  "useful_libs": ["pandas", "openpyxl", "xlsxwriter"],
+  "target_libs": ["pandas", "openpyxl", "xlsxwriter", "polars", "tablib", "xlrd", "pyarrow", "jsonlines"],
   "phrasing_mode": "function",
   "script_stage": null,
   "function_stage": "signature",
   "allowlist_version": "2026-08",
-  "dataset_version": "v4",
+  "dataset_version": "v5",
   "source": "llm"
 }
 ```
@@ -175,7 +175,8 @@ python data/build/audit.py           # -> REPORT.md (this dir - other datasets g
 `"benchmark"`), so since v4 it is set only in the script pilot file.
 
 `task_id` is unique per row (assigned after splitting). `seed_task` + `task` identify what the
-row is a wording of; `useful_libs` is what the reward checks the response's imports against;
+row is a wording of; `target_libs` (the category's `seed_libraries`) is the list the target
+reward components check the response's imports against;
 `context_id`/`local_modules` are set for `repo`-mode rows (the reward subtracts local modules so
 a project's own code is never mistaken for reuse). `local_modules` lists every package and module
 in the repo, at any depth (pytoolbox: `cli`, `tasks`, `toolbox`, `utils`): a solution written as

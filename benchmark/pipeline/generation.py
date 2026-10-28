@@ -1,4 +1,4 @@
-"""Shared LLM client for the LibReuseBench v2 pipeline.
+"""Shared LLM client for the LibReuseBench build pipeline.
 
 `complete_json` is the one Anthropic client call every stage uses; each stage's own prompt and
 checks live with its script (the task generation in 02_generate.py, the agent review in

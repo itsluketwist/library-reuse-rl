@@ -14,9 +14,9 @@ class LibraryUsageReward(CodeReward):
     Verified programmatically by lure (no execution): imports across every answer code
     block are classified, the standard library and the project's own modules
     (`local_modules`) are subtracted, and anything left that is actually used counts as
-    genuine library reuse. An optional bonus fires when the used library is one of the
-    task's `useful_libs` - an appropriate choice for the category - but the base reuse
-    signal never depends on that list.
+    genuine library reuse. The target components repeat the import and use checks, but
+    only count the task's `target_libs` - the libraries listed for its category - so a
+    profile can reward reuse of any library, or only of the target ones.
     """
 
     def components(
@@ -31,9 +31,9 @@ class LibraryUsageReward(CodeReward):
         """
         parsed = self.parse(content, row)
         # lure's components are exactly this reward's: correct_format,
-        # passes_syntax_check, external_lib_imported, external_lib_used and
-        # appropriate_lib_used (the bonus, judged against the row's useful_libs)
+        # passes_syntax_check, external_lib_imported, external_lib_used,
+        # target_lib_imported and target_lib_used (judged against the row's target_libs)
         return components_from_parsed(
             parsed,
-            appropriate_libraries=row.get("useful_libs") or (),
+            target_libraries=row.get("target_libs") or (),
         )

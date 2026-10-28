@@ -69,7 +69,10 @@ VERSION = "2026-08"
 # follows LibReuseBench's move from stdin/stdout programs to function tasks: the four script rows
 # are replaced by three function-style requests (phrasing mode "function", function_stage
 # name/signature/example, see augment.py) - 8 rows/task, or 7 for a task with no honest example.
-DATASET_VERSION = "v4"
+# v5 has v4's rows word for word: it renames useful_libs to target_libs (the libraries the
+# target reward components count) and fixes those lists after an audit
+# (notebooks/04_target_library_audit.ipynb).
+DATASET_VERSION = "v5"
 
 _HERE = Path(__file__).parent
 TASKS_FILE = _HERE / "tasks.yaml"
@@ -159,7 +162,7 @@ def _row(
     category_id: str,
     seed_task: str,
     task: str,
-    useful_libs: list[str],
+    target_libs: list[str],
     context: Context | None,
     phrasing_mode: str,
     source: str,
@@ -188,7 +191,7 @@ def _row(
         "language": "python",
         "context_id": context.context_id if context else "none",
         "local_modules": context.local_modules if context else [],
-        "useful_libs": useful_libs,
+        "target_libs": target_libs,
         "phrasing_mode": phrasing_mode,
         "script_stage": script_stage,
         "function_stage": function_stage,
@@ -220,7 +223,7 @@ def build_library_usage_rows(
     rows = []
     for entry in taxonomy.get("code", []):
         cid = entry["id"]
-        useful_libs = entry["seed_libraries"]
+        target_libs = entry["seed_libraries"]
         repo_context = contexts_by_id[entry["repo_hint"]]
 
         for number, task in tasks.get(cid, {}).items():
@@ -238,7 +241,7 @@ def build_library_usage_rows(
                         cid,
                         seed_task,
                         task,
-                        useful_libs,
+                        target_libs,
                         context,
                         phrasing_mode=mode,
                         source="template",
@@ -255,7 +258,7 @@ def build_library_usage_rows(
                             cid,
                             seed_task,
                             task,
-                            useful_libs,
+                            target_libs,
                             None,
                             phrasing_mode=mode,
                             source="project",
@@ -274,7 +277,7 @@ def build_library_usage_rows(
                             cid,
                             seed_task,
                             task,
-                            useful_libs,
+                            target_libs,
                             context,
                             phrasing_mode=mode,
                             source="llm",
@@ -289,7 +292,7 @@ def build_library_usage_rows(
                         cid,
                         seed_task,
                         task,
-                        useful_libs,
+                        target_libs,
                         None,
                         phrasing_mode="function",
                         source="llm",

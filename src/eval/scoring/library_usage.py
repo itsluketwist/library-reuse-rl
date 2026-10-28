@@ -3,7 +3,7 @@
 from collections import Counter
 from typing import Any, Iterable
 
-from lure import is_appropriate_library, parse_response
+from lure import components_from_parsed, is_target_library, parse_response
 
 from src.eval.scoring.base import _library_statistics, _rate
 
@@ -32,19 +32,17 @@ def _task_library_use(
     """Per-task library-use stats: a task counts as using a library if any of its
     sampled responses did (see MULTI_SAMPLE_EVALUATORS).
 
-    Returns the same shape as _library_statistics, plus appropriate-use rates.
+    Returns the same shape as _library_statistics, plus target-use rates.
     """
     used_sets = [
         set().union(*(r["used_external_libs"] for r in task)) if task else set()
         for task in task_results
     ]
-    appropriate_hits = [
-        any(r["appropriate_lib_used"] for r in task) for task in task_results
-    ]
+    target_hits = [any(r["target_lib_used"] for r in task) for task in task_results]
     stats = _library_statistics(used_sets)
-    stats["appropriate_lib_rate"] = _rate(sum(appropriate_hits), len(task_results))
-    stats["appropriate_given_use_rate"] = _rate(
-        sum(appropriate_hits),
+    stats["target_lib_rate"] = _rate(sum(target_hits), len(task_results))
+    stats["target_given_use_rate"] = _rate(
+        sum(target_hits),
         sum(bool(used) for used in used_sets),
     )
     return stats
@@ -82,13 +80,8 @@ def score_library_usage(
                 stop_reason=stop_reason,
                 local_modules=row.get("local_modules") or (),
             )
-            external = sorted(parsed.external_imports)
+            targets = row.get("target_libs") or ()
             used = sorted(parsed.external_used)
-            appropriate = [
-                lib
-                for lib in used
-                if is_appropriate_library(lib, row.get("useful_libs") or ())
-            ]
             n_valid_blocks = sum(block.valid for block in parsed.code_blocks)
             result = {
                 "idx": row["idx"],
@@ -106,12 +99,15 @@ def score_library_usage(
                 "n_code_blocks": len(parsed.code_blocks),
                 "n_valid_code_blocks": n_valid_blocks,
                 "any_code_block_valid": n_valid_blocks > 0,
-                "external_libs": external,
-                "external_lib": bool(external),
+                "external_libs": sorted(parsed.external_imports),
                 "used_external_libs": used,
-                "external_lib_used": bool(used),
-                "appropriate_libs": appropriate,
-                "appropriate_lib_used": bool(appropriate),
+                "used_target_libs": [
+                    lib for lib in used if is_target_library(lib, targets)
+                ],
+                # every reward component, judged exactly as the training reward judges
+                # it: correct_format, passes_syntax_check, external_lib_imported,
+                # external_lib_used, target_lib_imported and target_lib_used
+                **components_from_parsed(parsed, target_libraries=targets),
                 "phrasing_mode": row.get("phrasing_mode"),
             }
             results.append(result)
@@ -120,29 +116,39 @@ def score_library_usage(
 
     n_total = len(results)
     n_used = sum(r["external_lib_used"] for r in results)
-    n_appropriate = sum(r["appropriate_lib_used"] for r in results)
+    n_target = sum(r["target_lib_used"] for r in results)
     library_use = _library_statistics(
         [set(result["used_external_libs"]) for result in results]
     )
-    library_use["appropriate_lib_rate"] = _rate(n_appropriate, n_total)
-    library_use["appropriate_given_use_rate"] = _rate(n_appropriate, n_used)
+    library_use["target_lib_rate"] = _rate(n_target, n_total)
+    library_use["target_given_use_rate"] = _rate(n_target, n_used)
     analysis = {
         "task": "library_usage",
         "n_total": n_total,
         "n_valid_code": sum(r["valid"] for r in results),
         "n_external_lib_used": n_used,
-        "n_appropriate_lib_used": n_appropriate,
+        "n_target_lib_used": n_target,
+        # each reward component's rate - the same rates the training logs - so a run's
+        # mean reward under any profile is the sum of weight x rate
+        "correct_format_rate": _rate(
+            sum(r["correct_format"] for r in results), n_total
+        ),
         "valid_code_rate": _rate(sum(r["valid"] for r in results), n_total),
-        "external_lib_rate": _rate(sum(r["external_lib"] for r in results), n_total),
+        "external_lib_rate": _rate(
+            sum(r["external_lib_imported"] for r in results), n_total
+        ),
         "external_lib_used_rate": _rate(n_used, n_total),
-        "appropriate_lib_rate": _rate(n_appropriate, n_total),
+        "target_lib_imported_rate": _rate(
+            sum(r["target_lib_imported"] for r in results), n_total
+        ),
+        "target_lib_used_rate": _rate(n_target, n_total),
         "library_use": library_use,
         "library_use_per_task": _task_library_use(task_results),
         "external_lib_used_rate_by_phrasing_mode": _per_phrasing_mode_rate(
             results, "external_lib_used"
         ),
-        "appropriate_lib_rate_by_phrasing_mode": _per_phrasing_mode_rate(
-            results, "appropriate_lib_used"
+        "target_lib_used_rate_by_phrasing_mode": _per_phrasing_mode_rate(
+            results, "target_lib_used"
         ),
     }
     return analysis, results

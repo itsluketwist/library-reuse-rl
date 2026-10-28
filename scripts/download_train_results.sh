@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # copies the eval results on the full training split (library_usage_train), on the script
-# pilot (library_usage_script_pilot), and every response on the full LibReuseBench v2 generation
+# pilot (library_usage_script_pilot), and every response on the full LibReuseBench generation run
 # (libreusebench_v2_full), down from isambard. most are too large to commit (thousands of long
 # responses per model), so they are git-ignored and fetched with this instead; the
 # libreusebench_v2_full runs with 5 samples are committed too, and copying them is harmless.

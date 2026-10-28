@@ -9,7 +9,10 @@ echo ">>> Submitting eval jobs to slurm >>>"
 
 ACCOUNT="brics.u6yb"
 PARTITION="workq"
-GPUS=1                           # evaluation generates with one vllm engine
+# evaluation generates with one vllm engine, split across the job's gpus (tensor parallel).
+# one gpu fits every model up to 14b; give qwen3-32b four with EVAL_GPUS=4, as it ran out of
+# the 12h limit on one
+GPUS="${EVAL_GPUS:-1}"
 TIME="12:00:00"
 
 ###############################################################################
@@ -23,15 +26,15 @@ TIME="12:00:00"
 # api-served models are not submitted here: isambard has no cpu partition, and they only
 # need network access - run them with scripts/run_eval_local.sh instead.
 #
-# currently set to fill in HumanEval+ on run 8672's summary figure: the base model and
-# every 8672 epoch. every other combination already has results, so it is skipped (see
-# `update` below)
+# currently set for experiment 01's baselines: qwen3-8b on LibReuseBench test and control,
+# with no prompt and with each prompt-engineering suffix (see prompt_styles below). its
+# HumanEval+ baseline already exists
 models=(
     # "vllm:qwen3-debug"
     # "vllm:qwen3-4b"
     "vllm:qwen3-8b"
     # "vllm:qwen3-14b"
-    # "vllm:qwen3-32b"  # both ran out of the 12h limit on libreusebench_v2_full
+    # "vllm:qwen3-32b"  # ran out of the 12h limit on one gpu - submit with EVAL_GPUS=4
     # "vllm:olmo3-7b"
     # "vllm:qwen3.5-9b"
     # "vllm:domyn-small"
@@ -48,13 +51,15 @@ models=(
 training_runs=(
     # "qwen3-8b-4796"
     # "qwen3-8b-e650"
-    "qwen3-8b-8672"
+    # "qwen3-8b-8672"
 )
 
 # EVAL_MODELS replaces both lists above (a space-separated string of models), which is how
 # scripts/submit_grpo.sh queues a run's epochs before training has registered them;
 # EVAL_DATASETS likewise replaces the datasets below, so a run's epochs are always scored on
-# the datasets submit_grpo.sh names, whatever this file is set up for; EVAL_DEPENDENCY holds
+# the datasets submit_grpo.sh names, whatever this file is set up for; EVAL_PROMPT_STYLES
+# replaces the prompt styles the same way (a trained model is only scored with the plain
+# "base" prompt, never the prompt-engineering suffixes); EVAL_DEPENDENCY holds
 # those jobs until training succeeds, and EVAL_LOG_DIR puts their logs in the training run's
 # log directory.
 
@@ -65,16 +70,11 @@ datasets=(
     # "library_usage_val"
     # "library_usage_train"
     # "library_usage_script_pilot"
-    # "libreusebench_test"
-    # "libreusebench_control"
-    # "libreusebench_function_test"
-    # "libreusebench_function_control"
-    # "libreusebench_v2_full"
-    # "libreusebench_v2_test"  # v2_full's 233 tasks + 1, renumbered (match results by seed id)
-    # the provisional control split, before human review (benchmark/artefacts/provisional/)
-    # "libreusebench_v2_control"
+    # LibReuseBench, test and control
+    "libreusebench_test"
+    "libreusebench_control"
     # regression test of general coding ability
-    "humaneval_plus"
+    # "humaneval_plus"
 )
 
 # completions sampled per prompt (see --n-samples in src/run_eval.py); eval-only, unrelated
@@ -89,13 +89,17 @@ decoding_profiles=(
     # "qwen3"
 )
 
-# system prompt wordings to evaluate with, one job per entry (src/prompts.py::PromptStyle)
+# system prompt wordings to evaluate with, one job per entry (src/prompts.py::PromptStyle).
+# "always" and "appropriate" are the prompt-engineering baselines: no system prompt, but a
+# sentence asking for an external library added to each task (TASK_SUFFIXES)
 prompt_styles=(
     # "lib"
     # "use"
     # "std"
     # "ext"
     "base"
+    "always"
+    "appropriate"
 )
 
 # true = tiny smoke test instead of full evaluation (see --debug in src/run_eval.py)
@@ -112,9 +116,12 @@ update=false
 #                      submit jobs - do not edit below                        #
 ###############################################################################
 
-# EVAL_DATASETS names the datasets outright (see above)
+# EVAL_DATASETS and EVAL_PROMPT_STYLES name the datasets and prompt styles outright (see above)
 if [ -n "$EVAL_DATASETS" ]; then
     read -ra datasets <<< "$EVAL_DATASETS"
+fi
+if [ -n "$EVAL_PROMPT_STYLES" ]; then
+    read -ra prompt_styles <<< "$EVAL_PROMPT_STYLES"
 fi
 
 # build datasets flag string, joining the array into the comma-separated list run_eval

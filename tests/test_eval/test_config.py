@@ -21,13 +21,28 @@ def test_every_decoding_profile_declares_its_thinking_mode() -> None:
     assert all(isinstance(p.get("enable_thinking"), bool) for p in profiles.values())
 
 
-def test_training_uses_six_epochs_and_eight_rollouts() -> None:
-    """The main recipe retains the experiment's epoch and rollout counts (6 epochs for the
-    dataset v4 run, up from the 3 used since run 4796's gains plateaued after epoch 2)."""
+def test_training_uses_eight_epochs_and_sixteen_rollouts() -> None:
+    """The main recipe retains experiment 01's epoch and rollout counts (8 epochs, as run
+    8672 was still improving at epoch 6, and 16 rollouts, for more library contrast per
+    group), with 32 prompts per optimizer step across the 4 gpus."""
     training = load_full_yaml("config/training.yaml")
 
-    assert training["num_train_epochs"] == 6
-    assert training["num_generations"] == 8
+    assert training["num_train_epochs"] == 8
+    assert training["num_generations"] == 16
+    completions_per_step = (
+        training["per_device_train_batch_size"]
+        * 4
+        * training["gradient_accumulation_steps"]
+    )
+    assert completions_per_step // training["num_generations"] == 32
+
+
+def test_training_scores_val_and_test_every_five_steps() -> None:
+    """Reward generalisation is tracked every 5 steps, with 5 answers per prompt."""
+    training = load_full_yaml("config/training.yaml")
+
+    assert training["split_eval_steps"] == 5
+    assert training["split_eval_samples"] == 5
 
 
 def test_training_saves_a_checkpoint_every_epoch() -> None:
@@ -36,6 +51,8 @@ def test_training_saves_a_checkpoint_every_epoch() -> None:
 
     assert training["save_strategy"] == "epoch"
     assert training["save_total_limit"] is None
+    # plus a resume-only checkpoint every 10 steps, so a requeue loses little work
+    assert training["resume_save_steps"] == 10
 
 
 def test_training_keeps_master_weights_in_fp32() -> None:

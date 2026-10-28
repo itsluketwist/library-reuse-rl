@@ -37,6 +37,18 @@
     "using_lib_rate": 0.0,
     "avg_extlibs": 0.0,
     "library_counts": {},
+    "code_metrics": {
+      "all": {
+        "n_measured": 811,
+        "avg_lloc": 8.953144266337855,
+        "avg_maintainability_index": 78.44779213554634
+      },
+      "passed": {
+        "n_measured": 736,
+        "avg_lloc": 8.892663043478262,
+        "avg_maintainability_index": 77.9472295481572
+      }
+    },
     "environment": {
       "installed_packages": [
         "numpy"

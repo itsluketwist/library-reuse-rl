@@ -1,4 +1,4 @@
-"""Shared, non-LLM helpers for the LibReuseBench v2 build pipeline.
+"""Shared, non-LLM helpers for the LibReuseBench build pipeline.
 
 Holds the stage paths, the resume helpers for the append-only stage artefacts, and the reuse-value
 measure that the numbered build scripts share. Reusable library logic (import classification, the

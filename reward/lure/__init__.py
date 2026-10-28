@@ -9,14 +9,14 @@ from lure.reward import (
     LibraryReward,
     components_from_parsed,
     create_library_reward,
-    is_appropriate_library,
+    is_target_library,
     library_components,
 )
 from lure.trl import create_trl_reward, stop_reason_from_tokens
 
 
 # the single source of the package version (read by pyproject.toml when building)
-__version__ = "0.1.3"
+__version__ = "0.2.0"
 
 __all__ = [
     "COMPONENTS",
@@ -31,8 +31,8 @@ __all__ = [
     "create_library_reward",
     "create_trl_reward",
     "extract_code_blocks",
-    "is_appropriate_library",
     "is_placeholder_module",
+    "is_target_library",
     "library_components",
     "parse_response",
     "pip_package",
