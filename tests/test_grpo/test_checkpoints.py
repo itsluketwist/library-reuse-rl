@@ -22,6 +22,7 @@ def _checkpoint(
     (checkpoint / "model.safetensors").write_text("weights")
     (checkpoint / "config.json").write_text("{}")
     # what only resuming needs
+    (checkpoint / "pytorch_model_fsdp.bin").write_text("fsdp weights")
     (checkpoint / "optimizer.bin").write_text("optimizer")
     (checkpoint / "scheduler.pt").write_text("scheduler")
     (checkpoint / "rng_state_0.pth").write_text("rng")
@@ -134,9 +135,12 @@ class TestPruneResumeState:
         assert not (older / "optimizer.bin").exists()
         assert not (older / "scheduler.pt").exists()
         assert not (older / "rng_state_0.pth").exists()
+        # fsdp's second copy of the weights only matters for resuming
+        assert not (older / "pytorch_model_fsdp.bin").exists()
         # the newest checkpoint is what a requeued job resumes from, so it keeps it all
         assert (newest / "optimizer.bin").exists()
         assert (newest / "rng_state_0.pth").exists()
+        assert (newest / "pytorch_model_fsdp.bin").exists()
 
     def test_removes_resume_state_saved_as_a_directory(self, tmp_path) -> None:
         """Some fsdp state dict types write the optimizer state as a directory."""

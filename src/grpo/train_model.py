@@ -262,7 +262,13 @@ class SplitEvalCallback(TrainerCallback):
         **kwargs,
     ) -> None:
         if state.global_step % self.eval_steps == 0:
+            # logging the rates (Trainer.log) clears the flag that tells the trainer to log
+            # this step's own training metrics, which come straight after this callback. so
+            # it is put back - otherwise every eval step's training log would be dropped,
+            # and trl would fold its rewards into the next step's
+            should_log = control.should_log
             self._evaluate()
+            control.should_log = should_log
 
     def _decode(
         self,

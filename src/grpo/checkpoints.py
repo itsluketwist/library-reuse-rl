@@ -10,9 +10,11 @@ from pathlib import Path
 from src.utils.io import load_json
 
 
-# what the trainer writes into a checkpoint purely so a run can resume. the weights,
-# config and tokenizer alongside them are what evaluation needs, and are always kept.
-_RESUME_ONLY_FILES = ("optimizer*", "scheduler*", "rng_state*")
+# what the trainer writes into a checkpoint purely so a run can resume: the optimizer, lr
+# scheduler and random states, and fsdp's own copy of the weights (pytorch_model_fsdp.bin,
+# read only to resume - evaluation loads model.safetensors). the safetensors weights, config
+# and tokenizer alongside them are what evaluation needs, and are always kept.
+_RESUME_ONLY_FILES = ("optimizer*", "scheduler*", "rng_state*", "pytorch_model_fsdp*")
 
 
 def _checkpoint_step(checkpoint: Path) -> int:
