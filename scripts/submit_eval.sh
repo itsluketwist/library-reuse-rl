@@ -26,9 +26,10 @@ TIME="12:00:00"
 # api-served models are not submitted here: isambard has no cpu partition, and they only
 # need network access - run them with scripts/run_eval_local.sh instead.
 #
-# currently set for experiment 01's baselines: qwen3-8b on LibReuseBench test and control,
-# with no prompt and with each prompt-engineering suffix (see prompt_styles below). its
-# HumanEval+ baseline already exists
+# currently set for experiment 01's baselines: qwen3-8b on LibReuseBench test and control and
+# on HumanEval+, with no prompt and with each prompt-engineering suffix (see prompt_styles
+# below) - so asking for a library can be compared with training for it on general coding
+# too. its plain-prompt HumanEval+ result already exists, so that one is skipped
 models=(
     # "vllm:qwen3-debug"
     # "vllm:qwen3-4b"
@@ -74,7 +75,7 @@ datasets=(
     "libreusebench_test"
     "libreusebench_control"
     # regression test of general coding ability
-    # "humaneval_plus"
+    "humaneval_plus"
 )
 
 # completions sampled per prompt (see --n-samples in src/run_eval.py); eval-only, unrelated
