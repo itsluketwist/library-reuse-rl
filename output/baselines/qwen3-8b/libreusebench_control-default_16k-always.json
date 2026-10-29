@@ -1,0 +1,201 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": null,
+    "provider": "vllm",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": "Always use an external library in your solution.",
+    "prompt_style": "always",
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 0.8333333333333334,
+    "pass@k": 0.9523809523809523,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.21428571428571427,
+          "avg_extlibs": 0.2261904761904762,
+          "library_counts": {
+            "numpy": 6,
+            "pandas": 5,
+            "orjson": 1,
+            "bs4": 1,
+            "regex": 1,
+            "scipy": 1,
+            "dateutil": 1,
+            "cryptography": 1,
+            "nltk": 1,
+            "lxml": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.1,
+          "avg_extlibs": 0.10238095238095238,
+          "library_counts": {
+            "numpy": 16,
+            "pandas": 10,
+            "dateutil": 5,
+            "regex": 3,
+            "scipy": 3,
+            "orjson": 2,
+            "bs4": 1,
+            "cryptography": 1,
+            "nltk": 1,
+            "lxml": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.21428571428571427,
+          "avg_extlibs": 0.2261904761904762,
+          "library_counts": {
+            "numpy": 6,
+            "pandas": 5,
+            "orjson": 1,
+            "bs4": 1,
+            "regex": 1,
+            "scipy": 1,
+            "dateutil": 1,
+            "cryptography": 1,
+            "nltk": 1,
+            "lxml": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.1,
+          "avg_extlibs": 0.10238095238095238,
+          "library_counts": {
+            "numpy": 16,
+            "pandas": 10,
+            "dateutil": 5,
+            "regex": 3,
+            "scipy": 3,
+            "orjson": 2,
+            "bs4": 1,
+            "cryptography": 1,
+            "nltk": 1,
+            "lxml": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 417,
+        "avg_lloc": 12.398081534772182,
+        "avg_maintainability_index": 89.25789711133564
+      },
+      "passed": {
+        "n_measured": 350,
+        "avg_lloc": 12.245714285714286,
+        "avg_maintainability_index": 88.67481508230536
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-msagdfuq",
+      "source": "response_imports",
+      "installed_packages": [
+        "beautifulsoup4",
+        "cryptography",
+        "lxml",
+        "nltk",
+        "numpy",
+        "orjson",
+        "pandas",
+        "python-dateutil",
+        "regex",
+        "scipy"
+      ],
+      "install_failed": [],
+      "task_packages": [],
+      "installed_package_versions": {
+        "beautifulsoup4": "4.15.0",
+        "cffi": "2.1.1",
+        "click": "8.5.0",
+        "cloudpickle": "3.1.2",
+        "cryptography": "50.0.2",
+        "defusedxml": "0.7.1",
+        "joblib": "1.6.0",
+        "lxml": "6.1.3",
+        "nltk": "3.10.4",
+        "numpy": "2.5.4",
+        "orjson": "3.13.0",
+        "pandas": "3.1.0",
+        "pip": "25.0.1",
+        "pycparser": "3.12",
+        "python-dateutil": "3.0.0",
+        "regex": "2026.9.29",
+        "scipy": "1.18.1",
+        "six": "1.17.0",
+        "soupsieve": "3.0.4",
+        "tqdm": "4.70.1",
+        "typing-extensions": "4.16.0",
+        "tzdata": "2026.6"
+      },
+      "package_imports": {
+        "beautifulsoup4": [
+          "beautifulsoup4",
+          "bs4"
+        ],
+        "cryptography": [
+          "cryptography"
+        ],
+        "lxml": [
+          "lxml"
+        ],
+        "nltk": [
+          "nltk"
+        ],
+        "numpy": [
+          "numpy"
+        ],
+        "orjson": [
+          "orjson"
+        ],
+        "pandas": [
+          "pandas"
+        ],
+        "python-dateutil": [
+          "dateutil",
+          "python-dateutil"
+        ],
+        "regex": [
+          "regex"
+        ],
+        "scipy": [
+          "scipy"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-c3teshjf/libreusebench_eval_2026-10-28T10:22:16.776655.json"
+  }
+}
