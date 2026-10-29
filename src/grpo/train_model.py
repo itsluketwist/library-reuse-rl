@@ -14,6 +14,7 @@
 
 """The GRPO training loop, wired to this project's reward and dataset format."""
 
+import gc
 import logging
 import math
 import os
@@ -117,6 +118,39 @@ class PruneResumeStateCallback(TrainerCallback):
     ) -> None:
         if state.is_world_process_zero:
             prune_resume_state(args.output_dir)
+
+
+def release_gpu_memory(label: str, args: TrainingArguments) -> None:
+    """
+    Free the gpu memory left behind by a checkpoint save or a split eval round, before
+    the next rollouts wake vllm's kv cache (a fixed vllm_kv_cache_memory_gib, allocated
+    outside torch, so it only fits in memory torch has given back).
+
+    Python's garbage collector runs first, since leftover state-dict objects can hold gpu
+    tensors in reference cycles that emptying torch's cache alone can't free. The first
+    gpu's free memory is then logged, to show how much room the next wake has.
+    """
+    gc.collect()
+    torch.cuda.empty_cache()
+    if args.process_index == 0:
+        log_gpu_memory(label, device=args.device.index)
+
+
+class FreeMemoryAfterSaveCallback(TrainerCallback):
+    """
+    Frees gpu memory after every checkpoint save (see release_gpu_memory). The pilot run
+    crashed with vllm out of memory at its first resume checkpoint, which came straight
+    after a split eval round: the next rollouts' kv-cache wake didn't fit.
+    """
+
+    def on_save(
+        self,
+        args: TrainingArguments,
+        state: TrainerState,
+        control: TrainerControl,
+        **kwargs,
+    ) -> None:
+        release_gpu_memory(f"after checkpoint save at step {state.global_step}", args)
 
 
 class ResumeCheckpointCallback(TrainerCallback):
@@ -341,6 +375,11 @@ class SplitEvalCallback(TrainerCallback):
             metrics = summarise_split_eval(
                 judgements=gather_object(judgements),
                 components=sorted(self.reward.weights),
+            )
+            # vllm is asleep again, so give back what the round used before training resumes
+            release_gpu_memory(
+                f"after split eval at step {trainer.state.global_step}",
+                trainer.args,
             )
 
         # transformers' own Trainer.log, not GRPOTrainer's: that one also logs (and clears)
@@ -596,6 +635,7 @@ def train_model_with_grpo(
             callbacks=[
                 SaveTrainerStateCallback(metrics_dir=metrics_dir),
                 PruneResumeStateCallback(),
+                FreeMemoryAfterSaveCallback(),
                 ResumeShuffleCallback(),
                 LogGPUMemoryCallback(),
             ],

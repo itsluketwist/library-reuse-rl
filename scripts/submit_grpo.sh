@@ -190,8 +190,12 @@ trap 'echo "time limit approaching - requeuing \$SLURM_JOB_ID"; scontrol requeue
     $learning_rate_flag \
     $debug_flag &
 wait \$!
+# keep training's exit status, so a failed run shows as FAILED in slurm and its eval jobs
+# (held with afterok) never start. a requeue exits through the trap above instead
+status=\$?
 
-echo "RL training complete for model: $model, dataset: $dataset_name [\$(date '+%Y-%m-%d %H:%M:%S')]"
+echo "RL training finished for model: $model, dataset: $dataset_name, exit status \$status [\$(date '+%Y-%m-%d %H:%M:%S')]"
+exit \$status
 EOF
 )
 
