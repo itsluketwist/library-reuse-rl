@@ -70,15 +70,17 @@ case "$mode" in
         ;;
     scale)
         # a few steps of a full-size model: sharding, the vllm weight sync, peak memory and
-        # step time. stops before the first epoch ends, so it registers nothing - but the
-        # trainer still saves its last step (~100GB) - run the clean mode afterwards
+        # step time. a checkpoint is saved after every step, so it also checks that the
+        # rollouts after a save still fit in gpu memory (the pilot crashed there). stops
+        # before the first epoch ends, so it registers nothing - but leaves its last
+        # checkpoint (~130GB) - run the clean mode afterwards
         job_model="$scale_model"
         gpus=4
         # generous, since a new model's startup (e.g. qwen3.5's vllm kernel warmup) and step
         # time aren't known yet
         time_limit="02:00:00"
         command="\$HOST_MEMBIND accelerate launch --config_file $accelerate_config --num_processes 4 \
-    --module src.run_grpo --model $scale_model --max-steps 3 -d $dataset \
+    --module src.run_grpo --model $scale_model --max-steps 3 --resume-save-steps 1 -d $dataset \
     --reward-profile $reward_profile --library-prompt-style $prompt_style \
     -s $seed --run-id $scale_model-scale --output-root $OUTPUT_BASE"
         ;;
