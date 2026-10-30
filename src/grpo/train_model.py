@@ -14,8 +14,6 @@
 
 """The GRPO training loop, wired to this project's reward and dataset format."""
 
-import ctypes
-import gc
 import logging
 import math
 import os
@@ -121,88 +119,35 @@ class PruneResumeStateCallback(TrainerCallback):
             prune_resume_state(args.output_dir)
 
 
-def _free_gpu_gib(device: int) -> float:
+# written into a run's output directory once it has trained every step, so the job script
+# knows to stop relaunching it (see RestartAfterSaveCallback)
+TRAINING_COMPLETE_FILE = "training_complete"
+
+
+def _node_file_cache() -> str:
     """
-    Read how much memory the cuda driver reports free on one gpu.
+    Read how much of each NUMA node's memory the kernel holds as file cache. On these
+    nodes the gpus' memory is also exposed to linux as NUMA nodes, so this shows whether
+    the page cache has moved onto a gpu (a possible cause of the memory a save takes).
 
-    Returns the free memory in GiB.
+    Returns e.g. "node0 12.3, node4 35.1 GiB", listing nodes with at least 1 GiB.
     """
-    free, _total = torch.cuda.mem_get_info(device)
-    return free / 1024**3
+    caches = []
+    for meminfo in sorted(Path("/sys/devices/system/node").glob("node*/meminfo")):
+        for line in meminfo.read_text().splitlines():
+            # e.g. "Node 4 FilePages:     36790512 kB"
+            if "FilePages:" in line:
+                gib = int(line.split()[-2]) / 1024**2
+                if gib >= 1:
+                    caches.append(f"{meminfo.parent.name} {gib:.1f}")
+    return ", ".join(caches) + " GiB" if caches else "none"
 
 
-def _drop_page_cache(directory: Path) -> None:
+class LogMemoryAfterSaveCallback(TrainerCallback):
     """
-    Flush a checkpoint's files to disk and drop them from the kernel's page cache.
-
-    These nodes let the operating system use the gpus' memory as ordinary ram, so the page
-    cache from writing a ~130GB checkpoint can end up there, where neither torch nor vllm
-    can get it back. A file's own owner may ask for its pages to be dropped once flushed.
-    """
-    # posix_fadvise only exists on linux - where training runs
-    if sys.platform != "linux":
-        return
-    for path in directory.rglob("*"):
-        if not path.is_file():
-            continue
-        fd = os.open(path, os.O_RDONLY)
-        try:
-            os.fsync(fd)
-            os.posix_fadvise(fd, 0, 0, os.POSIX_FADV_DONTNEED)
-        finally:
-            os.close(fd)
-
-
-def release_memory(
-    label: str,
-    args: TrainingArguments,
-    checkpoint_dir: Path | None = None,
-) -> None:
-    """
-    Free the memory left behind by a checkpoint save or a split eval round, before the
-    next rollouts wake vllm (~40GiB at 8b: its weights plus a fixed kv cache, allocated
-    outside torch, so they only fit in gpu memory nothing else is holding).
-
-    After a save, the pilot run lost ~41GiB of gpu memory outside torch, and crashed
-    waking vllm. Each possible holder is released in turn, and the first gpu's free
-    memory is logged after each, to show which one mattered:
-    - torch's cache, after the garbage collector frees any leftover gpu tensors;
-    - torch's cache of pinned (page-locked) host memory, used to copy state dicts off
-      the gpu;
-    - host memory the c library is still holding after it was freed (malloc_trim);
-    - the page cache of the checkpoint just written (see _drop_page_cache), once per
-      node, as the page cache belongs to the whole node.
-    """
-    device = args.device.index
-    stages = [("left over", _free_gpu_gib(device))]
-
-    gc.collect()
-    torch.cuda.empty_cache()
-    stages.append(("torch cache", _free_gpu_gib(device)))
-
-    # a private torch function, so only called where this torch version has it
-    host_empty_cache = getattr(torch._C, "_host_emptyCache", None)
-    if host_empty_cache is not None:
-        host_empty_cache()
-        stages.append(("pinned host cache", _free_gpu_gib(device)))
-
-    ctypes.CDLL("libc.so.6").malloc_trim(0)
-    stages.append(("malloc_trim", _free_gpu_gib(device)))
-
-    if checkpoint_dir is not None and args.local_process_index == 0:
-        _drop_page_cache(checkpoint_dir)
-        stages.append(("page cache", _free_gpu_gib(device)))
-
-    if args.process_index == 0:
-        freed = " -> ".join(f"{gib:.1f} ({stage})" for stage, gib in stages)
-        log(f"    [MEMORY] {label}, GiB free on cuda:{device}: {freed}")
-
-
-class FreeMemoryAfterSaveCallback(TrainerCallback):
-    """
-    Frees memory after every checkpoint save, before the next rollouts wake vllm (see
-    release_memory). The pilot run crashed twice waking vllm straight after its first
-    checkpoint save, which had taken ~41GiB of the first gpu's memory outside torch.
+    Logs the first gpu's free memory and each NUMA node's file cache after every checkpoint
+    save. In the pilot runs a save left ~36GiB of that gpu's memory taken outside torch
+    (see RestartAfterSaveCallback) - this shows when that happens, and what may hold it.
     """
 
     def on_save(
@@ -212,11 +157,54 @@ class FreeMemoryAfterSaveCallback(TrainerCallback):
         control: TrainerControl,
         **kwargs,
     ) -> None:
-        release_memory(
-            f"after checkpoint save at step {state.global_step}",
-            args,
-            checkpoint_dir=Path(args.output_dir) / f"checkpoint-{state.global_step}",
-        )
+        if state.is_world_process_zero:
+            log_gpu_memory(
+                f"after checkpoint save at step {state.global_step}",
+                args.device.index,
+            )
+            log(f"    [MEMORY] file cache by NUMA node: {_node_file_cache()}")
+
+
+class RestartAfterSaveCallback(TrainerCallback):
+    """
+    Ends the training process after every checkpoint save, for the job script to relaunch
+    straight away, resuming from that checkpoint (the same path a requeued job takes).
+
+    On isambard's current driver, a checkpoint save in the pilot runs left ~36GiB of the
+    first gpu's memory taken outside torch - not freed by emptying torch's caches, the
+    pinned-memory cache, malloc_trim or dropping the files' page cache - so the next
+    rollouts couldn't wake vllm (~40GiB) and the run crashed. A fresh process starts with
+    all its gpu memory free.
+
+    After stopping partway through an epoch, transformers still runs its end-of-epoch
+    step, which would save the same checkpoint again (save_strategy "epoch") - so that
+    save is cancelled.
+    """
+
+    def __init__(self) -> None:
+        self.stopping = False
+
+    def on_save(
+        self,
+        args: TrainingArguments,
+        state: TrainerState,
+        control: TrainerControl,
+        **kwargs,
+    ) -> None:
+        # the final save ends training anyway
+        if state.global_step < state.max_steps:
+            self.stopping = True
+            control.should_training_stop = True
+
+    def on_epoch_end(
+        self,
+        args: TrainingArguments,
+        state: TrainerState,
+        control: TrainerControl,
+        **kwargs,
+    ) -> None:
+        if self.stopping:
+            control.should_save = False
 
 
 class ResumeCheckpointCallback(TrainerCallback):
@@ -442,11 +430,6 @@ class SplitEvalCallback(TrainerCallback):
                 judgements=gather_object(judgements),
                 components=sorted(self.reward.weights),
             )
-            # vllm is asleep again, so give back what the round used before training resumes
-            release_memory(
-                f"after split eval at step {trainer.state.global_step}",
-                trainer.args,
-            )
 
         # transformers' own Trainer.log, not GRPOTrainer's: that one also logs (and clears)
         # the metrics trl has gathered for the current training step, which would then be
@@ -503,6 +486,8 @@ def train_model_with_grpo(
     max_steps: int | None = None,
     learning_rate: float | None = None,
     resume_save_steps: int | None = None,
+    split_eval_steps: int | None = None,
+    restart_after_save: bool | None = None,
 ) -> dict[int, Path]:
     """
     Run full-weight GRPO training for `model_name_or_path` against the dataset at
@@ -516,7 +501,9 @@ def train_model_with_grpo(
     `seed` and `library_prompt_style` override the corresponding `recipe_config` fields
     (resolved once by the caller), `epochs`/`max_steps` override the recipe's run length
     when given (see the debug modes in scripts/submit_debug.sh), `resume_save_steps` how
-    often a resume checkpoint is saved (the scale check saves every step), and
+    often a resume checkpoint is saved (the scale check saves every step),
+    `split_eval_steps` how often the val/test splits are scored (0 for never),
+    `restart_after_save` whether the process ends after each save, and
     `learning_rate` its peak learning rate (see training_jobs in scripts/submit_grpo.sh);
     every other
     hyperparameter, including libraries_requirements_file and the rollout decoding
@@ -569,6 +556,10 @@ def train_model_with_grpo(
         overrides["learning_rate"] = learning_rate
     if resume_save_steps is not None:
         overrides["resume_save_steps"] = resume_save_steps
+    if split_eval_steps is not None:
+        overrides["split_eval_steps"] = split_eval_steps
+    if restart_after_save is not None:
+        overrides["restart_after_save"] = restart_after_save
 
     if debug:
         # a debug run is only a couple of steps: log every step, cap rollout length, and
@@ -706,7 +697,7 @@ def train_model_with_grpo(
             callbacks=[
                 SaveTrainerStateCallback(metrics_dir=metrics_dir),
                 PruneResumeStateCallback(),
-                FreeMemoryAfterSaveCallback(),
+                LogMemoryAfterSaveCallback(),
                 ResumeShuffleCallback(),
                 LogGPUMemoryCallback(),
             ],
@@ -714,6 +705,9 @@ def train_model_with_grpo(
     # an extra, resume-only checkpoint every few steps, so a requeue loses little work
     if training_args.resume_save_steps:
         trainer.add_callback(ResumeCheckpointCallback(training_args.resume_save_steps))
+    # end the process after every save, for the job script to relaunch (see the callback)
+    if training_args.restart_after_save:
+        trainer.add_callback(RestartAfterSaveCallback())
 
     # score the val and test splits as training goes (see SplitEvalCallback), with a
     # reward of its own so judging them never touches the training reward's batch cache
@@ -740,6 +734,7 @@ def train_model_with_grpo(
     # is left for optimizer states and activations before training starts
     if is_main_process:
         log_gpu_memory("after trainer init", device=training_args.device.index)
+        log(f"    [MEMORY] file cache by NUMA node: {_node_file_cache()}")
 
     ###############
     # Training loop
@@ -756,6 +751,16 @@ def train_model_with_grpo(
     metrics = train_result.metrics
     metrics["train_samples"] = len(dataset["train"])
     trainer.log_metrics("train", metrics)
+
+    # tell the job script whether to relaunch training (see RestartAfterSaveCallback)
+    if trainer.is_world_process_zero():
+        if trainer.state.global_step >= trainer.state.max_steps:
+            (Path(training_args.output_dir) / TRAINING_COMPLETE_FILE).touch()
+        else:
+            logger.info(
+                f"Stopped after the checkpoint at step {trainer.state.global_step}, "
+                "for the job to relaunch training from it."
+            )
 
     checkpoints = epoch_checkpoints(training_args.output_dir)
     if trainer.is_world_process_zero():

@@ -150,7 +150,12 @@ wandb_project: library-reuse-rl  # runs are named after their run id (see train_
 # optimizer state from the older ones so eight epochs don't cost hundreds of gigabytes)
 save_strategy: "epoch"
 save_total_limit: null  # keep every epoch
-# an extra checkpoint every 10 steps, only for resuming: a run takes 2-3 slurm jobs, and a
-# requeue then loses at most 10 steps (~2 hours) rather than up to a whole epoch (~8 hours).
-# only the newest is kept, ~100GB (fp32 weights plus adam state), and none is evaluated
-resume_save_steps: 10
+# no extra checkpoints within an epoch for now (null): on isambard's current gpu driver a
+# save leaves ~36GiB of gpu memory taken, so the next rollouts can't wake vllm. instead,
+# training ends after each epoch's save and the job script relaunches it in a fresh process,
+# resuming from that checkpoint (a few minutes each time, no queueing). the job script also
+# requeues itself at an epoch's end when the next epoch wouldn't fit in the time left, so a
+# requeue loses no work. a number here (e.g. 10) saves - and so restarts - every that many
+# steps as well, once saves no longer break the rollouts after them
+resume_save_steps: null
+restart_after_save: true

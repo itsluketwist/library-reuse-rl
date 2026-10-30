@@ -51,8 +51,10 @@ def test_training_saves_a_checkpoint_every_epoch() -> None:
 
     assert training["save_strategy"] == "epoch"
     assert training["save_total_limit"] is None
-    # plus a resume-only checkpoint every 10 steps, so a requeue loses little work
-    assert training["resume_save_steps"] == 10
+    # for now only epoch checkpoints, and a fresh training process after each save, which
+    # leaves gpu memory taken
+    assert training["resume_save_steps"] is None
+    assert training["restart_after_save"] is True
 
 
 def test_training_keeps_master_weights_in_fp32() -> None:

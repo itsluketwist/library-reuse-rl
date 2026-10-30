@@ -60,6 +60,17 @@ class GRPOConfig(trl.GRPOConfig):
             ),
         },
     )
+    restart_after_save: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                "End the training process after every checkpoint save that isn't the "
+                "last, for the job script to relaunch it resuming from that checkpoint "
+                "(see RestartAfterSaveCallback in src/grpo/train_model.py). A save leaves "
+                "gpu memory taken that only a fresh process gets back."
+            ),
+        },
+    )
     split_eval_steps: Optional[int] = field(
         default=None,
         metadata={

@@ -55,6 +55,9 @@ mode="${1:-}"
 eval_model="${2:-qwen3-debug-smoke-epoch2}"
 scale_model="${2:-qwen3-8b}"
 
+# the training modes' output folder, where training writes training_complete when done
+run_dir=""
+
 case "$mode" in
     smoke)
         # tiny truncated run (2 epochs of 16 prompts) through the real 4-gpu setup: the
@@ -67,22 +70,25 @@ case "$mode" in
     --module src.run_grpo --debug --model qwen3-debug -d $dataset \
     --reward-profile $reward_profile --library-prompt-style $prompt_style \
     -s $seed --run-id qwen3-debug-smoke --output-root $OUTPUT_BASE"
+        run_dir="$OUTPUT_BASE/qwen3-debug-smoke"
         ;;
     scale)
         # a few steps of a full-size model: sharding, the vllm weight sync, peak memory and
-        # step time. a checkpoint is saved after every step, so it also checks that the
-        # rollouts after a save still fit in gpu memory (the pilot crashed there). stops
-        # before the first epoch ends, so it registers nothing - but leaves its last
-        # checkpoint (~130GB) - run the clean mode afterwards
+        # step time. it also diagnoses the pilot's crash: a checkpoint is saved after every
+        # step, with no split eval round before it and no restart after it, so steps 2 and 3
+        # show whether rollouts still fit in gpu memory after a plain save (as at the end of
+        # an epoch). stops before the first epoch ends, so it registers nothing - but leaves
+        # its last checkpoint (~130GB) - run the clean mode afterwards
         job_model="$scale_model"
         gpus=4
         # generous, since a new model's startup (e.g. qwen3.5's vllm kernel warmup) and step
         # time aren't known yet
         time_limit="02:00:00"
         command="\$HOST_MEMBIND accelerate launch --config_file $accelerate_config --num_processes 4 \
-    --module src.run_grpo --model $scale_model --max-steps 3 --resume-save-steps 1 -d $dataset \
+    --module src.run_grpo --model $scale_model --max-steps 3 --resume-save-steps 1 --split-eval-steps 0 --no-restart-after-save -d $dataset \
     --reward-profile $reward_profile --library-prompt-style $prompt_style \
     -s $seed --run-id $scale_model-scale --output-root $OUTPUT_BASE"
+        run_dir="$OUTPUT_BASE/$scale_model-scale"
         ;;
     eval)
         # truncated evaluation: loading weights in vllm, the execution venvs, scoring and
@@ -184,9 +190,25 @@ job_id=$(sbatch --parsable <<EOF
 
 source ./scripts/setup_job.sh
 
-$command
-# keep the command's exit status, so a failed run shows as FAILED in slurm (sacct)
-status=\$?
+# the training modes end after every checkpoint save (restart_after_save in the recipe), so
+# they are relaunched here until they write training_complete, as in submit_grpo.sh. the
+# eval mode (no run_dir) runs once
+launches=0
+while true; do
+    launches=\$((launches + 1))
+    $command
+    # keep the command's exit status, so a failed run shows as FAILED in slurm (sacct)
+    status=\$?
+    if [ \$status -ne 0 ] || [ -z "$run_dir" ] || [ -f "$run_dir/training_complete" ]; then
+        break
+    fi
+    if [ \$launches -ge 20 ]; then
+        echo "Launched training \$launches times without it finishing - giving up"
+        status=1
+        break
+    fi
+    echo "Relaunching training from its newest checkpoint [\$(date '+%Y-%m-%d %H:%M:%S')]"
+done
 
 echo "Debug run complete: $mode, exit status \$status [\$(date '+%Y-%m-%d %H:%M:%S')]"
 exit \$status

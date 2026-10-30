@@ -155,6 +155,27 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--split-eval-steps",
+    type=int,
+    default=None,
+    help=(
+        "Score the val/test splits every this many steps, overriding the recipe's "
+        "split_eval_steps; 0 turns the split eval off. The scale check turns it off, to "
+        "see whether a save alone (with no eval round before it) breaks the next rollouts."
+    ),
+)
+
+parser.add_argument(
+    "--no-restart-after-save",
+    action="store_true",
+    help=(
+        "Keep training in one process after a checkpoint save, overriding the recipe's "
+        "restart_after_save. The scale check uses it, so a save followed by more rollouts "
+        "runs in the same process."
+    ),
+)
+
+parser.add_argument(
     "--debug",
     action="store_true",
     help=(
@@ -230,6 +251,8 @@ def run_grpo(
     max_steps: int | None = None,
     learning_rate: float | None = None,
     resume_save_steps: int | None = None,
+    split_eval_steps: int | None = None,
+    restart_after_save: bool | None = None,
 ) -> None:
     """
     Run GRPO RL training for the given model and dataset.
@@ -237,7 +260,8 @@ def run_grpo(
     `dataset` is a directory of train/val/test.jsonl files (e.g. data/train/library_usage);
     training runs against train.jsonl and uses val.jsonl for periodic evaluation if the
     recipe enables it. `seed` and `library_prompt_style` override the recipe's fields, as
-    do `epochs`/`max_steps`/`learning_rate`/`resume_save_steps` when given.
+    do `epochs`/`max_steps`/`learning_rate`/`resume_save_steps`/`split_eval_steps`/
+    `restart_after_save` when given.
 
     If `debug` is set, the dataset is truncated to a few samples (a quick end-to-end
     check) and `model` defaults to DEBUG_MODEL_KEY; otherwise `model` is required.
@@ -304,6 +328,8 @@ def run_grpo(
         max_steps=max_steps,
         learning_rate=learning_rate,
         resume_save_steps=resume_save_steps,
+        split_eval_steps=split_eval_steps,
+        restart_after_save=restart_after_save,
     )
 
     # every process trained; only one of them writes to the shared registry
@@ -369,6 +395,12 @@ def main() -> None:
         log(f"Max steps: {args.max_steps or '(recipe)'}")
         log(f"Learning rate: {args.learning_rate or '(recipe)'}")
         log(f"Resume save steps: {args.resume_save_steps or '(recipe)'}")
+        log(
+            f"Split eval steps: {'(recipe)' if args.split_eval_steps is None else args.split_eval_steps}"
+        )
+        log(
+            f"Restart after save: {'off' if args.no_restart_after_save else '(recipe)'}"
+        )
         log(f"Debug: {args.debug}")
         log(f"Output root: {args.output_root}")
         log(f"Run id: {args.run_id or '(generated)'}")
@@ -389,6 +421,8 @@ def main() -> None:
         max_steps=args.max_steps,
         learning_rate=args.learning_rate,
         resume_save_steps=args.resume_save_steps,
+        split_eval_steps=args.split_eval_steps,
+        restart_after_save=False if args.no_restart_after_save else None,
     )
 
     # --- summary ---

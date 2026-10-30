@@ -37,10 +37,10 @@ models=(
 # weights (see config/rewards.yaml). the pilot run goes first and is checked end to end,
 # then the other two main runs, then the six ablations
 training_jobs=(
-    # pilot
+    # pilot, alongside the import reward
     "data/train/library_usage|lu-usage|base|3e-6"
-    # wave 1: the other main runs
-    # "data/train/library_usage|lu-import|base|3e-6"
+    "data/train/library_usage|lu-import|base|3e-6"
+    # wave 1: the other main run
     # "data/train/library_usage|lu-target|base|3e-6"
     # wave 2: the shaping-weight ablations (set eval_epochs="final" below)
     # "data/train/library_usage|lu-import-s25|base|3e-6"
@@ -157,6 +157,11 @@ for model in "${models[@]}"; do
 
         echo "  Submitting: $dataset_name [$reward_profile] [$library_prompt_style] [lr ${learning_rate:-recipe}]"
 
+        # the time limit in seconds (TIME is hours:minutes:seconds), so the job can requeue
+        # itself at an epoch's end when the next epoch wouldn't fit (see the loop below)
+        IFS=: read -r limit_hours limit_minutes limit_seconds <<< "$TIME"
+        time_limit_seconds=$((10#$limit_hours * 3600 + 10#$limit_minutes * 60 + 10#$limit_seconds))
+
         train_job_id=$(sbatch --parsable <<EOF
 #!/bin/bash -l
 #SBATCH --job-name=reuse-${job_name}
@@ -175,24 +180,54 @@ source ./scripts/setup_job.sh
 # every resume_save_steps steps, see the recipe), so at most those steps are redone
 trap 'echo "time limit approaching - requeuing \$SLURM_JOB_ID"; scontrol requeue \$SLURM_JOB_ID; exit 0' USR1
 
-# --module runs src.run_grpo as "python -m" would; the flags after it are the script's.
-# \$HOST_MEMBIND (see setup_job.sh) stops cpu-side memory spilling into the gpus
-\$HOST_MEMBIND accelerate launch --config_file $accelerate_config --num_processes ${GPUS} \
-    --module src.run_grpo \
-    --model $model \
-    -d $training_dataset \
-    --recipe-config $recipe_config \
-    -s $seed \
-    --library-prompt-style $library_prompt_style \
-    --output-root ${OUTPUT_BASE} \
-    --run-id $run_id \
-    --reward-profile $reward_profile \
-    $learning_rate_flag \
-    $debug_flag &
-wait \$!
-# keep training's exit status, so a failed run shows as FAILED in slurm and its eval jobs
-# (held with afterok) never start. a requeue exits through the trap above instead
-status=\$?
+# training ends after every checkpoint save (restart_after_save in the recipe: a save
+# leaves gpu memory that only a fresh process gets back), so it is relaunched here, resuming
+# from that checkpoint, until it writes training_complete (TRAINING_COMPLETE_FILE in
+# src/grpo/train_model.py) or fails. relaunching on this node skips the queue
+job_start=\$(date +%s)
+launches=0
+while true; do
+    launches=\$((launches + 1))
+    launch_start=\$(date +%s)
+    # --module runs src.run_grpo as "python -m" would; the flags after it are the script's.
+    # \$HOST_MEMBIND (see setup_job.sh) stops cpu-side memory spilling into the gpus
+    \$HOST_MEMBIND accelerate launch --config_file $accelerate_config --num_processes ${GPUS} \
+        --module src.run_grpo \
+        --model $model \
+        -d $training_dataset \
+        --recipe-config $recipe_config \
+        -s $seed \
+        --library-prompt-style $library_prompt_style \
+        --output-root ${OUTPUT_BASE} \
+        --run-id $run_id \
+        --reward-profile $reward_profile \
+        $learning_rate_flag \
+        $debug_flag &
+    wait \$!
+    # keep training's exit status, so a failed run shows as FAILED in slurm and its eval
+    # jobs (held with afterok) never start. a requeue exits through the trap above instead
+    status=\$?
+    if [ \$status -ne 0 ] || [ -f "${OUTPUT_BASE}/${run_id}/training_complete" ]; then
+        break
+    fi
+    # a guard against relaunching forever, if training ever stopped without progressing
+    if [ \$launches -ge 50 ]; then
+        echo "Launched training \$launches times without it finishing - giving up"
+        status=1
+        break
+    fi
+    # requeue now, at the epoch boundary, if another launch (an epoch) won't finish in the
+    # job's time left - estimated from the last launch, plus 10% - rather than lose a
+    # partly trained epoch to the time limit
+    launch_seconds=\$((\$(date +%s) - launch_start))
+    seconds_left=\$(($time_limit_seconds - (\$(date +%s) - job_start)))
+    if [ \$seconds_left -lt \$((launch_seconds * 11 / 10)) ]; then
+        echo "The next epoch won't fit in the \$((seconds_left / 60)) minutes left - requeuing [\$(date '+%Y-%m-%d %H:%M:%S')]"
+        scontrol requeue \$SLURM_JOB_ID
+        exit 0
+    fi
+    echo "Relaunching training from its newest checkpoint [\$(date '+%Y-%m-%d %H:%M:%S')]"
+done
 
 echo "RL training finished for model: $model, dataset: $dataset_name, exit status \$status [\$(date '+%Y-%m-%d %H:%M:%S')]"
 exit \$status
