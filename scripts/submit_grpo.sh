@@ -37,11 +37,11 @@ models=(
 # weights (see config/rewards.yaml). the pilot run goes first and is checked end to end,
 # then the other two main runs, then the six ablations
 training_jobs=(
-    # pilot, alongside the import reward
-    "data/train/library_usage|lu-usage|base|3e-6"
-    "data/train/library_usage|lu-import|base|3e-6"
-    # wave 1: the other main run
-    # "data/train/library_usage|lu-target|base|3e-6"
+    # submitted 2026-10-30 (runs cc26 and 4474) - left commented so they aren't run twice
+    # "data/train/library_usage|lu-usage|base|3e-6"
+    # "data/train/library_usage|lu-import|base|3e-6"
+    # the third main run
+    "data/train/library_usage|lu-target|base|3e-6"
     # wave 2: the shaping-weight ablations (set eval_epochs="final" below)
     # "data/train/library_usage|lu-import-s25|base|3e-6"
     # "data/train/library_usage|lu-import-s0|base|3e-6"
