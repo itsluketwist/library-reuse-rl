@@ -245,8 +245,12 @@ run_eval \
     $n_samples_flag \
     $debug_flag \
     $update_flag
+# keep the eval's exit status, so a failed eval (e.g. vllm not starting) shows as FAILED in
+# slurm rather than COMPLETED
+status=\$?
 
-echo "Eval complete for model: $model, decoding: $decoding_profile, prompt style: $prompt_style [\$(date '+%Y-%m-%d %H:%M:%S')]"
+echo "Eval finished for model: $model, decoding: $decoding_profile, prompt style: $prompt_style, exit status \$status [\$(date '+%Y-%m-%d %H:%M:%S')]"
+exit \$status
 EOF
 )
             echo "    Submitted eval job $eval_job_id - follow it with:"
