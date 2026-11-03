@@ -86,6 +86,13 @@ epochs=$(awk '/^num_train_epochs:/ {print $2}' "$recipe_config")
 # for the larger debug runs, use scripts/submit_debug.sh instead.
 debug=false
 
+# RUN_ID (an environment variable) resumes an existing run instead of starting a new one,
+# e.g. one whose job failed or was purged from slurm before it could be requeued:
+#   RUN_ID=qwen3-8b-1f71 bash scripts/submit_grpo.sh
+# training picks up from the run's newest complete checkpoint, and its epochs are evaluated
+# as usual (epochs that already have results are skipped). the models and training_jobs
+# above must then be just that run's own model and job
+
 ###############################################################################
 #                            submit jobs                                      #
 ###############################################################################
@@ -109,6 +116,17 @@ fi
 if [ ${#training_jobs[@]} -eq 0 ]; then
     echo "No training jobs configured - add at least one entry to the training_jobs array."
     exit 1
+fi
+if [ -n "${RUN_ID:-}" ]; then
+    if [ ${#models[@]} -ne 1 ] || [ ${#training_jobs[@]} -ne 1 ]; then
+        echo "RUN_ID resumes one run, so set exactly one model and one training job (the run's own)."
+        exit 1
+    fi
+    if [ ! -d "$OUTPUT_BASE/$RUN_ID" ]; then
+        echo "No run to resume at $OUTPUT_BASE/$RUN_ID - check the run id."
+        exit 1
+    fi
+    echo "Resuming existing run $RUN_ID from its newest checkpoint"
 fi
 for training_job in "${training_jobs[@]}"; do
     IFS="|" read -r training_dataset _reward_profile _prompt_style _learning_rate <<< "$training_job"
@@ -153,7 +171,7 @@ for model in "${models[@]}"; do
 
         # prefix the epoch checkpoints are registered under (config/trained_models.yaml), fixed
         # here so the dependent eval jobs below can name them before training finishes
-        run_id="${model}-$(uuidgen | tr '[:upper:]' '[:lower:]' | cut -c1-4)"
+        run_id="${RUN_ID:-${model}-$(uuidgen | tr '[:upper:]' '[:lower:]' | cut -c1-4)}"
 
         echo "  Submitting: $dataset_name [$reward_profile] [$library_prompt_style] [lr ${learning_rate:-recipe}]"
 
