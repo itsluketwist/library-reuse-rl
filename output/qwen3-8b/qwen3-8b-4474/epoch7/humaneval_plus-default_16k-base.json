@@ -1,0 +1,90 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4474/checkpoint-259",
+    "provider": "vllm",
+    "dataset": "humaneval_plus",
+    "dataset_file": "data/eval/humaneval_plus.jsonl",
+    "dataset_version": null,
+    "evaluator": "humaneval",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "humaneval",
+    "n_total": 820,
+    "n_tasks": 164,
+    "n_passed": 743,
+    "pass@1": 0.9060975609756097,
+    "pass@5": 0.9512195121951219,
+    "n_no_code": 1,
+    "n_overflow": 1,
+    "using_lib_rate": 0.0,
+    "avg_extlibs": 0.0,
+    "library_counts": {},
+    "code_metrics": {
+      "all": {
+        "n_measured": 819,
+        "avg_lloc": 9.787545787545788,
+        "avg_maintainability_index": 80.41223060544822
+      },
+      "passed": {
+        "n_measured": 743,
+        "avg_lloc": 9.703903095558546,
+        "avg_maintainability_index": 80.11207275793944
+      }
+    },
+    "environment": {
+      "installed_packages": [
+        "compare",
+        "numpy",
+        "roman",
+        "solution"
+      ],
+      "install_failed": [
+        "add_elements",
+        "all_prefixes",
+        "check_if_last_char_is_a_letter",
+        "decode_shift",
+        "do_algebra",
+        "encode_cyclic",
+        "encode_shift",
+        "flip_case",
+        "get_row",
+        "is_simple_power",
+        "max_fill",
+        "maximum",
+        "next_smallest",
+        "odd_count",
+        "reverse_delete",
+        "same_chars",
+        "starts_one_ends",
+        "string_sequence"
+      ],
+      "distributions": {
+        "compare": "0.2b0",
+        "markupsafe": "3.0.4",
+        "numpy": "2.5.4",
+        "pip": "25.0.1",
+        "pytz": "2026.6",
+        "roman": "5.2",
+        "solution": "5.4.0"
+      }
+    }
+  }
+}

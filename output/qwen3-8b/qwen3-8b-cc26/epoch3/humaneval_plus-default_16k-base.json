@@ -1,0 +1,78 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-cc26/checkpoint-111",
+    "provider": "vllm",
+    "dataset": "humaneval_plus",
+    "dataset_file": "data/eval/humaneval_plus.jsonl",
+    "dataset_version": null,
+    "evaluator": "humaneval",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "humaneval",
+    "n_total": 820,
+    "n_tasks": 164,
+    "n_passed": 739,
+    "pass@1": 0.901219512195122,
+    "pass@5": 0.9329268292682927,
+    "n_no_code": 2,
+    "n_overflow": 5,
+    "using_lib_rate": 0.0,
+    "avg_extlibs": 0.0,
+    "library_counts": {},
+    "code_metrics": {
+      "all": {
+        "n_measured": 818,
+        "avg_lloc": 9.51833740831296,
+        "avg_maintainability_index": 81.10655045329537
+      },
+      "passed": {
+        "n_measured": 739,
+        "avg_lloc": 9.40595399188092,
+        "avg_maintainability_index": 80.76176498424792
+      }
+    },
+    "environment": {
+      "installed_packages": [
+        "numpy",
+        "pytest",
+        "python-math",
+        "roman",
+        "sympy",
+        "typing_extensions"
+      ],
+      "install_failed": [],
+      "distributions": {
+        "iniconfig": "2.3.1",
+        "mpmath": "1.3.0",
+        "numpy": "2.5.4",
+        "packaging": "26.3",
+        "pip": "25.0.1",
+        "pluggy": "1.7.0",
+        "pygments": "2.21.0",
+        "pytest": "9.2.0",
+        "python-math": "0.0.1",
+        "roman": "5.2",
+        "sympy": "1.14.0",
+        "typing-extensions": "4.16.0"
+      }
+    }
+  }
+}

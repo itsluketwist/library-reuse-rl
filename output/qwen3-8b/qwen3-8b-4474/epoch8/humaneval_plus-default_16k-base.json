@@ -1,0 +1,96 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4474/checkpoint-296",
+    "provider": "vllm",
+    "dataset": "humaneval_plus",
+    "dataset_file": "data/eval/humaneval_plus.jsonl",
+    "dataset_version": null,
+    "evaluator": "humaneval",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "humaneval",
+    "n_total": 820,
+    "n_tasks": 164,
+    "n_passed": 734,
+    "pass@1": 0.8951219512195122,
+    "pass@5": 0.9451219512195121,
+    "n_no_code": 1,
+    "n_overflow": 1,
+    "using_lib_rate": 0.0,
+    "avg_extlibs": 0.0,
+    "library_counts": {},
+    "code_metrics": {
+      "all": {
+        "n_measured": 819,
+        "avg_lloc": 9.616605616605616,
+        "avg_maintainability_index": 80.46290533464563
+      },
+      "passed": {
+        "n_measured": 734,
+        "avg_lloc": 9.564032697547685,
+        "avg_maintainability_index": 80.31607917284705
+      }
+    },
+    "environment": {
+      "installed_packages": [
+        "compare",
+        "exchange",
+        "numpy",
+        "solve"
+      ],
+      "install_failed": [
+        "all_prefixes",
+        "can_arrange",
+        "check_if_last_char_is_a_letter",
+        "do_algebra",
+        "encode_shift",
+        "filter_by_prefix",
+        "filter_integers",
+        "get_row",
+        "is_bored",
+        "longest",
+        "max_fill",
+        "maximum",
+        "next_smallest",
+        "reverse_delete",
+        "right_angle_triangle",
+        "same_chars",
+        "search",
+        "sorted_list_sum",
+        "starts_one_ends",
+        "string_sequence",
+        "words_string"
+      ],
+      "distributions": {
+        "certifi": "2026.10.23",
+        "charset-normalizer": "3.5.2",
+        "compare": "0.2b0",
+        "exchange": "0.3",
+        "idna": "3.20",
+        "numpy": "2.5.4",
+        "pip": "25.0.1",
+        "requests": "2.34.2",
+        "solve": "0.0.0",
+        "urllib3": "2.8.0"
+      }
+    }
+  }
+}

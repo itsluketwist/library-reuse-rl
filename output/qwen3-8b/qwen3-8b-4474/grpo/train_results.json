@@ -1,0 +1,33 @@
+{
+  "train_runtime": 31734.2711,
+  "train_samples_per_second": 0.305,
+  "train_steps_per_second": 0.009,
+  "total_flos": 0.0,
+  "train_loss": 837.1910844209582,
+  "epoch": 8.0,
+  "train_samples": 1209,
+  "reward_profile": {
+    "name": "lu-import",
+    "weights": {
+      "correct_format": 0.5,
+      "passes_syntax_check": 0.5,
+      "external_lib_imported": 1.0,
+      "external_lib_used": 0,
+      "target_lib_imported": 0,
+      "target_lib_used": 0
+    }
+  },
+  "reward_kind": "library_usage",
+  "learning_rate": 3e-06,
+  "lure_version": "0.2.0",
+  "epoch_checkpoints": {
+    "1": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4474/checkpoint-37",
+    "2": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4474/checkpoint-74",
+    "3": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4474/checkpoint-111",
+    "4": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4474/checkpoint-148",
+    "5": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4474/checkpoint-185",
+    "6": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4474/checkpoint-222",
+    "7": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4474/checkpoint-259",
+    "8": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4474/checkpoint-296"
+  }
+}

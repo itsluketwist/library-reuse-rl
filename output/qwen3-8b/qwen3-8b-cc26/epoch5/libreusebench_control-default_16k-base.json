@@ -1,0 +1,496 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-cc26/checkpoint-185",
+    "provider": "vllm",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 0.7095238095238096,
+    "pass@k": 0.8809523809523809,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.16666666666666666,
+          "avg_extlibs": 0.21428571428571427,
+          "library_counts": {
+            "pytest": 4,
+            "pydantic": 3,
+            "jsonschema": 2,
+            "nltk": 2,
+            "cryptography": 2,
+            "sha256_of_alphanumerics": 1,
+            "files_matching_md5": 1,
+            "md5_contents_match": 1,
+            "sine_of_summed_values": 1,
+            "count_json_keys": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.04285714285714286,
+          "avg_extlibs": 0.047619047619047616,
+          "library_counts": {
+            "pytest": 4,
+            "pydantic": 4,
+            "jsonschema": 2,
+            "md5_contents_match": 2,
+            "nltk": 2,
+            "cryptography": 2,
+            "sha256_of_alphanumerics": 1,
+            "files_matching_md5": 1,
+            "sine_of_summed_values": 1,
+            "count_json_keys": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.16666666666666666,
+          "avg_extlibs": 0.19047619047619047,
+          "library_counts": {
+            "pydantic": 3,
+            "jsonschema": 2,
+            "nltk": 2,
+            "cryptography": 2,
+            "pytest": 2,
+            "sha256_of_alphanumerics": 1,
+            "files_matching_md5": 1,
+            "md5_contents_match": 1,
+            "sine_of_summed_values": 1,
+            "count_json_keys": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.04285714285714286,
+          "avg_extlibs": 0.04285714285714286,
+          "library_counts": {
+            "pydantic": 4,
+            "jsonschema": 2,
+            "md5_contents_match": 2,
+            "nltk": 2,
+            "cryptography": 2,
+            "pytest": 2,
+            "sha256_of_alphanumerics": 1,
+            "files_matching_md5": 1,
+            "sine_of_summed_values": 1,
+            "count_json_keys": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 416,
+        "avg_lloc": 13.622596153846153,
+        "avg_maintainability_index": 88.29664210280879
+      },
+      "passed": {
+        "n_measured": 298,
+        "avg_lloc": 13.51006711409396,
+        "avg_maintainability_index": 88.71586661370458
+      }
+    },
+    "not_run": {
+      "n_responses": 6,
+      "packages": [
+        "count_json_keys",
+        "files_matching_md5",
+        "md5_contents_match",
+        "sha256_of_alphanumerics",
+        "sine_of_summed_values"
+      ],
+      "responses": [
+        {
+          "task_id": "LRB/C005",
+          "idx": 0,
+          "packages": [
+            "sha256_of_alphanumerics"
+          ]
+        },
+        {
+          "task_id": "LRB/C013",
+          "idx": 1,
+          "packages": [
+            "files_matching_md5"
+          ]
+        },
+        {
+          "task_id": "LRB/C039",
+          "idx": 2,
+          "packages": [
+            "md5_contents_match"
+          ]
+        },
+        {
+          "task_id": "LRB/C039",
+          "idx": 3,
+          "packages": [
+            "md5_contents_match"
+          ]
+        },
+        {
+          "task_id": "LRB/C056",
+          "idx": 2,
+          "packages": [
+            "sine_of_summed_values"
+          ]
+        },
+        {
+          "task_id": "LRB/C057",
+          "idx": 3,
+          "packages": [
+            "count_json_keys"
+          ]
+        }
+      ]
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-dype4tvv",
+      "source": "response_imports",
+      "installed_packages": [
+        "Babel",
+        "aiohttp",
+        "argon2-cffi",
+        "bcrypt",
+        "beautifulsoup4",
+        "click",
+        "cryptography",
+        "email-validator",
+        "fastapi",
+        "filehash",
+        "flask",
+        "ftfy",
+        "httpx",
+        "json5",
+        "jsonpath-ng",
+        "jsonschema",
+        "lxml",
+        "more-itertools",
+        "more_itertools",
+        "netaddr",
+        "nltk",
+        "numpy",
+        "orjson",
+        "pandas",
+        "passlib",
+        "py7zr",
+        "pycryptodome",
+        "pydantic",
+        "pygerrit",
+        "pytest",
+        "python-dateutil",
+        "python-magic",
+        "regex",
+        "requests",
+        "rich",
+        "toolz",
+        "unidecode",
+        "uvicorn",
+        "werkzeug",
+        "zstandard"
+      ],
+      "install_failed": [
+        "-e",
+        ".",
+        "closest-pair",
+        "count_json_keys",
+        "count_subset_sums",
+        "files_matching_md5",
+        "md5_contents_match",
+        "pygzip",
+        "pyhash",
+        "pyhmac",
+        "pysha3",
+        "sha256_of_alphanumerics",
+        "sine_of_summed_values"
+      ],
+      "task_packages": [],
+      "installed_package_versions": {
+        "aiohappyeyeballs": "2.7.1",
+        "aiohttp": "3.14.5",
+        "aiosignal": "1.4.0",
+        "annotated-doc": "0.0.5",
+        "annotated-types": "0.8.0",
+        "anyio": "4.16.0",
+        "argon2-cffi": "25.1.0",
+        "argon2-cffi-bindings": "26.1.0",
+        "attrs": "26.1.0",
+        "babel": "2.18.0",
+        "backports.zstd": "1.8.0",
+        "bcrypt": "5.0.0",
+        "beautifulsoup4": "4.15.0",
+        "blinker": "1.9.0",
+        "brotli": "1.2.1",
+        "certifi": "2026.10.23",
+        "cffi": "2.1.1",
+        "click": "8.5.0",
+        "cloudpickle": "3.1.2",
+        "cryptography": "50.0.2",
+        "defusedxml": "0.7.1",
+        "dnspython": "2.9.1",
+        "ecdsa": "0.11",
+        "email-validator": "2.3.0",
+        "fastapi": "0.162.0",
+        "filehash": "0.2.dev1",
+        "flask": "3.1.3",
+        "frozenlist": "1.8.0",
+        "ftfy": "6.3.1",
+        "h11": "0.16.0",
+        "httpcore": "1.0.9",
+        "httpx": "0.28.1",
+        "idna": "3.20",
+        "inflate64": "1.0.4",
+        "iniconfig": "2.3.1",
+        "itsdangerous": "2.2.0",
+        "jinja2": "3.1.6",
+        "joblib": "1.6.0",
+        "json5": "0.17.3",
+        "jsonpath-ng": "1.15.0",
+        "jsonschema": "4.26.0",
+        "jsonschema-specifications": "2025.9.1",
+        "lxml": "6.1.3",
+        "markdown-it-py": "4.2.0",
+        "markupsafe": "3.0.4",
+        "mdurl": "0.1.2",
+        "more-itertools": "11.2.1",
+        "multidict": "7.2.1",
+        "multivolumefile": "0.2.3",
+        "netaddr": "1.3.0",
+        "nltk": "3.10.4",
+        "numpy": "2.5.4",
+        "opentelemetry-api": "1.45.2",
+        "orjson": "3.13.0",
+        "packaging": "26.3",
+        "pandas": "3.1.0",
+        "paramiko": "1.16.0",
+        "passlib": "1.7.4",
+        "pbr": "7.1.3",
+        "pip": "25.0.1",
+        "pluggy": "1.7.0",
+        "propcache": "0.5.4",
+        "psutil": "7.2.2",
+        "py7zr": "1.1.4",
+        "pybcj": "1.0.8",
+        "pycparser": "3.12",
+        "pycrypto": "2.6.1",
+        "pycryptodome": "4.2.0",
+        "pycryptodomex": "3.24.1",
+        "pydantic": "2.14.2",
+        "pydantic-core": "2.50.2",
+        "pygerrit": "1.0.0",
+        "pygments": "2.21.0",
+        "pyppmd": "1.3.1",
+        "pytest": "9.2.0",
+        "python-dateutil": "4.0.0",
+        "python-magic": "0.4.27",
+        "referencing": "0.37.0",
+        "regex": "2026.9.29",
+        "requests": "2.9.1",
+        "rich": "15.0.0",
+        "rpds-py": "2026.9.1",
+        "setuptools": "84.2.1",
+        "soupsieve": "3.0.4",
+        "starlette": "1.10.0",
+        "texttable": "1.7.2",
+        "toolz": "1.2.0",
+        "tqdm": "4.70.1",
+        "typing-extensions": "4.16.0",
+        "typing-inspection": "0.4.4",
+        "tzdata": "2026.6",
+        "unidecode": "1.4.0",
+        "uvicorn": "0.54.0",
+        "wcwidth": "0.9.4",
+        "werkzeug": "3.1.9",
+        "yarl": "1.25.1",
+        "zstandard": "0.25.0"
+      },
+      "package_imports": {
+        "-e": [
+          "-e"
+        ],
+        ".": [
+          "."
+        ],
+        "Babel": [
+          "Babel"
+        ],
+        "aiohttp": [
+          "aiohttp"
+        ],
+        "argon2-cffi": [
+          "argon2-cffi"
+        ],
+        "bcrypt": [
+          "bcrypt"
+        ],
+        "beautifulsoup4": [
+          "beautifulsoup4"
+        ],
+        "click": [
+          "click"
+        ],
+        "closest-pair": [
+          "closest-pair"
+        ],
+        "count_json_keys": [
+          "count_json_keys"
+        ],
+        "count_subset_sums": [
+          "count_subset_sums"
+        ],
+        "cryptography": [
+          "cryptography"
+        ],
+        "email-validator": [
+          "email-validator"
+        ],
+        "fastapi": [
+          "fastapi"
+        ],
+        "filehash": [
+          "filehash"
+        ],
+        "files_matching_md5": [
+          "files_matching_md5"
+        ],
+        "flask": [
+          "flask"
+        ],
+        "ftfy": [
+          "ftfy"
+        ],
+        "httpx": [
+          "httpx"
+        ],
+        "json5": [
+          "json5"
+        ],
+        "jsonpath-ng": [
+          "jsonpath-ng"
+        ],
+        "jsonschema": [
+          "jsonschema"
+        ],
+        "lxml": [
+          "lxml"
+        ],
+        "md5_contents_match": [
+          "md5_contents_match"
+        ],
+        "more-itertools": [
+          "more-itertools"
+        ],
+        "more_itertools": [
+          "more_itertools"
+        ],
+        "netaddr": [
+          "netaddr"
+        ],
+        "nltk": [
+          "nltk"
+        ],
+        "numpy": [
+          "numpy"
+        ],
+        "orjson": [
+          "orjson"
+        ],
+        "pandas": [
+          "pandas"
+        ],
+        "passlib": [
+          "passlib"
+        ],
+        "py7zr": [
+          "py7zr"
+        ],
+        "pycryptodome": [
+          "pycryptodome"
+        ],
+        "pydantic": [
+          "pydantic"
+        ],
+        "pygerrit": [
+          "pygerrit"
+        ],
+        "pygzip": [
+          "pygzip"
+        ],
+        "pyhash": [
+          "pyhash"
+        ],
+        "pyhmac": [
+          "pyhmac"
+        ],
+        "pysha3": [
+          "pysha3"
+        ],
+        "pytest": [
+          "pytest"
+        ],
+        "python-dateutil": [
+          "python-dateutil"
+        ],
+        "python-magic": [
+          "python-magic"
+        ],
+        "regex": [
+          "regex"
+        ],
+        "requests": [
+          "requests"
+        ],
+        "rich": [
+          "rich"
+        ],
+        "sha256_of_alphanumerics": [
+          "sha256_of_alphanumerics"
+        ],
+        "sine_of_summed_values": [
+          "sine_of_summed_values"
+        ],
+        "toolz": [
+          "toolz"
+        ],
+        "unidecode": [
+          "unidecode"
+        ],
+        "uvicorn": [
+          "uvicorn"
+        ],
+        "werkzeug": [
+          "werkzeug"
+        ],
+        "zstandard": [
+          "zstandard"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-lsg0cq_4/libreusebench_eval_2026-11-02T21:40:57.113961.json"
+  }
+}

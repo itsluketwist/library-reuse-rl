@@ -1,0 +1,465 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-cc26/checkpoint-296",
+    "provider": "vllm",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 0.7357142857142858,
+    "pass@k": 0.8928571428571429,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.14285714285714285,
+          "avg_extlibs": 0.17857142857142858,
+          "library_counts": {
+            "pytest": 4,
+            "jsonschema": 2,
+            "pydantic": 2,
+            "nltk": 2,
+            "files_matching_md5": 1,
+            "add_missing_key_to_json": 1,
+            "clean_file_names": 1,
+            "fsspec": 1,
+            "count_words_and_punctuation": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.047619047619047616,
+          "avg_extlibs": 0.05,
+          "library_counts": {
+            "pytest": 7,
+            "jsonschema": 3,
+            "pydantic": 3,
+            "nltk": 3,
+            "files_matching_md5": 1,
+            "add_missing_key_to_json": 1,
+            "fsspec": 1,
+            "clean_file_names": 1,
+            "count_words_and_punctuation": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.14285714285714285,
+          "avg_extlibs": 0.17857142857142858,
+          "library_counts": {
+            "pytest": 4,
+            "jsonschema": 2,
+            "pydantic": 2,
+            "nltk": 2,
+            "files_matching_md5": 1,
+            "add_missing_key_to_json": 1,
+            "clean_file_names": 1,
+            "fsspec": 1,
+            "count_words_and_punctuation": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.04285714285714286,
+          "avg_extlibs": 0.04523809523809524,
+          "library_counts": {
+            "pytest": 5,
+            "jsonschema": 3,
+            "pydantic": 3,
+            "nltk": 3,
+            "files_matching_md5": 1,
+            "add_missing_key_to_json": 1,
+            "fsspec": 1,
+            "clean_file_names": 1,
+            "count_words_and_punctuation": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 412,
+        "avg_lloc": 13.616504854368932,
+        "avg_maintainability_index": 89.02540751760432
+      },
+      "passed": {
+        "n_measured": 309,
+        "avg_lloc": 13.119741100323624,
+        "avg_maintainability_index": 89.75902250720534
+      }
+    },
+    "not_run": {
+      "n_responses": 4,
+      "packages": [
+        "add_missing_key_to_json",
+        "clean_file_names",
+        "count_words_and_punctuation",
+        "files_matching_md5"
+      ],
+      "responses": [
+        {
+          "task_id": "LRB/C013",
+          "idx": 3,
+          "packages": [
+            "files_matching_md5"
+          ]
+        },
+        {
+          "task_id": "LRB/C076",
+          "idx": 2,
+          "packages": [
+            "add_missing_key_to_json"
+          ]
+        },
+        {
+          "task_id": "LRB/C077",
+          "idx": 4,
+          "packages": [
+            "clean_file_names"
+          ]
+        },
+        {
+          "task_id": "LRB/C079",
+          "idx": 2,
+          "packages": [
+            "count_words_and_punctuation"
+          ]
+        }
+      ]
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-688mhxvy",
+      "source": "response_imports",
+      "installed_packages": [
+        "bcrypt",
+        "beautifulsoup4",
+        "cleantext",
+        "cryptography",
+        "dill",
+        "email-validator",
+        "fastapi",
+        "filehash",
+        "fsspec",
+        "httpx",
+        "ijson",
+        "json5",
+        "jsonschema",
+        "lxml",
+        "more_itertools",
+        "netaddr",
+        "nltk",
+        "numpy",
+        "orjson",
+        "package_name",
+        "pandas",
+        "passlib",
+        "pycryptodome",
+        "pydantic",
+        "pygments",
+        "pyjanus",
+        "pyopenssl",
+        "pyparsing",
+        "pytest",
+        "python-dateutil",
+        "python-magic",
+        "pytz",
+        "regex",
+        "requests",
+        "rich",
+        "setuptools",
+        "stringcase",
+        "unidecode",
+        "urllib3",
+        "uvicorn",
+        "wordcounter",
+        "zstandard"
+      ],
+      "install_failed": [
+        "-e",
+        ".",
+        "add_missing_key_to_json",
+        "base64_json_to_csv",
+        "changed_lines_diff",
+        "clean_file_names",
+        "count_words_and_punctuation",
+        "dist",
+        "files_matching_md5",
+        "pyhash",
+        "pysha3",
+        "python-3.6",
+        "salted_sha256_from_hex"
+      ],
+      "task_packages": [],
+      "installed_package_versions": {
+        "annotated-doc": "0.0.5",
+        "annotated-types": "0.8.0",
+        "anyio": "4.16.0",
+        "attrs": "26.1.0",
+        "bcrypt": "5.0.0",
+        "beautifulsoup4": "4.15.0",
+        "certifi": "2026.10.23",
+        "cffi": "2.1.1",
+        "charset-normalizer": "3.5.2",
+        "cleantext": "1.1.4",
+        "click": "8.5.0",
+        "cloudpickle": "3.1.2",
+        "cryptography": "50.0.2",
+        "defusedxml": "0.7.1",
+        "dill": "0.4.1",
+        "dnspython": "2.9.1",
+        "email-validator": "2.3.0",
+        "fastapi": "0.162.0",
+        "filehash": "0.2.dev1",
+        "fsspec": "2026.9.0",
+        "h11": "0.16.0",
+        "httpcore": "1.0.9",
+        "httpx": "0.28.1",
+        "idna": "3.20",
+        "ijson": "3.6.0",
+        "iniconfig": "2.3.1",
+        "joblib": "1.6.0",
+        "json5": "0.17.3",
+        "jsonschema": "4.26.0",
+        "jsonschema-specifications": "2025.9.1",
+        "lxml": "6.1.3",
+        "markdown-it-py": "4.2.0",
+        "mdurl": "0.1.2",
+        "more-itertools": "11.2.1",
+        "netaddr": "1.3.0",
+        "nltk": "3.10.4",
+        "numpy": "2.5.4",
+        "opentelemetry-api": "1.45.2",
+        "orjson": "3.13.0",
+        "package-name": "0.1",
+        "packaging": "26.3",
+        "pandas": "3.1.0",
+        "passlib": "1.7.4",
+        "pip": "25.0.1",
+        "pluggy": "1.7.0",
+        "pycparser": "3.12",
+        "pycryptodome": "4.2.0",
+        "pydantic": "1.10.27",
+        "pydantic-core": "2.50.2",
+        "pyee": "8.2.2",
+        "pygments": "2.21.0",
+        "pyjanus": "0.1.0",
+        "pyopenssl": "26.4.0",
+        "pyparsing": "3.3.3",
+        "pytest": "9.2.0",
+        "python-dateutil": "4.0.0",
+        "python-magic": "0.4.27",
+        "pytz": "2026.6",
+        "referencing": "0.37.0",
+        "regex": "2026.9.29",
+        "requests": "2.34.2",
+        "rich": "15.0.0",
+        "rpds-py": "2026.9.1",
+        "setuptools": "84.2.1",
+        "soupsieve": "3.0.4",
+        "starlette": "1.10.0",
+        "stringcase": "1.2.0",
+        "tqdm": "4.70.1",
+        "typing-extensions": "4.16.0",
+        "typing-inspection": "0.4.4",
+        "tzdata": "2026.6",
+        "unidecode": "1.4.0",
+        "urllib3": "2.8.0",
+        "uvicorn": "0.54.0",
+        "websockets": "9.1",
+        "wordcounter": "0.0.2.2",
+        "zstandard": "0.25.0"
+      },
+      "package_imports": {
+        "-e": [
+          "-e"
+        ],
+        ".": [
+          "."
+        ],
+        "add_missing_key_to_json": [
+          "add_missing_key_to_json"
+        ],
+        "base64_json_to_csv": [
+          "base64_json_to_csv"
+        ],
+        "bcrypt": [
+          "bcrypt"
+        ],
+        "beautifulsoup4": [
+          "beautifulsoup4"
+        ],
+        "changed_lines_diff": [
+          "changed_lines_diff"
+        ],
+        "clean_file_names": [
+          "clean_file_names"
+        ],
+        "cleantext": [
+          "cleantext"
+        ],
+        "count_words_and_punctuation": [
+          "count_words_and_punctuation"
+        ],
+        "cryptography": [
+          "cryptography"
+        ],
+        "dill": [
+          "dill"
+        ],
+        "dist": [
+          "dist"
+        ],
+        "email-validator": [
+          "email-validator"
+        ],
+        "fastapi": [
+          "fastapi"
+        ],
+        "filehash": [
+          "filehash"
+        ],
+        "files_matching_md5": [
+          "files_matching_md5"
+        ],
+        "fsspec": [
+          "fsspec"
+        ],
+        "httpx": [
+          "httpx"
+        ],
+        "ijson": [
+          "ijson"
+        ],
+        "json5": [
+          "json5"
+        ],
+        "jsonschema": [
+          "jsonschema"
+        ],
+        "lxml": [
+          "lxml"
+        ],
+        "more_itertools": [
+          "more_itertools"
+        ],
+        "netaddr": [
+          "netaddr"
+        ],
+        "nltk": [
+          "nltk"
+        ],
+        "numpy": [
+          "numpy"
+        ],
+        "orjson": [
+          "orjson"
+        ],
+        "package_name": [
+          "package_name"
+        ],
+        "pandas": [
+          "pandas"
+        ],
+        "passlib": [
+          "passlib"
+        ],
+        "pycryptodome": [
+          "pycryptodome"
+        ],
+        "pydantic": [
+          "pydantic"
+        ],
+        "pygments": [
+          "pygments"
+        ],
+        "pyhash": [
+          "pyhash"
+        ],
+        "pyjanus": [
+          "pyjanus"
+        ],
+        "pyopenssl": [
+          "pyopenssl"
+        ],
+        "pyparsing": [
+          "pyparsing"
+        ],
+        "pysha3": [
+          "pysha3"
+        ],
+        "pytest": [
+          "pytest"
+        ],
+        "python-3.6": [
+          "python-3.6"
+        ],
+        "python-dateutil": [
+          "python-dateutil"
+        ],
+        "python-magic": [
+          "python-magic"
+        ],
+        "pytz": [
+          "pytz"
+        ],
+        "regex": [
+          "regex"
+        ],
+        "requests": [
+          "requests"
+        ],
+        "rich": [
+          "rich"
+        ],
+        "salted_sha256_from_hex": [
+          "salted_sha256_from_hex"
+        ],
+        "setuptools": [
+          "setuptools"
+        ],
+        "stringcase": [
+          "stringcase"
+        ],
+        "unidecode": [
+          "unidecode"
+        ],
+        "urllib3": [
+          "urllib3"
+        ],
+        "uvicorn": [
+          "uvicorn"
+        ],
+        "wordcounter": [
+          "wordcounter"
+        ],
+        "zstandard": [
+          "zstandard"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-_c6kkx6b/libreusebench_eval_2026-11-02T21:40:24.338825.json"
+  }
+}

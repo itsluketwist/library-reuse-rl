@@ -1,0 +1,200 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4474/checkpoint-222",
+    "provider": "vllm",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 0.8309523809523809,
+    "pass@k": 0.9642857142857143,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.07142857142857142,
+          "avg_extlibs": 0.07142857142857142,
+          "library_counts": {
+            "jsonschema": 1,
+            "files_matching_md5": 1,
+            "hex_to_float_utf8": 1,
+            "md5_contents_match": 1,
+            "count_documents_containing_word": 1,
+            "total_size_by_file_name": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.014285714285714285,
+          "avg_extlibs": 0.014285714285714285,
+          "library_counts": {
+            "jsonschema": 1,
+            "files_matching_md5": 1,
+            "hex_to_float_utf8": 1,
+            "md5_contents_match": 1,
+            "count_documents_containing_word": 1,
+            "total_size_by_file_name": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.07142857142857142,
+          "avg_extlibs": 0.07142857142857142,
+          "library_counts": {
+            "jsonschema": 1,
+            "files_matching_md5": 1,
+            "hex_to_float_utf8": 1,
+            "md5_contents_match": 1,
+            "count_documents_containing_word": 1,
+            "total_size_by_file_name": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.014285714285714285,
+          "avg_extlibs": 0.014285714285714285,
+          "library_counts": {
+            "jsonschema": 1,
+            "files_matching_md5": 1,
+            "hex_to_float_utf8": 1,
+            "md5_contents_match": 1,
+            "count_documents_containing_word": 1,
+            "total_size_by_file_name": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 417,
+        "avg_lloc": 13.654676258992806,
+        "avg_maintainability_index": 89.50062613647282
+      },
+      "passed": {
+        "n_measured": 349,
+        "avg_lloc": 13.35243553008596,
+        "avg_maintainability_index": 89.96447271675933
+      }
+    },
+    "not_run": {
+      "n_responses": 5,
+      "packages": [
+        "count_documents_containing_word",
+        "files_matching_md5",
+        "hex_to_float_utf8",
+        "md5_contents_match",
+        "total_size_by_file_name"
+      ],
+      "responses": [
+        {
+          "task_id": "LRB/C013",
+          "idx": 1,
+          "packages": [
+            "files_matching_md5"
+          ]
+        },
+        {
+          "task_id": "LRB/C033",
+          "idx": 1,
+          "packages": [
+            "hex_to_float_utf8"
+          ]
+        },
+        {
+          "task_id": "LRB/C039",
+          "idx": 4,
+          "packages": [
+            "md5_contents_match"
+          ]
+        },
+        {
+          "task_id": "LRB/C064",
+          "idx": 3,
+          "packages": [
+            "count_documents_containing_word"
+          ]
+        },
+        {
+          "task_id": "LRB/C078",
+          "idx": 3,
+          "packages": [
+            "total_size_by_file_name"
+          ]
+        }
+      ]
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-3manc6cu",
+      "source": "response_imports",
+      "installed_packages": [
+        "json5",
+        "jsonschema"
+      ],
+      "install_failed": [
+        "count_documents_containing_word",
+        "files_matching_md5",
+        "hex_to_float_utf8",
+        "md5_contents_match",
+        "total_size_by_file_name"
+      ],
+      "task_packages": [],
+      "installed_package_versions": {
+        "attrs": "26.1.0",
+        "json5": "0.17.3",
+        "jsonschema": "4.26.0",
+        "jsonschema-specifications": "2025.9.1",
+        "pip": "25.0.1",
+        "referencing": "0.37.0",
+        "rpds-py": "2026.9.1",
+        "typing-extensions": "4.16.0"
+      },
+      "package_imports": {
+        "count_documents_containing_word": [
+          "count_documents_containing_word"
+        ],
+        "files_matching_md5": [
+          "files_matching_md5"
+        ],
+        "hex_to_float_utf8": [
+          "hex_to_float_utf8"
+        ],
+        "json5": [
+          "json5"
+        ],
+        "jsonschema": [
+          "jsonschema"
+        ],
+        "md5_contents_match": [
+          "md5_contents_match"
+        ],
+        "total_size_by_file_name": [
+          "total_size_by_file_name"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-8cz6gsh2/libreusebench_eval_2026-11-03T03:53:37.444046.json"
+  }
+}

@@ -1,0 +1,257 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4474/checkpoint-296",
+    "provider": "vllm",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 0.8047619047619047,
+    "pass@k": 0.9047619047619048,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.09523809523809523,
+          "avg_extlibs": 0.10714285714285714,
+          "library_counts": {
+            "mime_types_for_matching_files": 1,
+            "analyze_column_against_mean": 1,
+            "is_list_of_objects": 1,
+            "jsonschema": 1,
+            "count_words": 1,
+            "is_weekend_datetime": 1,
+            "clean_words": 1,
+            "count_json_keys": 1,
+            "count_documents_containing_word": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.02619047619047619,
+          "avg_extlibs": 0.02619047619047619,
+          "library_counts": {
+            "is_list_of_objects": 2,
+            "is_weekend_datetime": 2,
+            "mime_types_for_matching_files": 1,
+            "analyze_column_against_mean": 1,
+            "jsonschema": 1,
+            "count_words": 1,
+            "clean_words": 1,
+            "count_json_keys": 1,
+            "count_documents_containing_word": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.09523809523809523,
+          "avg_extlibs": 0.10714285714285714,
+          "library_counts": {
+            "mime_types_for_matching_files": 1,
+            "analyze_column_against_mean": 1,
+            "is_list_of_objects": 1,
+            "jsonschema": 1,
+            "count_words": 1,
+            "is_weekend_datetime": 1,
+            "clean_words": 1,
+            "count_json_keys": 1,
+            "count_documents_containing_word": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.02619047619047619,
+          "avg_extlibs": 0.02619047619047619,
+          "library_counts": {
+            "is_list_of_objects": 2,
+            "is_weekend_datetime": 2,
+            "mime_types_for_matching_files": 1,
+            "analyze_column_against_mean": 1,
+            "jsonschema": 1,
+            "count_words": 1,
+            "clean_words": 1,
+            "count_json_keys": 1,
+            "count_documents_containing_word": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 420,
+        "avg_lloc": 13.557142857142857,
+        "avg_maintainability_index": 89.16431266194422
+      },
+      "passed": {
+        "n_measured": 338,
+        "avg_lloc": 13.254437869822485,
+        "avg_maintainability_index": 89.22116948650346
+      }
+    },
+    "not_run": {
+      "n_responses": 10,
+      "packages": [
+        "analyze_column_against_mean",
+        "clean_words",
+        "count_documents_containing_word",
+        "count_json_keys",
+        "count_words",
+        "is_list_of_objects",
+        "is_weekend_datetime",
+        "mime_types_for_matching_files"
+      ],
+      "responses": [
+        {
+          "task_id": "LRB/C002",
+          "idx": 1,
+          "packages": [
+            "mime_types_for_matching_files"
+          ]
+        },
+        {
+          "task_id": "LRB/C010",
+          "idx": 4,
+          "packages": [
+            "analyze_column_against_mean"
+          ]
+        },
+        {
+          "task_id": "LRB/C012",
+          "idx": 2,
+          "packages": [
+            "is_list_of_objects"
+          ]
+        },
+        {
+          "task_id": "LRB/C012",
+          "idx": 4,
+          "packages": [
+            "is_list_of_objects"
+          ]
+        },
+        {
+          "task_id": "LRB/C015",
+          "idx": 3,
+          "packages": [
+            "count_words"
+          ]
+        },
+        {
+          "task_id": "LRB/C036",
+          "idx": 1,
+          "packages": [
+            "is_weekend_datetime"
+          ]
+        },
+        {
+          "task_id": "LRB/C036",
+          "idx": 3,
+          "packages": [
+            "is_weekend_datetime"
+          ]
+        },
+        {
+          "task_id": "LRB/C046",
+          "idx": 1,
+          "packages": [
+            "clean_words"
+          ]
+        },
+        {
+          "task_id": "LRB/C057",
+          "idx": 0,
+          "packages": [
+            "count_json_keys"
+          ]
+        },
+        {
+          "task_id": "LRB/C064",
+          "idx": 4,
+          "packages": [
+            "count_documents_containing_word"
+          ]
+        }
+      ]
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-0vj5bpv7",
+      "source": "response_imports",
+      "installed_packages": [
+        "jsonschema"
+      ],
+      "install_failed": [
+        "analyze_column_against_mean",
+        "clean_words",
+        "count_documents_containing_word",
+        "count_json_keys",
+        "count_words",
+        "is_list_of_objects",
+        "is_weekend_datetime",
+        "mime_types_for_matching_files"
+      ],
+      "task_packages": [],
+      "installed_package_versions": {
+        "attrs": "26.1.0",
+        "jsonschema": "4.26.0",
+        "jsonschema-specifications": "2025.9.1",
+        "pip": "25.0.1",
+        "referencing": "0.37.0",
+        "rpds-py": "2026.9.1",
+        "typing-extensions": "4.16.0"
+      },
+      "package_imports": {
+        "analyze_column_against_mean": [
+          "analyze_column_against_mean"
+        ],
+        "clean_words": [
+          "clean_words"
+        ],
+        "count_documents_containing_word": [
+          "count_documents_containing_word"
+        ],
+        "count_json_keys": [
+          "count_json_keys"
+        ],
+        "count_words": [
+          "count_words"
+        ],
+        "is_list_of_objects": [
+          "is_list_of_objects"
+        ],
+        "is_weekend_datetime": [
+          "is_weekend_datetime"
+        ],
+        "jsonschema": [
+          "jsonschema"
+        ],
+        "mime_types_for_matching_files": [
+          "mime_types_for_matching_files"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-tlu_mx5a/libreusebench_eval_2026-11-03T03:52:13.973586.json"
+  }
+}
