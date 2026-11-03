@@ -26,14 +26,20 @@ TIME="12:00:00"
 # api-served models are not submitted here: isambard has no cpu partition, and they only
 # need network access - run them with scripts/run_eval_local.sh instead.
 #
-# currently set for experiment 01's baselines: qwen3-8b on LibReuseBench test and control and
-# on HumanEval+, with no prompt and with each prompt-engineering suffix (see prompt_styles
-# below) - so asking for a library can be compared with training for it on general coding
-# too. its plain-prompt HumanEval+ result already exists, so that one is skipped
+# currently set to combine training with prompting: the first three epochs of experiment 01's
+# usage (cc26) and import (4474) runs, with the "appropriate" prompt (see prompt_styles
+# below). their plain-prompt results come from the epoch evals submit_grpo.sh queued, and
+# base qwen3-8b's with every prompt from its baselines (all done 2026-11-03)
 models=(
+    "vllm:qwen3-8b-cc26-epoch1"
+    "vllm:qwen3-8b-cc26-epoch2"
+    "vllm:qwen3-8b-cc26-epoch3"
+    "vllm:qwen3-8b-4474-epoch1"
+    "vllm:qwen3-8b-4474-epoch2"
+    "vllm:qwen3-8b-4474-epoch3"
     # "vllm:qwen3-debug"
     # "vllm:qwen3-4b"
-    "vllm:qwen3-8b"
+    # "vllm:qwen3-8b"
     # "vllm:qwen3-14b"
     # "vllm:qwen3-32b"  # ran out of the 12h limit on one gpu - submit with EVAL_GPUS=4
     # "vllm:olmo3-7b"
@@ -98,8 +104,8 @@ prompt_styles=(
     # "use"
     # "std"
     # "ext"
-    "base"
-    "always"
+    # "base"
+    # "always"
     "appropriate"
 )
 
