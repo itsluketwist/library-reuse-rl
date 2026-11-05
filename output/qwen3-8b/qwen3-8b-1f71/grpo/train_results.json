@@ -1,10 +1,10 @@
 {
-  "train_runtime": 30401.3021,
-  "train_samples_per_second": 0.318,
-  "train_steps_per_second": 0.01,
+  "train_runtime": 32545.1196,
+  "train_samples_per_second": 0.297,
+  "train_steps_per_second": 0.009,
   "total_flos": 0.0,
-  "train_loss": 0.00246377445354655,
-  "epoch": 5.0,
+  "train_loss": 0.0022668312285742706,
+  "epoch": 7.0,
   "train_samples": 1209,
   "reward_profile": {
     "name": "lu-target",
@@ -25,6 +25,8 @@
     "2": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-1f71/checkpoint-74",
     "3": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-1f71/checkpoint-111",
     "4": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-1f71/checkpoint-148",
-    "5": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-1f71/checkpoint-185"
+    "5": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-1f71/checkpoint-185",
+    "6": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-1f71/checkpoint-222",
+    "7": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-1f71/checkpoint-259"
   }
 }
