@@ -1,5 +1,6 @@
 """Evaluate a model against one or more datasets: generation, analysis, and saving."""
 
+import time
 import traceback
 from pathlib import Path
 
@@ -200,6 +201,11 @@ def evaluate_model(
     unscored_generations_path). If scoring fails, they are kept, the error is logged, and the
     remaining datasets still run - a later run then scores the saved generations instead of
     generating them again. Once every dataset has been tried, an error names any that failed.
+
+    Each result's metadata records, in wall-clock seconds and with the number of gpus used,
+    the time the model took to generate the dataset's responses, kept apart from the time
+    taken to evaluate them (installing their packages and running their code), and the time
+    the model took to load.
     """
     if api is not None and weights_path is not None:
         raise ValueError(
@@ -228,6 +234,8 @@ def evaluate_model(
         log("*** Using API provider (no local model load) ***")
         log(f"API base url: {api.base_url or '(default)'}")
         llm = None
+        n_gpus = None
+        model_load_seconds = None
     else:
         # imported here, not at module scope, so API-only evaluation never needs vllm
         # (and therefore torch) installed at all
@@ -235,6 +243,8 @@ def evaluate_model(
         from vllm import LLM
 
         log("*** Loading model ***")
+        n_gpus = torch.cuda.device_count()
+        load_start = time.monotonic()
         # training checkpoints store fp32 weights, which vllm's "auto" dtype would serve
         # as fp16 - the wrong range for these models. every model here is natively
         # bf16, so ask for it explicitly and both cases are right.
@@ -245,8 +255,9 @@ def evaluate_model(
             additional_config=dict(VLLM_ADDITIONAL_CONFIG),
             # one engine split across every gpu the job has - one, except for models too
             # big or slow for one (see EVAL_GPUS in scripts/submit_eval.sh)
-            tensor_parallel_size=torch.cuda.device_count(),
+            tensor_parallel_size=n_gpus,
         )
+        model_load_seconds = round(time.monotonic() - load_start, 1)
 
     # datasets whose scoring failed, reported once every dataset has been tried
     failed_datasets: list[str] = []
@@ -285,9 +296,12 @@ def evaluate_model(
             n_prompts=len(prompts),
             n_samples=decoding_settings.get("n_samples", 1),
         )
+        # None when saved generations are scored, as their generation time is unknown
+        generation_seconds = None
         if responses is not None:
             log(f"Using the saved generations in {unscored_path}, not generating again")
         else:
+            generation_start = time.monotonic()
             with log_timer("generation"):
                 if api is not None:
                     responses = generate_api_responses(
@@ -306,6 +320,7 @@ def evaluate_model(
                         prompts=prompts,
                         decoding_settings=decoding_settings,
                     )
+            generation_seconds = round(time.monotonic() - generation_start, 1)
             # saved before scoring, so nothing that goes wrong while scoring loses them
             save_unscored_generations(responses, unscored_path)
 
@@ -335,6 +350,7 @@ def evaluate_model(
         # score the responses the way this dataset's task is verified (execution for the
         # tested split, prose pick / import classification for the new splits); score_dataset
         # takes care of which evaluators want every sample vs just the first
+        evaluation_start = time.monotonic()
         try:
             analysis, results = score_dataset(
                 dataset=dataset,
@@ -351,6 +367,7 @@ def evaluate_model(
             log(f"Scoring {name} failed - its generations are kept in {unscored_path}")
             failed_datasets.append(name)
             continue
+        evaluation_seconds = round(time.monotonic() - evaluation_start, 1)
         log(f"Scored {analysis['n_total']} responses ({analysis['task']})")
 
         # which build of the dataset was scored (library-usage rows stamp their own
@@ -392,6 +409,15 @@ def evaluate_model(
                 ),
                 "decoding_settings": decoding_settings,
                 "debug": debug,
+                # wall-clock cost, to compare models and checkpoints: generation is the
+                # model writing every sample, evaluation is running and checking them. the
+                # model loads once per job, so model_load is the same in each of its datasets
+                "n_gpus": n_gpus,
+                "timing_seconds": {
+                    "generation": generation_seconds,
+                    "evaluation": evaluation_seconds,
+                    "model_load": model_load_seconds,
+                },
             },
             "analysis": analysis,
         }

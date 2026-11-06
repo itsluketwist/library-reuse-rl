@@ -3,7 +3,8 @@
 The flow is: parse every response and work out the union of third-party packages they import;
 create the venv, install those packages, and run each response against its task's tests. A task
 whose record has a `function_name` is a function task, tested by calling that function on each
-case's arguments (see functions.py); any other task is a stdin/stdout program.
+case's arguments (see functions.py); any other task is a stdin/stdout program. A function task's
+record may also set `rel_tol` and `abs_tol`, how closely its returned numbers must match.
 
 Reporting gives correctness (pass rate) and library reuse on the same problems - the signal this
 benchmark exists to provide - tracked at two strengths: how often a solution imported an
@@ -292,6 +293,8 @@ def _score_response(
             test_inputs=record["test_inputs"],
             expected_outputs=record["expected_outputs"],
             timeout_seconds=timeout_seconds,
+            # a task can set its own number tolerances, e.g. 0 for answers checked exactly
+            **{key: record[key] for key in ("rel_tol", "abs_tol") if key in record},
         )
     else:
         # a stdin/stdout task: run the code as a program on each case's input

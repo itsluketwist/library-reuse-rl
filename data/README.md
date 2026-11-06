@@ -5,8 +5,9 @@ is built separately, in `benchmark/`. The folder is called `data`, not `datasets
 shadows the HuggingFace `datasets` library.
 
 - **`train/`**: built training splits, each as `{train,val,test}.jsonl`.
-- **`eval/`**: committed eval sets (`livecodebench.jsonl`, `apps_introductory.jsonl`, and
-  `humaneval_plus.jsonl`, a regression test of general coding ability).
+- **`eval/`**: committed eval sets, two regression tests of general coding ability:
+  `humaneval_plus.jsonl`, and `livecodebench.jsonl` (the easy and medium function problems of
+  LiveCodeBench releases v5 and v6).
 - **`build/`**: the code that builds them, run by path from the repo root.
 
 ## The training datasets

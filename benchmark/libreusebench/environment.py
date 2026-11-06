@@ -442,8 +442,10 @@ class Environment:
         test_inputs: list[str],
         expected_outputs: list[str],
         timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
+        **tolerances: float,
     ) -> tuple[bool, str]:
         """Call a solution's function on a function task's tests using this environment's interpreter.
+        `tolerances` (rel_tol, abs_tol), when given, set how closely numbers must match.
 
         Returns a (passed, empty string or the failure message) tuple.
         """
@@ -457,4 +459,5 @@ class Environment:
             expected_outputs=expected_outputs,
             python_executable=self.python,
             timeout_seconds=timeout_seconds,
+            **tolerances,
         )

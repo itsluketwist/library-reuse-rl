@@ -87,7 +87,7 @@ def build_records(
     """Filter to pure stdin/stdout problems and format them into flat records.
 
     Each row's prompt is a single user message, and reward_model.ground_truth is
-    a json string of {inputs, outputs} - the same format used by data/download_eval.py.
+    a json string of {inputs, outputs}.
 
     Returns the filtered, formatted records.
     """

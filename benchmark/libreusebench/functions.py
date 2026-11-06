@@ -213,10 +213,14 @@ def evaluate_function_record(
     expected_outputs: list[str],
     python_executable: str | Path = BUILD_PYTHON,
     timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
+    rel_tol: float = REL_TOL,
+    abs_tol: float = ABS_TOL,
 ) -> tuple[bool, str]:
     """Check a solution's function against a function task's (test_inputs, expected_outputs).
 
     The function-task counterpart of environment.evaluate_record, run in the same sandbox.
+    `rel_tol` and `abs_tol` say how close a returned number must be (see results_match) - 0 for
+    both checks numbers exactly.
 
     Returns a (passed, empty string or the failure message) tuple.
     """
@@ -226,6 +230,8 @@ def evaluate_function_record(
             function_name=function_name,
             test_inputs=test_inputs,
             expected_outputs=expected_outputs,
+            rel_tol=rel_tol,
+            abs_tol=abs_tol,
         ),
         python_executable=python_executable,
         timeout_seconds=timeout_seconds,

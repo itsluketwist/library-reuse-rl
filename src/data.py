@@ -133,8 +133,8 @@ def load_eval_dataset(
 ) -> Dataset:
     """Load an evaluation dataset file and build chat prompts.
 
-    Handles the flat {prompt, inputs, expected_outputs, source} schema from
-    data/download_eval.py, the nested Skywork ground_truth schema, and LibReuseBench's
+    Handles the flat {prompt, inputs, expected_outputs, source} schema, the nested Skywork
+    ground_truth schema, and LibReuseBench's
     {prompt, test_inputs, expected_outputs, ground_truth: {gold_stdlib, gold_extlib, ...}}
     schema. LibReuseBench test_inputs are also exposed as inputs for the common result pipeline.
 

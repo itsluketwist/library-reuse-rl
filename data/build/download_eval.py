@@ -1,28 +1,28 @@
-"""Download and format the code evaluation datasets used by the project.
+"""Download and format the regression tests of general coding ability used by the project.
 
-LiveCodeBench and APPS are reformatted into the same stdin/stdout schema, so the same
-evaluator (src/response/evaluate.py) can run against either of them:
-
-- LiveCodeBench (v5 + v6) - competitive programming problems, filtered to the
-  subset solved by reading stdin and writing stdout (excludes the
-  function-signature style LeetCode problems).
-- APPS (introductory split) - a stdin/stdout dataset at a similar scope and
-  difficulty to HumanEval/MBPP (no stdin/stdout reformatting of HumanEval/MBPP
-  themselves exists, so APPS introductory is used instead for consistency of
-  test format).
-
-HumanEval+ is kept in its own function-call format, as a regression test of general
-coding ability (scored by src/eval/scoring/humaneval.py).
+- HumanEval+ is kept in its own function-call format (scored by src/eval/scoring/humaneval.py).
+- LiveCodeBench: the easy and medium problems LiveCodeBench added in releases v5 and v6
+  (test5.jsonl and test6.jsonl at the pinned revision, contests from 2024-09-22 to
+  2025-04-06) that are solved by one named function - its LeetCode problems, asked for as a
+  plain function as LibReuseBench's tasks are. Each is tested on its public and private test
+  cases, in LibReuseBench's task format, so LibReuseBench's evaluator scores it - pass@k over
+  several samples, and library use and code size, as for the benchmark itself. Answers are
+  checked exactly, as LiveCodeBench checks them, so a problem that accepts an answer within a
+  tolerance is left out.
 
 Usage: python data/build/download_eval.py
 """
 
+import ast
+import base64
+import io
 import json
-import random
+import pickle
+import zlib
 
-from datasets import Dataset, concatenate_datasets, load_dataset
+from datasets import load_dataset
 from huggingface_hub import hf_hub_download
-from llm_cgr import load_jsonl, save_jsonl
+from llm_cgr import save_jsonl
 
 from data.build.paths import EVAL_DIR as OUTPUT_DIR
 
@@ -30,24 +30,32 @@ from data.build.paths import EVAL_DIR as OUTPUT_DIR
 # commit hashes pinned for reproducibility
 REVISIONS = {
     "livecodebench": "0fe84c3912ea0c4d4a78037083943e8f0c4dd505",
-    "apps": "21e74ddf8de1a21436da12e3e653065c5213e9d1",
     # the same pin as library-adoption-rl and llm-training, so a task scores the same in each
     "humaneval_plus": "d32357c",
 }
 
-# used to deterministically sample apps down to the same size as livecodebench
-SEED = 42
-
-# apps's test cases are far less consistent in size than livecodebench's public
-# ones - some are tens of MB, meant for performance stress-testing, which we
-# don't need and don't want to commit to git. only apps needs capping (see below).
+# livecodebench's private test cases run to megabytes, made to stress a solution's speed,
+# which a regression check doesn't need - so each problem keeps at most this many, of at
+# most this size
 MAX_TEST_CASES = 20
 MAX_TEST_CASE_CHARS = 20_000
 
-# write a python program that reads stdin and writes stdout
-PYTHON_INSTRUCTION = (
-    "\n\nWrite a Python program that reads from stdin and writes to stdout."
-)
+# the livecodebench release that added each file's problems
+LIVECODEBENCH_RELEASES = {
+    "test5.jsonl": "release_v5",
+    "test6.jsonl": "release_v6",
+}
+
+# the livecodebench problems kept: the easy and medium ones (an 8b model rarely solves a
+# hard one, and spends its whole token budget trying)
+LIVECODEBENCH_DIFFICULTIES = ("easy", "medium")
+
+# how a problem says it accepts an answer within a tolerance. the answers are checked
+# exactly, so these problems are left out
+TOLERANCE_WORDING = "Answers within 10^"
+
+# asks for the problem's function by name, as libreusebench's tasks do
+FUNCTION_INSTRUCTION = "\n\nWrite a Python function `{signature}` that solves this."
 
 
 def cap_test_cases(
@@ -67,128 +75,128 @@ def cap_test_cases(
     return [i for i, _ in kept], [o for _, o in kept]
 
 
-def is_stdin_only(
-    public_test_cases: str,
-) -> bool:
-    """Check whether every public test case for a livecodebench problem uses stdin/stdout.
-
-    Returns True if there is at least one test case and all of them are testtype "stdin".
+class _PlainUnpickler(pickle.Unpickler):
     """
-    tests = json.loads(public_test_cases) if public_test_cases else []
-    return bool(tests) and all(t["testtype"] == "stdin" for t in tests)
-
-
-def is_pure_stdin(
-    row: dict,
-) -> bool:
-    """Check whether an apps problem is solved via stdin/stdout only (no function call).
-
-    Returns True if the problem has no starter code and its tests have no fn_name set.
+    Unpickle only plain values (strings, numbers, lists, dicts). Loading any class or
+    function, which is how a pickle can run code, is refused - livecodebench's private test
+    cases are downloaded data, pickled only to hold a JSON string.
     """
-    if (row["starter_code"] or "").strip():
-        return False
 
-    io = json.loads(row["input_output"]) if row["input_output"] else {}
-    return bool(io.get("inputs")) and not io.get("fn_name")
+    def find_class(
+        self,
+        module: str,
+        name: str,
+    ) -> type:
+        raise pickle.UnpicklingError(
+            f"refusing to load {module}.{name} from a test file"
+        )
+
+
+def decode_private_tests(
+    encoded: str,
+) -> list[dict]:
+    """
+    Decode a livecodebench problem's private test cases: base64, then zlib, then a pickled
+    JSON string (as livecodebench stores them), unpickled safely.
+
+    Returns the test cases, as dicts with "input", "output" and "testtype".
+    """
+    raw = zlib.decompress(base64.b64decode(encoded))
+    return json.loads(_PlainUnpickler(io.BytesIO(raw)).load())
+
+
+def function_signature(
+    starter_code: str,
+    function_name: str,
+) -> str:
+    """
+    Turn the method in livecodebench's starter code into a plain function's signature, e.g.
+    "findXSum(nums, k, x)" from "class Solution: def findXSum(self, nums: List[int], ...".
+
+    Returns the function's name and parameters.
+    """
+    # the starter code stops where the method's body would start
+    tree = ast.parse(starter_code + "pass")
+    method = next(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef) and node.name == function_name
+    )
+    parameters = [arg.arg for arg in method.args.args[1:]]  # without self
+    return f"{function_name}({', '.join(parameters)})"
 
 
 def download_livecodebench() -> list[dict]:
-    """Download livecodebench (v5 + v6) and filter to stdin/stdout-only problems.
+    """
+    Download livecodebench's v5 and v6 problems and keep the easy and medium ones that are
+    solved by one named function and checked exactly.
 
     Source: https://huggingface.co/datasets/livecodebench/code_generation_lite
 
-    The v5 and v6 releases are the test5.jsonl and test6.jsonl files in the repo.
     `datasets` 4.0+ dropped support for this repo's loading script (see
-    https://github.com/LiveCodeBench/LiveCodeBench/issues/107), so the jsonl
-    files are downloaded directly instead of using load_dataset. Each problem's
-    public_test_cases is small (a few hundred chars, a handful per problem), so
-    they aren't capped like apps's are.
+    https://github.com/LiveCodeBench/LiveCodeBench/issues/107), so the jsonl files are
+    downloaded directly. Each record holds the problem's function name and its tests, the
+    public ones then the private ones (capped, see cap_test_cases), as the python literals
+    LibReuseBench's function tasks hold, with rel_tol and abs_tol 0 so returned numbers
+    must match exactly. It keeps the problem's difficulty, platform, contest date and release.
 
-    Returns the formatted livecodebench records.
+    Returns the livecodebench records.
     """
-    lcb_datasets = []
-    for filename in ["test5.jsonl", "test6.jsonl"]:
+    records = []
+    for filename, release in LIVECODEBENCH_RELEASES.items():
         jsonl_path = hf_hub_download(
             repo_id="livecodebench/code_generation_lite",
             filename=filename,
             repo_type="dataset",
             revision=REVISIONS["livecodebench"],
         )
-        lcb_datasets.append(Dataset.from_json(jsonl_path))
+        with open(jsonl_path) as f:
+            for line in f:
+                row = json.loads(line)
+                public_tests = json.loads(row["public_test_cases"])
+                if any(test["testtype"] != "functional" for test in public_tests):
+                    continue
+                if row["difficulty"] not in LIVECODEBENCH_DIFFICULTIES:
+                    continue
+                if TOLERANCE_WORDING in row["question_content"]:
+                    continue
 
-    lcb = concatenate_datasets(lcb_datasets)
-    print(f"loaded {len(lcb)} livecodebench problems (v5 + v6)")
+                function_name = json.loads(row["metadata"])["func_name"]
+                signature = function_signature(
+                    starter_code=row["starter_code"],
+                    function_name=function_name,
+                )
+                tests = public_tests + decode_private_tests(row["private_test_cases"])
+                # a test's input is a json value per argument, one per line, and its output
+                # one json value - rewritten as python literals
+                inputs, outputs = cap_test_cases(
+                    inputs=[
+                        repr([json.loads(value) for value in test["input"].split("\n")])
+                        for test in tests
+                    ],
+                    outputs=[repr(json.loads(test["output"])) for test in tests],
+                )
+                records.append(
+                    {
+                        "task_id": f"LCB/{row['question_id']}",
+                        "prompt": row["question_content"]
+                        + FUNCTION_INSTRUCTION.format(signature=signature),
+                        "function_name": function_name,
+                        "test_inputs": inputs,
+                        "expected_outputs": outputs,
+                        "rel_tol": 0.0,
+                        "abs_tol": 0.0,
+                        "difficulty": row["difficulty"],
+                        "platform": row["platform"],
+                        "contest_date": row["contest_date"][:10],
+                        # copied into each result's metadata, so results say which releases
+                        # they cover
+                        "dataset_version": release,
+                        "source": "livecodebench",
+                    }
+                )
 
-    records = []
-    for row in lcb:
-        if not is_stdin_only(row["public_test_cases"]):
-            continue
-
-        tests = json.loads(row["public_test_cases"])
-        records.append(
-            {
-                "prompt": row["question_content"] + PYTHON_INSTRUCTION,
-                "inputs": [t["input"] for t in tests],
-                "expected_outputs": [t["output"] for t in tests],
-                "source": "livecodebench",
-            }
-        )
-
-    print(f"  {len(records)} stdin/stdout records out of {len(lcb)} total problems")
-    return records
-
-
-def download_apps(
-    num_records: int,
-) -> list[dict]:
-    """Download apps (introductory split) and filter to stdin/stdout-only problems.
-
-    Source: https://huggingface.co/datasets/codeparrot/apps
-
-    APPS is a stdin/stdout competitive-programming dataset; its introductory
-    difficulty is comparable in scope to HumanEval/MBPP. Like livecodebench,
-    this repo ships a loading script, so the jsonl file is downloaded directly.
-    A small minority of apps problems are solved by implementing a named function
-    rather than via stdin/stdout - those are excluded. The bulky solutions field
-    isn't needed for evaluation, so it's dropped from the saved records.
-
-    The filtered set is much bigger than livecodebench, so it's randomly
-    downsampled (with a fixed seed, for reproducibility) to num_records, keeping
-    the two evaluation sets comparably sized.
-
-    Returns the formatted, downsampled apps records.
-    """
-    apps_path = hf_hub_download(
-        repo_id="codeparrot/apps",
-        filename="test.jsonl",
-        repo_type="dataset",
-        revision=REVISIONS["apps"],
-    )
-    apps = Dataset.from_json(apps_path)
-    print(f"loaded {len(apps)} apps problems (all difficulties)")
-
-    records = []
-    for row in apps:
-        if row["difficulty"] != "introductory" or not is_pure_stdin(row):
-            continue
-
-        io = json.loads(row["input_output"])
-        inputs, expected_outputs = cap_test_cases(io["inputs"], io["outputs"])
-        if not inputs:
-            continue
-
-        records.append(
-            {
-                "prompt": row["question"],
-                "inputs": inputs,
-                "expected_outputs": expected_outputs,
-                "source": "apps_introductory",
-            }
-        )
-
-    print(f"  found {len(records)} stdin/stdout records")
-    records = random.Random(SEED).sample(records, num_records)
-    print(f"  downsampled to {len(records)} records")
+    print(f"  {len(records)} livecodebench problems")
     return records
 
 
@@ -226,24 +234,10 @@ def download_humaneval_plus() -> list[dict]:
 
 
 def main() -> None:
-    """Download, format, and save the livecodebench, apps and humaneval+ evaluation datasets."""
+    """Download, format, and save the humaneval+ and livecodebench evaluation datasets."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
     save_jsonl(download_humaneval_plus(), str(OUTPUT_DIR / "humaneval_plus.jsonl"))
-
-    lcb_records = download_livecodebench()
-    save_jsonl(lcb_records, str(OUTPUT_DIR / "livecodebench.jsonl"))
-
-    apps_records = download_apps(num_records=len(lcb_records))
-    save_jsonl(apps_records, str(OUTPUT_DIR / "apps_introductory.jsonl"))
-
-    print("\nsanity check:")
-    for filename in ["livecodebench.jsonl", "apps_introductory.jsonl"]:
-        records = load_jsonl(str(OUTPUT_DIR / filename))
-        sample = records[0]
-        print(f"\n{filename}: {len(records)} records")
-        print(f"  prompt (first 200 chars): {sample['prompt'][:200]!r}")
-        print(f"  num test cases: {len(sample['inputs'])}")
+    save_jsonl(download_livecodebench(), str(OUTPUT_DIR / "livecodebench.jsonl"))
 
 
 if __name__ == "__main__":

@@ -24,7 +24,7 @@ def _make_skywork_record(prompt: str, inputs: list[str], outputs: list[str]) -> 
 
 
 def _make_eval_record(prompt: str, inputs: list[str], outputs: list[str]) -> dict:
-    """Build a single eval-format record, as produced by data/download_eval.py."""
+    """Build a single flat stdin/stdout eval record."""
     return {
         "prompt": prompt,
         "inputs": inputs,

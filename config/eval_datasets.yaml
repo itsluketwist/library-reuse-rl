@@ -1,14 +1,6 @@
 # eval dataset config - every path is paired with an explicit scorer from
 # src/eval/scoring.py so similarly shaped datasets cannot be scored accidentally.
 
-livecodebench:
-  path: "data/eval/livecodebench.jsonl"
-  evaluator: implement_tested
-  python_executable: ".venv-eval/bin/python"
-apps_introductory:
-  path: "data/eval/apps_introductory.jsonl"
-  evaluator: implement_tested
-  python_executable: ".venv-eval/bin/python"
 skywork_test:
   path: "data/train/skywork/test.jsonl"
   evaluator: implement_tested
@@ -19,6 +11,16 @@ skywork_test:
 humaneval_plus:
   path: "data/eval/humaneval_plus.jsonl"
   evaluator: humaneval
+  environment_root: ".libreuseeval-venvs"
+# a second regression test (also built by data/build/download_eval.py): the 87 easy and
+# medium problems livecodebench added in releases v5 and v6 (code_generation_lite at revision
+# 0fe84c3, contests 2024-09-22 to 2025-04-06) that are solved by one named function - its
+# leetcode problems, asked for as LibReuseBench's tasks are. tested on their public and
+# private tests, checked exactly, in LibReuseBench's task format so its evaluator scores them
+# (pass@k, and library use as on the benchmark)
+livecodebench:
+  path: "data/eval/livecodebench.jsonl"
+  evaluator: libreusebench
   environment_root: ".libreuseeval-venvs"
 
 # library-reuse held-out test splits (built by data/build/amplify/build.py and

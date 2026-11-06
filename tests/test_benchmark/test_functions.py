@@ -195,6 +195,27 @@ class TestEvaluateFunctionRecord:
         )
         assert _run(code, ["2", "5.0"]) == (True, "")
 
+    def test_zero_tolerance_checks_numbers_exactly(self) -> None:
+        """2021 passes for 2020 by default, but not when a task asks for exact answers."""
+        code = "def double(x):\n    return 2021\n"
+        lenient = evaluate_function_record(
+            code=code,
+            function_name="double",
+            test_inputs=["[1010]"],
+            expected_outputs=["2020"],
+            python_executable=sys.executable,
+        )
+        exact = evaluate_function_record(
+            code=code,
+            function_name="double",
+            test_inputs=["[1010]"],
+            expected_outputs=["2020"],
+            python_executable=sys.executable,
+            rel_tol=0.0,
+            abs_tol=0.0,
+        )
+        assert lenient[0] and not exact[0]
+
     def test_missing_function_fails(self) -> None:
         passed, message = _run("def triple(x):\n    return 3 * x\n", ["2", "5.0"])
         assert not passed and "function not defined" in message

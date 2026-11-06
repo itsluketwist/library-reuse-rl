@@ -1,5 +1,6 @@
 """Tests for evaluation run setup: output paths and model-provider resolution."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -301,6 +302,12 @@ class TestScoringFailures:
         assert scored[0] == [[("saved response", "eos", 2)]]
         assert (tmp_path / "first.json").exists()
         assert not (tmp_path / "first.unscored.jsonl").exists()
+        # a saved generation's time is unknown, a fresh one's is recorded
+        first_timing = json.loads((tmp_path / "first.json").read_text())["metadata"]
+        second_timing = json.loads((tmp_path / "second.json").read_text())["metadata"]
+        assert first_timing["timing_seconds"]["generation"] is None
+        assert second_timing["timing_seconds"]["generation"] >= 0
+        assert second_timing["timing_seconds"]["evaluation"] >= 0
 
 
 def test_mismatched_saved_generations_are_ignored(tmp_path):

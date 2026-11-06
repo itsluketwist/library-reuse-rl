@@ -164,7 +164,7 @@ def evaluate_record(
     Evaluate a candidate code fragment against a stdin/stdout record's test cases.
 
     The record must have "inputs" and "expected_outputs" lists of equal length, as
-    produced by data/download_skywork.py and data/download_eval.py.
+    produced by data/build/download_skywork.py.
 
     Returns a (passed, captured stdout or an error message) tuple.
     """

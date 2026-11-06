@@ -60,8 +60,9 @@ eval_datasets=(
     # LibReuseBench, test and control
     "libreusebench_test"
     "libreusebench_control"
-    # regression test of general coding ability - pass@1 shouldn't drop
+    # regression tests of general coding ability - pass@1 shouldn't drop
     "humaneval_plus"
+    "livecodebench"
 )
 
 # which epoch checkpoints get those eval jobs: "all", or "final" for just the last epoch -
