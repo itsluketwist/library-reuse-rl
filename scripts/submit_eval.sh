@@ -122,8 +122,9 @@ debug=false
 # false skips a model/dataset/decoding-profile/prompt-style combination whose result file
 # already exists under output/ (see src/utils/paths.py) - including a base model's result
 # moved into an iteration's baselines/ folder - so resubmitting only fills in what is
-# missing.
-update=false
+# missing. EVAL_UPDATE=true sets it for one submission, e.g. to regenerate results from before
+# timings were recorded
+update="${EVAL_UPDATE:-false}"
 
 ###############################################################################
 #                      submit jobs - do not edit below                        #
