@@ -1,0 +1,91 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-1f71/checkpoint-222",
+    "provider": "vllm",
+    "dataset": "humaneval_plus",
+    "dataset_file": "data/eval/humaneval_plus.jsonl",
+    "dataset_version": null,
+    "evaluator": "humaneval",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false
+  },
+  "analysis": {
+    "task": "humaneval",
+    "n_total": 820,
+    "n_tasks": 164,
+    "n_passed": 709,
+    "pass@1": 0.8646341463414635,
+    "pass@5": 0.9451219512195121,
+    "n_no_code": 3,
+    "n_overflow": 3,
+    "using_lib_rate": 0.004878048780487805,
+    "avg_extlibs": 0.004878048780487805,
+    "library_counts": {
+      "more_itertools": 1,
+      "pytest": 1,
+      "pandas": 1,
+      "numpy": 1
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 817,
+        "avg_lloc": 9.729498164014688,
+        "avg_maintainability_index": 77.8699095957234
+      },
+      "passed": {
+        "n_measured": 709,
+        "avg_lloc": 9.730606488011283,
+        "avg_maintainability_index": 77.38347432634824
+      }
+    },
+    "environment": {
+      "installed_packages": [
+        "more_itertools",
+        "numexpr",
+        "numpy",
+        "palindrome",
+        "pandas",
+        "pyparsing",
+        "pytest",
+        "roman",
+        "sympy"
+      ],
+      "install_failed": [],
+      "distributions": {
+        "iniconfig": "2.3.1",
+        "more-itertools": "11.2.1",
+        "mpmath": "1.3.0",
+        "numexpr": "2.14.2",
+        "numpy": "2.5.4",
+        "packaging": "26.3",
+        "palindrome": "1.0.0",
+        "pandas": "3.1.1",
+        "pip": "25.0.1",
+        "pluggy": "1.7.0",
+        "pygments": "2.21.0",
+        "pyparsing": "3.3.3",
+        "pytest": "9.2.0",
+        "python-dateutil": "4.0.0",
+        "roman": "5.2",
+        "sympy": "1.14.0",
+        "tzdata": "2026.6"
+      }
+    }
+  }
+}
