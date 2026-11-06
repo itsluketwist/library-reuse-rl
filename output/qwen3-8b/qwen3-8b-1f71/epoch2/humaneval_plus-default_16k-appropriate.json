@@ -1,0 +1,85 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-1f71/checkpoint-74",
+    "provider": "vllm",
+    "dataset": "humaneval_plus",
+    "dataset_file": "data/eval/humaneval_plus.jsonl",
+    "dataset_version": null,
+    "evaluator": "humaneval",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": "Use an external library when appropriate.",
+    "prompt_style": "appropriate",
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 466.1,
+      "evaluation": 342.9,
+      "model_load": 80.2
+    }
+  },
+  "analysis": {
+    "task": "humaneval",
+    "n_total": 820,
+    "n_tasks": 164,
+    "n_passed": 711,
+    "pass@1": 0.8670731707317072,
+    "pass@5": 0.9390243902439024,
+    "n_no_code": 0,
+    "n_overflow": 0,
+    "using_lib_rate": 0.03902439024390244,
+    "avg_extlibs": 0.03902439024390244,
+    "library_counts": {
+      "numpy": 19,
+      "sympy": 13
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 818,
+        "avg_lloc": 8.80195599022005,
+        "avg_maintainability_index": 82.91658751725659
+      },
+      "passed": {
+        "n_measured": 711,
+        "avg_lloc": 8.79184247538678,
+        "avg_maintainability_index": 82.46731974796653
+      }
+    },
+    "environment": {
+      "installed_packages": [
+        "numpy",
+        "pytest",
+        "roman",
+        "sympy"
+      ],
+      "install_failed": [
+        "add"
+      ],
+      "distributions": {
+        "iniconfig": "2.3.1",
+        "mpmath": "1.3.0",
+        "numpy": "2.5.4",
+        "packaging": "26.3",
+        "pip": "25.0.1",
+        "pluggy": "1.7.0",
+        "pygments": "2.21.0",
+        "pytest": "9.2.0",
+        "roman": "5.2",
+        "sympy": "1.14.0"
+      }
+    }
+  }
+}

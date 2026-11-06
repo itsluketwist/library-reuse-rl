@@ -1,0 +1,131 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-1f71/checkpoint-37",
+    "provider": "vllm",
+    "dataset": "humaneval_plus",
+    "dataset_file": "data/eval/humaneval_plus.jsonl",
+    "dataset_version": null,
+    "evaluator": "humaneval",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": "Always use an external library in your solution.",
+    "prompt_style": "always",
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 621.5,
+      "evaluation": 347.1,
+      "model_load": 70.4
+    }
+  },
+  "analysis": {
+    "task": "humaneval",
+    "n_total": 820,
+    "n_tasks": 164,
+    "n_passed": 569,
+    "pass@1": 0.6939024390243902,
+    "pass@5": 0.8780487804878049,
+    "n_no_code": 4,
+    "n_overflow": 4,
+    "using_lib_rate": 0.36829268292682926,
+    "avg_extlibs": 0.36829268292682926,
+    "library_counts": {
+      "numpy": 168,
+      "sympy": 74,
+      "pandas": 16,
+      "more_itertools": 10,
+      "toolz": 5,
+      "regex": 5,
+      "roman": 5,
+      "sortedcontainers": 4,
+      "numexpr": 4,
+      "inflect": 2,
+      "scipy": 2,
+      "gmpy2": 2,
+      "bitarray": 1,
+      "cachetools": 1,
+      "bitstring": 1,
+      "num2words": 1,
+      "jinja2": 1
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 816,
+        "avg_lloc": 8.417892156862745,
+        "avg_maintainability_index": 87.80920510219383
+      },
+      "passed": {
+        "n_measured": 569,
+        "avg_lloc": 8.374340949033392,
+        "avg_maintainability_index": 87.15438235592181
+      }
+    },
+    "environment": {
+      "installed_packages": [
+        "baseconvert",
+        "bitarray",
+        "bitstring",
+        "cachetools",
+        "gmpy2",
+        "inflect",
+        "jinja2",
+        "more-itertools",
+        "more_itertools",
+        "num2words",
+        "numexpr",
+        "numpy",
+        "pandas",
+        "regex",
+        "roman",
+        "scipy",
+        "sortedcontainers",
+        "sympy",
+        "toolz"
+      ],
+      "install_failed": [],
+      "distributions": {
+        "baseconvert": "2.0.4",
+        "bitarray": "3.12.3",
+        "bitstring": "5.0.0",
+        "cachetools": "7.3.0",
+        "docopt": "0.6.2",
+        "gmpy2": "2.3.2",
+        "inflect": "7.6.0",
+        "jaraco.functools": "4.6.0",
+        "jinja2": "3.1.6",
+        "markupsafe": "3.0.4",
+        "more-itertools": "11.2.1",
+        "mpmath": "1.3.0",
+        "num2words": "0.5.14",
+        "numexpr": "2.14.2",
+        "numpy": "2.5.4",
+        "pandas": "3.1.1",
+        "pip": "25.0.1",
+        "python-dateutil": "4.0.0",
+        "regex": "2026.9.29",
+        "roman": "5.2",
+        "scipy": "1.18.1",
+        "sortedcontainers": "2.4.0",
+        "sympy": "1.14.0",
+        "tibs": "2.0.2",
+        "toolz": "1.2.0",
+        "typeguard": "4.6.0",
+        "typing-extensions": "4.16.0",
+        "tzdata": "2026.6"
+      }
+    }
+  }
+}

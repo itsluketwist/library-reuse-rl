@@ -1,0 +1,173 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4474/checkpoint-222",
+    "provider": "vllm",
+    "dataset": "livecodebench",
+    "dataset_file": "data/eval/livecodebench.jsonl",
+    "dataset_version": [
+      "release_v5",
+      "release_v6"
+    ],
+    "evaluator": "libreusebench",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 1506.4,
+      "evaluation": 138.4,
+      "model_load": 68.6
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 435,
+    "n_tasks": 87,
+    "n_responses": 435,
+    "k": 5,
+    "pass@1": 0.703448275862069,
+    "pass@k": 0.8505747126436781,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.04597701149425287,
+          "avg_extlibs": 0.04597701149425287,
+          "library_counts": {
+            "minimumSumSubarray": 1,
+            "smallestNumber": 1,
+            "maxAdjacentDistance": 1,
+            "transformArray": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.009195402298850575,
+          "avg_extlibs": 0.009195402298850575,
+          "library_counts": {
+            "minimumSumSubarray": 1,
+            "smallestNumber": 1,
+            "maxAdjacentDistance": 1,
+            "transformArray": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.04597701149425287,
+          "avg_extlibs": 0.04597701149425287,
+          "library_counts": {
+            "minimumSumSubarray": 1,
+            "smallestNumber": 1,
+            "maxAdjacentDistance": 1,
+            "transformArray": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.009195402298850575,
+          "avg_extlibs": 0.009195402298850575,
+          "library_counts": {
+            "minimumSumSubarray": 1,
+            "smallestNumber": 1,
+            "maxAdjacentDistance": 1,
+            "transformArray": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 382,
+        "avg_lloc": 18.680628272251308,
+        "avg_maintainability_index": 70.46407373475823
+      },
+      "passed": {
+        "n_measured": 306,
+        "avg_lloc": 18.029411764705884,
+        "avg_maintainability_index": 70.30518039372099
+      }
+    },
+    "not_run": {
+      "n_responses": 4,
+      "packages": [
+        "maxAdjacentDistance",
+        "minimumSumSubarray",
+        "smallestNumber",
+        "transformArray"
+      ],
+      "responses": [
+        {
+          "task_id": "LCB/3644",
+          "idx": 1,
+          "packages": [
+            "minimumSumSubarray"
+          ]
+        },
+        {
+          "task_id": "LCB/3676",
+          "idx": 1,
+          "packages": [
+            "smallestNumber"
+          ]
+        },
+        {
+          "task_id": "LCB/3747",
+          "idx": 1,
+          "packages": [
+            "maxAdjacentDistance"
+          ]
+        },
+        {
+          "task_id": "LCB/3778",
+          "idx": 3,
+          "packages": [
+            "transformArray"
+          ]
+        }
+      ]
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-ys0c0rym",
+      "source": "response_imports",
+      "installed_packages": [],
+      "install_failed": [
+        "maxAdjacentDistance",
+        "minimumSumSubarray",
+        "smallestNumber",
+        "transformArray"
+      ],
+      "task_packages": [],
+      "installed_package_versions": {
+        "pip": "25.0.1"
+      },
+      "package_imports": {
+        "maxAdjacentDistance": [
+          "maxAdjacentDistance"
+        ],
+        "minimumSumSubarray": [
+          "minimumSumSubarray"
+        ],
+        "smallestNumber": [
+          "smallestNumber"
+        ],
+        "transformArray": [
+          "transformArray"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-_2i2afg8/libreusebench_eval_2026-11-06T12:31:16.363610.json"
+  }
+}

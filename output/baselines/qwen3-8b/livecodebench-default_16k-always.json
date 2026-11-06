@@ -1,0 +1,134 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": null,
+    "provider": "vllm",
+    "dataset": "livecodebench",
+    "dataset_file": "data/eval/livecodebench.jsonl",
+    "dataset_version": [
+      "release_v5",
+      "release_v6"
+    ],
+    "evaluator": "libreusebench",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": "Always use an external library in your solution.",
+    "prompt_style": "always",
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 1846.3,
+      "evaluation": 67.2,
+      "model_load": 57.0
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 435,
+    "n_tasks": 87,
+    "n_responses": 435,
+    "k": 5,
+    "pass@1": 0.632183908045977,
+    "pass@k": 0.7816091954022989,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.11494252873563218,
+          "avg_extlibs": 0.11494252873563218,
+          "library_counts": {
+            "numpy": 8,
+            "sortedcontainers": 1,
+            "networkx": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.041379310344827586,
+          "avg_extlibs": 0.041379310344827586,
+          "library_counts": {
+            "numpy": 14,
+            "sortedcontainers": 2,
+            "networkx": 2
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.09195402298850575,
+          "avg_extlibs": 0.09195402298850575,
+          "library_counts": {
+            "numpy": 6,
+            "sortedcontainers": 1,
+            "networkx": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.03218390804597701,
+          "avg_extlibs": 0.03218390804597701,
+          "library_counts": {
+            "numpy": 10,
+            "sortedcontainers": 2,
+            "networkx": 2
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 318,
+        "avg_lloc": 16.943396226415093,
+        "avg_maintainability_index": 72.09535036042527
+      },
+      "passed": {
+        "n_measured": 275,
+        "avg_lloc": 16.643636363636364,
+        "avg_maintainability_index": 72.32067278116638
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-2uynwpyr",
+      "source": "response_imports",
+      "installed_packages": [
+        "networkx",
+        "numpy",
+        "sortedcontainers"
+      ],
+      "install_failed": [],
+      "task_packages": [],
+      "installed_package_versions": {
+        "networkx": "3.7",
+        "numpy": "2.5.4",
+        "pip": "25.0.1",
+        "sortedcontainers": "2.4.0"
+      },
+      "package_imports": {
+        "networkx": [
+          "networkx"
+        ],
+        "numpy": [
+          "numpy"
+        ],
+        "sortedcontainers": [
+          "sortedcontainers"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-pveordl7/libreusebench_eval_2026-11-06T12:34:57.023865.json"
+  }
+}

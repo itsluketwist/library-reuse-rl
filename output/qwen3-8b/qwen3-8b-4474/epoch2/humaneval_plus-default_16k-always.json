@@ -1,0 +1,138 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4474/checkpoint-74",
+    "provider": "vllm",
+    "dataset": "humaneval_plus",
+    "dataset_file": "data/eval/humaneval_plus.jsonl",
+    "dataset_version": null,
+    "evaluator": "humaneval",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": "Always use an external library in your solution.",
+    "prompt_style": "always",
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 618.5,
+      "evaluation": 348.4,
+      "model_load": 62.4
+    }
+  },
+  "analysis": {
+    "task": "humaneval",
+    "n_total": 820,
+    "n_tasks": 164,
+    "n_passed": 572,
+    "pass@1": 0.6975609756097562,
+    "pass@5": 0.8597560975609756,
+    "n_no_code": 3,
+    "n_overflow": 3,
+    "using_lib_rate": 0.41585365853658535,
+    "avg_extlibs": 0.41585365853658535,
+    "library_counts": {
+      "numpy": 215,
+      "sympy": 76,
+      "pandas": 17,
+      "regex": 5,
+      "scipy": 5,
+      "roman": 5,
+      "more_itertools": 2,
+      "toolz": 2,
+      "baseconv": 2,
+      "six": 1,
+      "baseconvert": 1,
+      "gmpy2": 1,
+      "set": 1,
+      "bitstring": 1,
+      "cryptography": 1,
+      "pycipher": 1,
+      "inflect": 1,
+      "num2words": 1,
+      "dateutil": 1,
+      "sortedcontainers": 1,
+      "numexpr": 1
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 817,
+        "avg_lloc": 8.604651162790697,
+        "avg_maintainability_index": 86.71214778539478
+      },
+      "passed": {
+        "n_measured": 572,
+        "avg_lloc": 8.555944055944057,
+        "avg_maintainability_index": 85.9395652009741
+      }
+    },
+    "environment": {
+      "installed_packages": [
+        "baseconvert",
+        "bitstring",
+        "cryptography",
+        "gmpy2",
+        "inflect",
+        "more_itertools",
+        "num2words",
+        "numexpr",
+        "numpy",
+        "pandas",
+        "pycipher",
+        "python-dateutil",
+        "regex",
+        "roman",
+        "scipy",
+        "six",
+        "sortedcontainers",
+        "sympy",
+        "toolz"
+      ],
+      "install_failed": [
+        "baseconv"
+      ],
+      "distributions": {
+        "baseconvert": "2.0.4",
+        "bitstring": "5.0.0",
+        "cffi": "2.1.1",
+        "cryptography": "50.0.2",
+        "docopt": "0.6.2",
+        "gmpy2": "2.3.2",
+        "inflect": "7.6.0",
+        "jaraco.functools": "4.6.0",
+        "more-itertools": "11.2.1",
+        "mpmath": "1.3.0",
+        "num2words": "0.5.14",
+        "numexpr": "2.14.2",
+        "numpy": "2.5.4",
+        "pandas": "3.1.1",
+        "pip": "25.0.1",
+        "pycipher": "0.5.2",
+        "pycparser": "3.12",
+        "python-dateutil": "4.0.0",
+        "regex": "2026.9.29",
+        "roman": "5.2",
+        "scipy": "1.18.1",
+        "six": "1.17.0",
+        "sortedcontainers": "2.4.0",
+        "sympy": "1.14.0",
+        "tibs": "2.0.2",
+        "toolz": "1.2.0",
+        "typeguard": "4.6.0",
+        "typing-extensions": "4.16.0",
+        "tzdata": "2026.6"
+      }
+    }
+  }
+}

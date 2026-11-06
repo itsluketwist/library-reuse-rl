@@ -1,0 +1,221 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-4474/checkpoint-37",
+    "provider": "vllm",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": "Always use an external library in your solution.",
+    "prompt_style": "always",
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 389.7,
+      "evaluation": 116.1,
+      "model_load": 82.9
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 0.8428571428571429,
+    "pass@k": 1.0,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.27380952380952384,
+          "avg_extlibs": 0.30952380952380953,
+          "library_counts": {
+            "pandas": 11,
+            "numpy": 7,
+            "magic": 1,
+            "validators": 1,
+            "email_validator": 1,
+            "scipy": 1,
+            "dateutil": 1,
+            "cryptography": 1,
+            "unidecode": 1,
+            "nltk": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.12380952380952381,
+          "avg_extlibs": 0.13333333333333333,
+          "library_counts": {
+            "numpy": 22,
+            "pandas": 14,
+            "scipy": 5,
+            "dateutil": 4,
+            "nltk": 4,
+            "email_validator": 2,
+            "cryptography": 2,
+            "magic": 1,
+            "validators": 1,
+            "unidecode": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.27380952380952384,
+          "avg_extlibs": 0.30952380952380953,
+          "library_counts": {
+            "pandas": 11,
+            "numpy": 7,
+            "magic": 1,
+            "validators": 1,
+            "email_validator": 1,
+            "scipy": 1,
+            "dateutil": 1,
+            "cryptography": 1,
+            "unidecode": 1,
+            "nltk": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.12380952380952381,
+          "avg_extlibs": 0.13333333333333333,
+          "library_counts": {
+            "numpy": 22,
+            "pandas": 14,
+            "scipy": 5,
+            "dateutil": 4,
+            "nltk": 4,
+            "email_validator": 2,
+            "cryptography": 2,
+            "magic": 1,
+            "validators": 1,
+            "unidecode": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 417,
+        "avg_lloc": 12.270983213429256,
+        "avg_maintainability_index": 87.89552036808526
+      },
+      "passed": {
+        "n_measured": 354,
+        "avg_lloc": 12.152542372881356,
+        "avg_maintainability_index": 87.71832557326523
+      }
+    },
+    "not_run": {
+      "n_responses": 1,
+      "packages": [
+        "magic"
+      ],
+      "responses": [
+        {
+          "task_id": "LRB/C002",
+          "idx": 2,
+          "packages": [
+            "magic"
+          ]
+        }
+      ]
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-tw3g4xsd",
+      "source": "response_imports",
+      "installed_packages": [
+        "cryptography",
+        "email_validator",
+        "nltk",
+        "numpy",
+        "pandas",
+        "python-dateutil",
+        "python-magic",
+        "scipy",
+        "unidecode",
+        "validators"
+      ],
+      "install_failed": [
+        "magic"
+      ],
+      "task_packages": [],
+      "installed_package_versions": {
+        "cffi": "2.1.1",
+        "click": "8.5.0",
+        "cloudpickle": "3.1.2",
+        "cryptography": "50.0.2",
+        "defusedxml": "0.7.1",
+        "dnspython": "2.9.2",
+        "email-validator": "2.3.0",
+        "idna": "3.20",
+        "joblib": "1.6.0",
+        "nltk": "3.10.4",
+        "numpy": "2.5.4",
+        "pandas": "3.1.1",
+        "pip": "25.0.1",
+        "pycparser": "3.12",
+        "python-dateutil": "4.0.0",
+        "python-magic": "0.4.27",
+        "regex": "2026.9.29",
+        "scipy": "1.18.1",
+        "tqdm": "4.70.1",
+        "tzdata": "2026.6",
+        "unidecode": "1.4.0",
+        "validators": "0.36.0"
+      },
+      "package_imports": {
+        "cryptography": [
+          "cryptography"
+        ],
+        "email_validator": [
+          "email_validator"
+        ],
+        "magic": [
+          "magic"
+        ],
+        "nltk": [
+          "nltk"
+        ],
+        "numpy": [
+          "numpy"
+        ],
+        "pandas": [
+          "pandas"
+        ],
+        "python-dateutil": [
+          "dateutil",
+          "python-dateutil"
+        ],
+        "python-magic": [
+          "python-magic"
+        ],
+        "scipy": [
+          "scipy"
+        ],
+        "unidecode": [
+          "unidecode"
+        ],
+        "validators": [
+          "validators"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-c6q9_a4d/libreusebench_eval_2026-11-06T12:50:26.520456.json"
+  }
+}

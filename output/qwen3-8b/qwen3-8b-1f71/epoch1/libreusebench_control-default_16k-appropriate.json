@@ -1,0 +1,151 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-1f71/checkpoint-37",
+    "provider": "vllm",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": "Use an external library when appropriate.",
+    "prompt_style": "appropriate",
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 413.9,
+      "evaluation": 61.9,
+      "model_load": 70.4
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 0.8785714285714286,
+    "pass@k": 0.9523809523809523,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.05952380952380952,
+          "avg_extlibs": 0.07142857142857142,
+          "library_counts": {
+            "numpy": 2,
+            "regex": 1,
+            "scipy": 1,
+            "cryptography": 1,
+            "unidecode": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.011904761904761904,
+          "avg_extlibs": 0.014285714285714285,
+          "library_counts": {
+            "numpy": 2,
+            "regex": 1,
+            "scipy": 1,
+            "cryptography": 1,
+            "unidecode": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.05952380952380952,
+          "avg_extlibs": 0.07142857142857142,
+          "library_counts": {
+            "numpy": 2,
+            "regex": 1,
+            "scipy": 1,
+            "cryptography": 1,
+            "unidecode": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.011904761904761904,
+          "avg_extlibs": 0.014285714285714285,
+          "library_counts": {
+            "numpy": 2,
+            "regex": 1,
+            "scipy": 1,
+            "cryptography": 1,
+            "unidecode": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 418,
+        "avg_lloc": 12.61244019138756,
+        "avg_maintainability_index": 88.45959155250532
+      },
+      "passed": {
+        "n_measured": 369,
+        "avg_lloc": 12.439024390243903,
+        "avg_maintainability_index": 88.44497306543497
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-9i8c7anp",
+      "source": "response_imports",
+      "installed_packages": [
+        "cryptography",
+        "numpy",
+        "regex",
+        "scipy",
+        "unidecode"
+      ],
+      "install_failed": [],
+      "task_packages": [],
+      "installed_package_versions": {
+        "cffi": "2.1.1",
+        "cryptography": "50.0.2",
+        "numpy": "2.5.4",
+        "pip": "25.0.1",
+        "pycparser": "3.12",
+        "regex": "2026.9.29",
+        "scipy": "1.18.1",
+        "unidecode": "1.4.0"
+      },
+      "package_imports": {
+        "cryptography": [
+          "cryptography"
+        ],
+        "numpy": [
+          "numpy"
+        ],
+        "regex": [
+          "regex"
+        ],
+        "scipy": [
+          "scipy"
+        ],
+        "unidecode": [
+          "unidecode"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-ccfk5_sq/libreusebench_eval_2026-11-06T12:47:38.506293.json"
+  }
+}
