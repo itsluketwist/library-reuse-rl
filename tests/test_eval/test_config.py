@@ -21,13 +21,13 @@ def test_every_decoding_profile_declares_its_thinking_mode() -> None:
     assert all(isinstance(p.get("enable_thinking"), bool) for p in profiles.values())
 
 
-def test_training_uses_eight_epochs_and_sixteen_rollouts() -> None:
-    """The main recipe retains experiment 01's epoch and rollout counts (8 epochs, as run
-    8672 was still improving at epoch 6, and 16 rollouts, for more library contrast per
-    group), with 32 prompts per optimizer step across the 4 gpus."""
+def test_training_uses_four_epochs_and_sixteen_rollouts() -> None:
+    """The final runs' recipe: 4 epochs (the 8-epoch runs peaked at epochs 2-3, and every
+    final run shares one learning-rate schedule) and 16 rollouts, for more library contrast
+    per group, with 32 prompts per optimizer step across the 4 gpus."""
     training = load_full_yaml("config/training.yaml")
 
-    assert training["num_train_epochs"] == 8
+    assert training["num_train_epochs"] == 4
     assert training["num_generations"] == 16
     completions_per_step = (
         training["per_device_train_batch_size"]

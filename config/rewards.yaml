@@ -36,6 +36,13 @@ product_choice:
 # rollouts, so only the ratios between weights matter, not the maximum. the unsuffixed
 # profile is each reward's main run. every profile lists all six components, so a
 # zero-weighted one is still logged (eg. how often import-only runs use what they import)
+#
+# the shaping ablations ask whether library credit alone keeps answers well formed. format
+# and syntax failures were rare after epoch 1 (2-9% of rollouts), so little difference is
+# expected. lu-target-half (below) gives half credit for a library outside the target
+# list. the import / use split isn't ablated: a rollout that imports a library almost always uses
+# it (unused imports stayed around 1% in every main run), so moving weight between the two
+# barely changes any rollout's reward
 
 # the iteration 01/02 reward (runs 4796, e650, 8672), kept for their records - the same
 # weights as lu-usage
@@ -118,3 +125,14 @@ lu-target-s0:
   external_lib_used: 0
   target_lib_imported: 0.5
   target_lib_used: 1.0
+
+# halfway between usage and target: the average of their weights. a target library earns
+# the full library credit (1.5), any other library half of it (0.75), where usage pays both
+# the same and target pays the other library nothing. shaping as in the main runs
+lu-target-half:
+  correct_format: 0.25
+  passes_syntax_check: 0.25
+  external_lib_imported: 0.25
+  external_lib_used: 0.5
+  target_lib_imported: 0.25
+  target_lib_used: 0.5

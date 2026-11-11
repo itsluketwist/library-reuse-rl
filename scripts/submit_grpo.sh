@@ -33,22 +33,23 @@ models=(
 # avoids silently applying a reward or a python-specific system prompt to the wrong task. the
 # learning rate is optional - leave it off (e.g. "...|lu-v1|base") to use the recipe's.
 #
-# experiment 01 (qwen3-8b): the import, usage and target rewards, each at three shaping
-# weights (see config/rewards.yaml). the pilot run goes first and is checked end to end,
-# then the other two main runs, then the six ablations
+# the final runs (qwen3-8b, 4 epochs - see num_train_epochs in the recipe): the three main
+# rewards again, since the 8-epoch runs (cc26, 4474, 1f71) had a different learning-rate
+# schedule, and each reward at its two other shaping weights (see config/rewards.yaml)
 training_jobs=(
-    # submitted 2026-10-30 (runs cc26 and 4474) - left commented so they aren't run twice
-    # "data/train/library_usage|lu-usage|base|3e-6"
-    # "data/train/library_usage|lu-import|base|3e-6"
-    # the third main run
+    # the main runs
+    "data/train/library_usage|lu-import|base|3e-6"
+    "data/train/library_usage|lu-usage|base|3e-6"
     "data/train/library_usage|lu-target|base|3e-6"
-    # wave 2: the shaping-weight ablations (set eval_epochs="final" below)
-    # "data/train/library_usage|lu-import-s25|base|3e-6"
-    # "data/train/library_usage|lu-import-s0|base|3e-6"
-    # "data/train/library_usage|lu-usage-s50|base|3e-6"
-    # "data/train/library_usage|lu-usage-s0|base|3e-6"
-    # "data/train/library_usage|lu-target-s50|base|3e-6"
-    # "data/train/library_usage|lu-target-s0|base|3e-6"
+    # the shaping-weight ablations
+    "data/train/library_usage|lu-import-s25|base|3e-6"
+    "data/train/library_usage|lu-import-s0|base|3e-6"
+    "data/train/library_usage|lu-usage-s50|base|3e-6"
+    "data/train/library_usage|lu-usage-s0|base|3e-6"
+    "data/train/library_usage|lu-target-s50|base|3e-6"
+    "data/train/library_usage|lu-target-s0|base|3e-6"
+    # half credit for a library outside the target list
+    "data/train/library_usage|lu-target-half|base|3e-6"
 )
 
 # the eval datasets (config/eval_datasets.yaml) each epoch checkpoint is scored on, always with
@@ -65,8 +66,7 @@ eval_datasets=(
     "livecodebench"
 )
 
-# which epoch checkpoints get those eval jobs: "all", or "final" for just the last epoch -
-# enough for the ablations, whose training curves come from the split eval instead
+# which epoch checkpoints get those eval jobs: "all", or "final" for just the last epoch
 eval_epochs="all"
 
 # grpo training recipe - hyperparameters, including the decoding settings used to

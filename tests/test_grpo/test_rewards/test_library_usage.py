@@ -199,3 +199,21 @@ def test_main_profiles_score_each_kind_of_response(
     }
 
     assert scores == pytest.approx(expected)
+
+
+@pytest.mark.parametrize("case", list(_PROFILE_CASES))
+def test_half_target_profile_sits_between_usage_and_target(case: str):
+    """lu-target-half pays every kind of response the average of lu-usage and lu-target."""
+    row = {"local_modules": [], "target_libs": ["numpy"]}
+
+    scores = {
+        profile: LibraryUsageReward(load_reward_profile(profile)).score(
+            _completion(_PROFILE_CASES[case]),
+            row,
+        )
+        for profile in ["lu-usage", "lu-target", "lu-target-half"]
+    }
+
+    assert scores["lu-target-half"] == pytest.approx(
+        (scores["lu-usage"] + scores["lu-target"]) / 2
+    )

@@ -7,7 +7,9 @@
 
 # libraries_requirements_file: setup/requirements/v1.txt  # libraries listed in the system prompt, see src/prompts.py
 
-num_train_epochs: 8
+# every final run shares this length, and so one learning-rate schedule. the 8-epoch
+# runs peaked at epochs 2-3; the final epoch is the one reported
+num_train_epochs: 4
 
 # rollouts sampled per prompt - the group grpo scores against each other. 16 rather than 8
 # leaves fewer groups where every rollout makes the same library choice (and so teaches
