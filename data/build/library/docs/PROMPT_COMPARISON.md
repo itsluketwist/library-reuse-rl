@@ -1,6 +1,10 @@
-# Prompt generation comparison: 3 sample tasks, 7 versions each
+# Prompt generation comparison: 3 sample tasks, 7 wordings each
 
-Generated via `data.build.library.augment`'s generators directly (one call per task, picked from 3 different categories so the comparison isn't dominated by one domain). Each row below is exactly what `build.py` would emit for that (mode, source) pair - no before/after, this is the current state of `augment.py`'s prompts. The `function` rows (dataset v4) are the three staged requests from `function_stage_prompts.json`, plainest first; they replace v3's four `script` rows. The project-framed `repo` row, a fixed template, is not shown.
+Every sample below is copied word for word from the built dataset (`data/train/library_usage/`,
+v5): for 3 tasks from 3 different categories, each row `build.py` emits for the task, except the
+project-framed `repo` row (a fixed template). The `function` rows (dataset v4) are the three
+staged requests from `function_stage_prompts.json`, plainest first; they replace v3's four
+`script` rows. After a rebuild, copy the rows again so the samples stay the dataset's own.
 
 ## Task: `Cluster a set of points by density given a radius and a minimum group size.`  _(category: `clustering`)_
 
@@ -163,19 +167,19 @@ class UsageRecord:
 
 ```
 
-Add a function to this codebase that groups a set of 2D points into clusters based on density, given a radius and a minimum number of points per group, and put it alongside our existing models.
+Add a function to this codebase that groups a list of points into clusters based on density, given a radius and minimum group size, so we can use it when processing uploaded job data.
 ````
 
 ### mode=`simple` source=`template`
 
 ````
-Write a short Python program to cluster a set of points by density given a radius and a minimum group size.
+How do I cluster a set of points by density given a radius and a minimum group size in Python?
 ````
 
 ### mode=`simple` source=`llm`
 
 ````
-Can you write me a function that groups a bunch of 2D points into clusters based on how close they are to each other, where I specify a distance radius and the minimum number of points needed to count as a cluster? Points that don't fit into any dense group should just be marked as noise. Something like cluster_points(points, radius, min_points) returning a list of cluster labels would be great.
+Can you write a function that groups a list of 2D points into clusters based on how close they are to each other, where a group only counts if it has at least a certain number of points within a given radius? I'd like to pass in the points, the radius, and the minimum group size, and get back a list of cluster labels for each point.
 ````
 
 ### mode=`function` source=`llm` stage=`name`
@@ -256,7 +260,9 @@ toolbox/cli.py
 toolbox/tasks.py
 toolbox/utils.py
 
-We need a new helper in this project: count the most common words in a document, ignoring stop words. Write it in Python.
+Task: Count the most common words in a document, ignoring stop words.
+
+Implement this in Python.
 ````
 
 ### mode=`repo` source=`llm` context=`pytoolbox`
@@ -306,19 +312,19 @@ def summarise_file(
 
 ```
 
-Add a new subcommand to this project that reads a document and reports the most frequent words, filtering out common stop words before counting.
+Add a new subcommand to this project that reads a text file and prints the most frequent words, filtering out common stop words like "the" and "and".
 ````
 
 ### mode=`simple` source=`template`
 
 ````
-How do I count the most common words in a document, ignoring stop words in Python?
+Write a short Python program to count the most common words in a document, ignoring stop words.
 ````
 
 ### mode=`simple` source=`llm`
 
 ````
-Can you write a function called top_words that takes in a string of text and returns a list of the most frequent words, but skips common stop words like 'the', 'and', 'is'? I'd like it to return the top N words along with their counts.
+Can you write a function called top_words that takes a chunk of text and a count n, strips out common stop words like 'the', 'and', 'is', and returns the n most frequent remaining words along with how many times each appears?
 ````
 
 ### mode=`function` source=`llm` stage=`name`
@@ -399,9 +405,7 @@ toolbox/cli.py
 toolbox/tasks.py
 toolbox/utils.py
 
-Task: Sort a list of filenames like file2, file10 in natural order.
-
-Implement this in Python.
+We need a new helper in this project: sort a list of filenames like file2, file10 in natural order. Write it in Python.
 ````
 
 ### mode=`repo` source=`llm` context=`pytoolbox`
@@ -444,7 +448,7 @@ def print_rows(
 
 ```
 
-Add a helper to this codebase that sorts filenames in natural order, so file2 comes before file10 instead of after, and wire it into the relevant task.
+Add a helper to this codebase that sorts filenames in natural order, so file2 comes before file10 instead of alphabetical order putting file10 first.
 ````
 
 ### mode=`simple` source=`template`
@@ -456,7 +460,7 @@ How do I sort a list of filenames like file2, file10 in natural order in Python?
 ### mode=`simple` source=`llm`
 
 ````
-Can you write a function that sorts a list of filenames so that file2 comes before file10, instead of the usual string ordering putting file10 first?
+Can you write a function that sorts a list of filenames so file2 comes before file10 instead of alphabetical order putting file10 first?
 ````
 
 ### mode=`function` source=`llm` stage=`name`
@@ -492,14 +496,16 @@ Write a function `sort_filenames_naturally(filenames)` that takes a list of file
   now automatically retries without asking for a signature at all, up to 3 more times - see the
   `uuid-slugs` finding below for why that fallback exists.
 - **`script`** (dataset v3): one exercise per task in LibReuseBench's template, at three levels of
-  detail (`outline` / `precise` / `benchmark`). The generator mirrors the benchmark's own rewrite
-  prompt: it first writes a private solution that uses a library, then describes that program's
-  behaviour without naming the library - so a library's natural output is a correct answer, but
-  the task can be solved either way. Style examples are dev-split statements (`LRB/D007`,
-  `LRB/D009`), never test. The v2 wording (one statement against `LRB/T050`) pre-digested inputs
+  detail (`outline` / `precise` / `benchmark`). The generator mirrors the rewrite prompt of the
+  benchmark's archived stdin/stdout design (`benchmark/v1/`): it first writes a private solution
+  that uses a library, then describes that program's behaviour without naming the library - so a
+  library's natural output is a correct answer, but the task can be solved either way. Style
+  examples are two of that design's dev-split statements (`LRB/D007` and `LRB/D009` in
+  `benchmark/v1/data/dev.jsonl`), never test. The v2 wording (one statement against that design's
+  `LRB/T050`) pre-digested inputs
   until no library helped, and gave almost no library-use signal. Since dataset v4 the script
   rows are no longer in the dataset, so they are no longer shown above.
-- **`function`** (dataset v4): one function per task in the style of LibReuseBench's new
+- **`function`** (dataset v4): one function per task in the style of LibReuseBench's
   function tasks, at three levels of detail (`name` / `signature` / `example`), taken from
   `function_stage_prompts.json`. The request explains what makes a wording *contested* (as
   reasonable to write by hand as with a library) and why each rule keeps the choice open. Like

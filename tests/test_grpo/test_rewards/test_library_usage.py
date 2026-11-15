@@ -174,12 +174,41 @@ _PROFILE_CASES = {
 @pytest.mark.parametrize(
     ("case", "expected"),
     [
-        ("hand-written", {"lu-import": 1.0, "lu-usage": 0.5, "lu-target": 0.5}),
-        ("unused target import", {"lu-import": 2.0, "lu-usage": 1.0, "lu-target": 1.0}),
-        ("uses another library", {"lu-import": 2.0, "lu-usage": 2.0, "lu-target": 0.5}),
+        (
+            "hand-written",
+            {
+                "lu-import": 1.0,
+                "lu-import-matched": 0.5,
+                "lu-usage": 0.5,
+                "lu-target": 0.5,
+            },
+        ),
+        (
+            "unused target import",
+            {
+                "lu-import": 2.0,
+                "lu-import-matched": 2.0,
+                "lu-usage": 1.0,
+                "lu-target": 1.0,
+            },
+        ),
+        (
+            "uses another library",
+            {
+                "lu-import": 2.0,
+                "lu-import-matched": 2.0,
+                "lu-usage": 2.0,
+                "lu-target": 0.5,
+            },
+        ),
         (
             "uses a target library",
-            {"lu-import": 2.0, "lu-usage": 2.0, "lu-target": 2.0},
+            {
+                "lu-import": 2.0,
+                "lu-import-matched": 2.0,
+                "lu-usage": 2.0,
+                "lu-target": 2.0,
+            },
         ),
     ],
 )

@@ -37,19 +37,21 @@ models=(
 # rewards again, since the 8-epoch runs (cc26, 4474, 1f71) had a different learning-rate
 # schedule, and each reward at its two other shaping weights (see config/rewards.yaml)
 training_jobs=(
-    # the main runs
-    "data/train/library_usage|lu-import|base|3e-6"
-    "data/train/library_usage|lu-usage|base|3e-6"
-    "data/train/library_usage|lu-target|base|3e-6"
-    # the shaping-weight ablations
-    "data/train/library_usage|lu-import-s25|base|3e-6"
-    "data/train/library_usage|lu-import-s0|base|3e-6"
-    "data/train/library_usage|lu-usage-s50|base|3e-6"
-    "data/train/library_usage|lu-usage-s0|base|3e-6"
-    "data/train/library_usage|lu-target-s50|base|3e-6"
-    "data/train/library_usage|lu-target-s0|base|3e-6"
-    # half credit for a library outside the target list
-    "data/train/library_usage|lu-target-half|base|3e-6"
+    # import with the same shaping and library credit as usage and target
+    "data/train/library_usage|lu-import-matched|base|3e-6"
+    # done (run ids in brackets) - the main runs
+    # "data/train/library_usage|lu-import|base|3e-6"  # (584b)
+    # "data/train/library_usage|lu-usage|base|3e-6"  # (3079)
+    # "data/train/library_usage|lu-target|base|3e-6"  # (f57b)
+    # done - the shaping-weight ablations
+    # "data/train/library_usage|lu-import-s25|base|3e-6"  # (4db4)
+    # "data/train/library_usage|lu-import-s0|base|3e-6"  # (9185)
+    # "data/train/library_usage|lu-usage-s50|base|3e-6"  # (caf3)
+    # "data/train/library_usage|lu-usage-s0|base|3e-6"  # (a342)
+    # "data/train/library_usage|lu-target-s50|base|3e-6"  # (255a)
+    # "data/train/library_usage|lu-target-s0|base|3e-6"  # (6626)
+    # done - half credit for a library outside the target list
+    # "data/train/library_usage|lu-target-half|base|3e-6"  # (8a38)
 )
 
 # the eval datasets (config/eval_datasets.yaml) each epoch checkpoint is scored on, always with

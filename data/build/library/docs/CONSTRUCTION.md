@@ -15,11 +15,13 @@ one offline LLM pass - no scraping, no seed dataset.
 
 ## The four inputs
 
-- **`taxonomy.yaml`** - 66 categories. Each has `seed_libraries` (the libraries that count as
-  reuse), a `diy_temptation` (what hand-rolling it looks like), and `repo_hint` (which of the two
-  repos below its tasks get framed in). 26 categories are `benchmark_aligned: true` - their
-  skills were chosen by clustering the LibReuseBench eval benchmark's own test problems, so
-  training deliberately overlaps what that benchmark measures.
+- **`taxonomy.yaml`** - 66 categories. Each has `seed_libraries` (the task's target libraries,
+  which become each row's `target_libs`), a `diy_temptation` (what hand-rolling it looks like),
+  and `repo_hint` (which of the two repos below its tasks get framed in). 26 categories are
+  `benchmark_aligned: true` - their skills were chosen by clustering the 129 test problems of
+  LibReuseBench's archived stdin/stdout design (`benchmark/v1/`) by the library call doing the
+  real work, so training deliberately overlaps what that design measured. How much they overlap
+  the released benchmark, built later from BigCodeBench, has not been measured.
 - **`tasks.yaml`** - 194 concrete tasks, a `{number: text}` mapping per category (e.g.
   `datetime: {1: "Parse an ISO-8601 timestamp...", 2: ...}`). A task's `seed_task` id is
   `"<category_id>.<number>"`, e.g. `"datetime.1"` - the thing every wording of that task traces
@@ -49,14 +51,15 @@ Alongside each mode's template, claude-generated wordings are cached offline - o
   format:` sections, and exactly one `Example:`), written at three levels of detail: `outline`
   (the behaviour and the formats, briefly), `precise` (plus output rules such as rounding, and how
   to treat empty or invalid input) and `benchmark` (as long and formal as the benchmark). Each row
-  records its stage as `script_stage`. The generation prompt deliberately mirrors the one the
-  benchmark itself was built with (`benchmark/pipeline/03_rewrite.py`): the model first writes a
+  records its stage as `script_stage`. The generation prompt deliberately mirrors the one that
+  design was built with (`benchmark/v1/pipeline/03_rewrite.py`): the model first writes a
   short private solution that uses a suitable third-party library (kept in the cache as
   `solution`), then describes that program's behaviour - what it reads and prints - without naming
   the library, describing an algorithm, or defining standard concepts (it names them instead:
   "EAN-13", "population variance"). So, as in the benchmark, a library's natural output is a
   correct answer, but the task can be solved with or without one, leaving the model free to
-  choose. Two dev-split benchmark statements (never test) are style examples. A task that can't be
+  choose. Two statements from that design's dev split (`benchmark/v1/data/dev.jsonl`, never
+  test) are style examples. A task that can't be
   a deterministic text-in, text-out program (binary output, network, randomness, spawning
   processes, ...) is marked `fits_stdio: false` and keeps only its template script row. Every
   statement passes a deterministic check (`check_script_stage`: template shape, no library names

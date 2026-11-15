@@ -77,6 +77,17 @@ lu-import-s0:
   external_lib_used: 0
   target_lib_imported: 0
   target_lib_used: 0
+# import with the same shaping and library credit as usage and target (0.25 / 0.25 / 1.5,
+# max 2.0), so the three rewards differ only in which library use earns the credit.
+# lu-import gives shaping twice the share of the library credit, and the 4-epoch
+# ablations showed that share moves library use by about 5 points
+lu-import-matched:
+  correct_format: 0.25
+  passes_syntax_check: 0.25
+  external_lib_imported: 1.5
+  external_lib_used: 0
+  target_lib_imported: 0
+  target_lib_used: 0
 
 # usage: importing a library earns part of the credit, actually using it the rest - the
 # main run first, then its two shaping ablations

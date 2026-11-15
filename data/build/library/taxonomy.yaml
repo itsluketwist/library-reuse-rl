@@ -6,9 +6,12 @@
 # remaining used import is genuine reuse). seed_libraries are pip *import* names (e.g. PIL,
 # not Pillow) - they become each row's target_libs, which the target reward components count.
 #
-# benchmark_aligned marks the categories whose skills LibReuseBench actually measures (see
-# EXPANSION.md for how they were derived) - these categories were given more/deeper tasks in
-# tasks.yaml so the training mix leans towards the benchmark's domains. absent means false.
+# benchmark_aligned marks the categories whose skills the 129 test problems of LibReuseBench's
+# archived stdin/stdout design (benchmark/v1/) measured, found by clustering those problems by
+# the library call doing the real work. the derivation was in EXPANSION.md, since deleted (read
+# it with `git show c362305^:data/build/library/EXPANSION.md`). these categories were given
+# more/deeper tasks in tasks.yaml so the training mix leans towards the benchmark's domains.
+# absent means false.
 #
 # repo_hint names which vendored python repo's context_id (see data/build/contexts.py) best
 # fits this category's tasks - build.py sets all of a task's repo-mode rows in that one repo,

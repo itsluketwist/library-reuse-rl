@@ -1,9 +1,10 @@
 # library_usage: version history
 
-Every version uses the same reward: a response earns library credit when its code uses a library
-outside the standard library and the project's own modules. What changes between versions is
-which tasks are asked, and how they are worded (v5 changes only each task's list of target
-libraries). Every row records its `dataset_version`.
+The runs on v2-v4 all used one reward (`lu-v1`): a response earns library credit when its code
+uses a library outside the standard library and the project's own modules. What changes between
+those versions is which tasks are asked, and how they are worded. v5 changes only each task's
+list of target libraries, which the target reward of its runs counts. Every row records its
+`dataset_version`.
 
 | Version | Date | Wordings per task | Rows (train / val / test) | Run trained on it |
 | --- | --- | --- | --- | --- |
@@ -11,11 +12,13 @@ libraries). Every row records its `dataset_version`.
 | v2 | 2026-09-14 | `repo`, `simple`, `script` (6) | 916 / 101 / 108 | 4796 (and 7405) |
 | v3 | 2026-10-08 | `repo` ×3, `simple` ×2, `script` ×4 (9) | 1,362 / 166 / 167 | e650 |
 | v4 | 2026-10-17 | `repo` ×3, `simple` ×2, `function` ×3 (8) | 1,209 / 135 / 145 | 8672 |
-| v5 | 2026-10-24 | as v4 | 1,209 / 135 / 145 | experiment 01 |
+| v5 | 2026-10-24 | as v4 | 1,209 / 135 / 145 | cc26, 4474, 1f71 |
 
 The runs below are all qwen3-8b, trained with the lu-v1 reward, the base prompt and lr 3e-6.
-Each was scored on the new function-task benchmark (LibReuseBench v2, `libreusebench_v2_full`:
-233 tasks, before manual review) with the same settings:
+Each was scored with the same settings on the provisional build of LibReuseBench
+(`libreusebench_v2_full`: 233 tasks, before human review). None of them was scored on the final
+benchmark (216 test tasks), and these numbers can't be compared with its numbers. The v5 runs
+were scored on the final benchmark: see [v5](#v5-audited-target-libraries).
 
 | Model | Uses a library | … on high-value tasks | pass@1 |
 | --- | --- | --- | --- |
@@ -33,7 +36,8 @@ Each was scored on the new function-task benchmark (LibReuseBench v2, `libreuseb
 ## v2: three modes, two sources
 
 - 194 tasks in 66 categories. 26 of the categories are "benchmark-aligned": chosen to cover
-  what LibReuseBench measures.
+  what LibReuseBench measured at the time (its 129 stdin/stdout test problems, now archived in
+  `benchmark/v1/`, clustered by the library call doing the real work).
 - Each task was asked in 3 modes: inside a project (`repo`), as a bare request (`simple`), and as
   a stdin/stdout program (`script`), the format of the benchmark at the time. Each mode had a
   template row and a claude-written row.
@@ -70,8 +74,8 @@ Each was scored on the new function-task benchmark (LibReuseBench v2, `libreuseb
   first two levels.
 - Repo and simple rows, and the test tasks, are the same as in v3. The script wordings are kept,
   but only the script pilot uses them.
-- **Result (run 8672, 6 epochs):** the best benchmark library use of any run: 34.2%, against e650's
-  27.6%. Most of the gain is on high-value tasks, where a library saves the most code. pass@1 did
+- **Result (run 8672, 6 epochs):** the best library use on the provisional benchmark of any v2-v4
+  run: 34.2%, against e650's 27.6%. Most of the gain is on high-value tasks, where a library saves the most code. pass@1 did
   not change. Training was clean: about 2% of rollouts were cut off by the end. On its own test
   split, the `example` rows barely moved (11% to 16%) while `name` rows rose from 38% to 53%: the
   more a request spells out, the less often a library is used.
@@ -105,3 +109,10 @@ Each was scored on the new function-task benchmark (LibReuseBench v2, `libreuseb
     driver, not a SQL builder), and bs4 for stripping rendered markdown.
 - Rows now list 0-8 more libraries each (most 1-4). Only the target reward and the target
   rates see the change; every v4 library is still listed, so the other rewards are unaffected.
+- **Result (runs 4474, cc26 and 1f71: the import, usage and target rewards, 8 epochs; see
+  `output/03/README.md`):** on the final LibReuseBench test split, library use rose from 15.7%
+  to a peak of about 37.5% under every reward (import at epoch 2, usage at 3, target at 3-4),
+  then fell to 26-29% by epoch 8. On this dataset's held-out splits it kept rising, to 85-92% by
+  the end, so the later epochs fit the training prompts rather than the benchmark; the next runs
+  use 4 epochs. Only the target reward kept the choice on the target lists: at the end, 86% of
+  val answers used a target library, against 77% for usage and 52% for import.

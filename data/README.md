@@ -83,7 +83,7 @@ python data/build/download_eval.py          # -> data/eval/
 ## Training and eval
 
 ```
-run_grpo -m <model> -d data/train/library_usage  -rp lu-v1
+run_grpo -m <model> -d data/train/library_usage  -rp lu-usage
 run_grpo -m <model> -d data/train/product_choice -rp product_choice
 run_eval -m <model> -d library_usage,product_choice
 ```
