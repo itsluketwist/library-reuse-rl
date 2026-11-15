@@ -1,0 +1,30 @@
+\begin{table*}[t]
+\centering
+
+\caption{
+\textbf{Effect of \lure{} training on \qwlil.}
+Results use the selected preliminary checkpoints for each reward.
+Training substantially increases library reuse while preserving correctness on \libreusebench, its control split, and general coding benchmarks.
+}
+
+\label{tab:main-results}
+
+    \begin{adjustbox}{width=\textwidth}
+    \bgroup
+    \def\arraystretch{1.4}
+
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+ & \multicolumn{5}{c}{\libreusebench{} test} & \multicolumn{2}{c}{Control} & \multicolumn{2}{c}{Regression \textit{pass@1}} \\
+\cmidrule(lr){2-6} \cmidrule(lr){7-8} \cmidrule(lr){9-10}
+Model & Library use & High-value reuse & \textit{pass@1} & Lines saved & Tokens & Library use & \textit{pass@1} & \humaneval & \livecodebench \\
+\midrule
+\qwlil & 15.7\% & 39.6\% & 75.5\% & 0.7 & 9,158 & 0.0\% & 80.5\% & 89.6\% & 66.9\% \\
++ Import reward (epoch 2) & 37.3\% & 71.5\% & 79.2\% & 4.0 & 6,814 & 0.0\% & 81.9\% & 88.7\% & 69.2\% \\
++ Usage reward (epoch 3) & 37.5\% & 71.9\% & 75.0\% & 3.8 & 7,229 & 0.5\% & 79.0\% & 90.1\% & 69.7\% \\
++ Target reward (epoch 3) & 37.5\% & 70.8\% & 78.0\% & 4.1 & 7,138 & 0.2\% & 82.1\% & 88.7\% & 70.3\% \\
+\bottomrule
+\end{tabular}
+\egroup
+    \end{adjustbox}
+\end{table*}

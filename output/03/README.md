@@ -7,6 +7,8 @@ run's training metrics are in `{run_id}/grpo/` and each epoch's evals in `{run_i
   `notebooks/01_grpo_training_summary.ipynb` (set `RUN_ID`).
 - **Prompt comparison figures:** `prompt_engineering_summary.png` and
   `prompt_engineering_details.png`, made by `notebooks/05_prompt_engineering_comparison.ipynb`.
+- **Paper figures:** figures 1-2 (PDF and PNG) and table 1 (LaTeX) in `paper/`, made by
+  `notebooks/06_paper_figures.ipynb`.
 - **Base model results:** these stay in `output/baselines/qwen3-8b/`, because later iterations use
   them too. A rerun that records timings will replace those files. The numbers below are from the
   files as they stood in the commit that created this folder.
@@ -177,7 +179,11 @@ one on the task's target list.
   fit the training prompts, not the benchmark. This is why the next runs use 4 epochs.
 - **Late epochs start using libraries where none are needed.** Up to epoch 3, control library use
   stays at 0.5% or less. By epoch 8 it is 2.6% (import), 4.3% (usage) and 6.0% (target). For
-  usage and target, control pass@1 also falls, from about 80% to 71-75%.
+  usage and target, control pass@1 also falls, from about 80% to 71-75%. Not all of it is real: some late answers
+  add an example block that imports the answer's own function as a module (e.g. `import
+  mime_types_for_matching_files`), which counts as a library. That is 2.4 of import's 2.6% at
+  epoch 8, and 0.7-1.4% for usage from epoch 4. The target reward never does it, since a made-up
+  module can't be on a target list. On the test split it stays at or below 0.3%.
 - **The rewards differ in which libraries they teach, not how often.** By the end, every run uses
   a library in about 90% of held-out answers. But only the target reward keeps the choice on the
   target list: 86% of val answers use a target library, against 77% for usage and 52% for import.
