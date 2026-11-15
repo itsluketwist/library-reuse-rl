@@ -1,0 +1,83 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-6626/checkpoint-111",
+    "provider": "vllm",
+    "dataset": "humaneval_plus",
+    "dataset_file": "data/eval/humaneval_plus.jsonl",
+    "dataset_version": null,
+    "evaluator": "humaneval",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 694.0,
+      "evaluation": 356.3,
+      "model_load": 71.1
+    }
+  },
+  "analysis": {
+    "task": "humaneval",
+    "n_total": 820,
+    "n_tasks": 164,
+    "n_passed": 715,
+    "pass@1": 0.8719512195121951,
+    "pass@5": 0.9390243902439024,
+    "n_no_code": 7,
+    "n_overflow": 7,
+    "using_lib_rate": 0.0024390243902439024,
+    "avg_extlibs": 0.0024390243902439024,
+    "library_counts": {
+      "pytest": 1,
+      "numpy": 1
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 812,
+        "avg_lloc": 9.860837438423646,
+        "avg_maintainability_index": 80.49773460996926
+      },
+      "passed": {
+        "n_measured": 715,
+        "avg_lloc": 9.773426573426573,
+        "avg_maintainability_index": 80.04090580482442
+      }
+    },
+    "environment": {
+      "installed_packages": [
+        "numpy",
+        "pytest",
+        "roman",
+        "sympy"
+      ],
+      "install_failed": [],
+      "distributions": {
+        "iniconfig": "2.3.1",
+        "mpmath": "1.3.0",
+        "numpy": "2.5.4",
+        "packaging": "26.3",
+        "pip": "25.0.1",
+        "pluggy": "1.7.0",
+        "pygments": "2.21.0",
+        "pytest": "9.2.0",
+        "roman": "5.2",
+        "sympy": "1.14.0"
+      }
+    }
+  }
+}

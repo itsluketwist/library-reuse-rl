@@ -1,0 +1,479 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-9185/checkpoint-111",
+    "provider": "vllm",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 545.6,
+      "evaluation": 197.2,
+      "model_load": 71.0
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 0.7523809523809524,
+    "pass@k": 0.9761904761904762,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.11904761904761904,
+          "avg_extlibs": 0.11904761904761904,
+          "library_counts": {
+            "pytest": 4,
+            "numpy": 2,
+            "jsonschema": 1,
+            "pytz": 1,
+            "cryptography": 1,
+            "pydantic": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.023809523809523808,
+          "avg_extlibs": 0.023809523809523808,
+          "library_counts": {
+            "pytest": 4,
+            "numpy": 2,
+            "jsonschema": 1,
+            "pytz": 1,
+            "cryptography": 1,
+            "pydantic": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.08333333333333333,
+          "avg_extlibs": 0.08333333333333333,
+          "library_counts": {
+            "numpy": 2,
+            "jsonschema": 1,
+            "pytz": 1,
+            "cryptography": 1,
+            "pydantic": 1,
+            "pytest": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.016666666666666666,
+          "avg_extlibs": 0.016666666666666666,
+          "library_counts": {
+            "numpy": 2,
+            "jsonschema": 1,
+            "pytz": 1,
+            "cryptography": 1,
+            "pydantic": 1,
+            "pytest": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 413,
+        "avg_lloc": 13.58595641646489,
+        "avg_maintainability_index": 89.05399465300948
+      },
+      "passed": {
+        "n_measured": 316,
+        "avg_lloc": 13.268987341772151,
+        "avg_maintainability_index": 90.69795518508198
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-42ylc1kf",
+      "source": "response_imports",
+      "installed_packages": [
+        "argon2-cffi",
+        "bcrypt",
+        "beautifulsoup4",
+        "click",
+        "cryptography",
+        "csvkit",
+        "email-validator",
+        "fastapi",
+        "filetype",
+        "idna",
+        "ijson",
+        "ipy",
+        "json5",
+        "jsonlines",
+        "jsonpath-ng",
+        "jsonschema",
+        "lxml",
+        "netaddr",
+        "nltk",
+        "none",
+        "numpy",
+        "orjson",
+        "pandas",
+        "passlib",
+        "py7zr",
+        "pycryptodome",
+        "pydantic",
+        "pydiff",
+        "pytest",
+        "python-csv",
+        "python-dateutil",
+        "python-magic",
+        "pytz",
+        "pyyaml",
+        "regex",
+        "requests",
+        "spacy",
+        "tabulate",
+        "ujson",
+        "unidecode",
+        "uvicorn",
+        "xmltodict",
+        "xxhash",
+        "zstandard"
+      ],
+      "install_failed": [
+        "argon2-cpp",
+        "pyhash",
+        "pyhmac",
+        "python-magic-bin"
+      ],
+      "task_packages": [],
+      "installed_package_versions": {
+        "agate": "1.14.2",
+        "agate-dbf": "0.2.4",
+        "agate-excel": "0.4.3",
+        "agate-sql": "0.7.3",
+        "alabaster": "0.7.16",
+        "annotated-doc": "0.0.6",
+        "annotated-types": "0.8.0",
+        "anyio": "4.16.0",
+        "argon2-cffi": "25.1.0",
+        "argon2-cffi-bindings": "26.2.0",
+        "attrs": "26.1.0",
+        "babel": "2.18.0",
+        "backports.zstd": "1.8.0",
+        "bcrypt": "5.0.0",
+        "beautifulsoup4": "4.15.0",
+        "blis": "1.3.4",
+        "brotli": "1.2.1",
+        "catalogue": "2.0.10",
+        "certifi": "2026.10.23",
+        "cffi": "2.1.1",
+        "charset-normalizer": "3.5.2",
+        "click": "8.5.1",
+        "cloudpathlib": "0.26.0",
+        "cloudpickle": "3.1.2",
+        "confection": "1.3.4",
+        "contourpy": "1.4.0",
+        "cryptography": "50.0.2",
+        "csvkit": "2.2.0",
+        "cycler": "0.12.1",
+        "cymem": "2.0.16",
+        "dbfread": "2.0.7",
+        "defusedxml": "0.7.1",
+        "demjson3": "3.0.6",
+        "dnspython": "2.9.2",
+        "docutils": "0.19",
+        "email-validator": "2.3.0",
+        "et-xmlfile": "2.0.0",
+        "fastapi": "0.162.5",
+        "filetype": "1.2.0",
+        "fonttools": "4.68.0",
+        "h11": "0.16.0",
+        "httpcore": "1.0.9",
+        "httpx": "0.28.1",
+        "idna": "3.20",
+        "ijson": "3.6.0",
+        "imagesize": "2.0.1",
+        "inflate64": "1.0.4",
+        "iniconfig": "2.3.1",
+        "ipy": "1.2",
+        "isodate": "0.7.2",
+        "jinja2": "3.1.6",
+        "joblib": "1.6.0",
+        "json5": "0.17.3",
+        "jsonlines": "4.0.0",
+        "jsonpath-ng": "1.16.0",
+        "jsonschema": "4.26.0",
+        "jsonschema-specifications": "2025.9.1",
+        "jtutils": "0.0.8",
+        "kiwisolver": "1.5.1",
+        "leather": "0.4.1",
+        "levenshtein": "0.27.5",
+        "lxml": "6.1.3",
+        "markdown-it-py": "4.3.0",
+        "markupsafe": "3.0.4",
+        "matplotlib": "3.11.2",
+        "mdurl": "0.1.2",
+        "multivolumefile": "0.2.3",
+        "murmurhash": "1.0.16",
+        "netaddr": "1.3.0",
+        "nltk": "3.10.4",
+        "none": "0.1.1",
+        "numpy": "2.5.4",
+        "olefile": "0.47",
+        "openpyxl": "3.1.5",
+        "opentelemetry-api": "1.45.2",
+        "orjson": "3.13.0",
+        "outcome": "1.3.0.post0",
+        "packaging": "26.3",
+        "pandas": "3.1.1",
+        "parsedatetime": "2.6",
+        "passlib": "1.7.4",
+        "pillow": "13.0.0",
+        "pip": "25.0.1",
+        "pluggy": "1.7.0",
+        "preshed": "3.0.15",
+        "psutil": "7.2.2",
+        "py7zr": "1.1.4",
+        "pybcj": "1.0.8",
+        "pycparser": "3.12",
+        "pycryptodome": "4.4.0",
+        "pycryptodomex": "3.24.2",
+        "pydantic": "2.14.3",
+        "pydantic-core": "2.50.4",
+        "pydiff": "0.2",
+        "pygments": "2.21.0",
+        "pyparsing": "3.3.3",
+        "pyppmd": "1.3.1",
+        "pysocks": "1.7.1",
+        "pytest": "9.2.0",
+        "python-csv": "0.0.14",
+        "python-dateutil": "4.0.0",
+        "python-magic": "0.4.27",
+        "python-slugify": "9.1.3",
+        "pytimeparse": "1.1.10",
+        "pytz": "2026.6",
+        "pyyaml": "6.0.3",
+        "rapidfuzz": "3.14.6",
+        "referencing": "0.37.0",
+        "regex": "2026.11.9",
+        "requests": "2.34.2",
+        "rfc3986": "2.0.0",
+        "rich": "15.0.0",
+        "rpds-py": "2026.9.1",
+        "selenium": "4.52.0",
+        "setuptools": "84.2.1",
+        "shellingham": "1.5.4",
+        "smart-open": "9.0.3",
+        "sniffio": "1.3.1",
+        "snowballstemmer": "3.1.1",
+        "sortedcontainers": "2.4.0",
+        "soupsieve": "4.1",
+        "spacy": "3.8.18",
+        "spacy-legacy": "3.0.12",
+        "spacy-loggers": "1.0.5",
+        "sphinx": "5.3.0",
+        "sphinxcontrib-applehelp": "2.0.0",
+        "sphinxcontrib-devhelp": "2.0.0",
+        "sphinxcontrib-htmlhelp": "2.1.0",
+        "sphinxcontrib-jsmath": "2.0.0",
+        "sphinxcontrib-qthelp": "2.0.0",
+        "sphinxcontrib-serializinghtml": "2.0.0",
+        "sphinxcontrib-websupport": "2.0.0",
+        "sqlalchemy": "2.1.8",
+        "srsly": "2.5.6",
+        "starlette": "1.10.0",
+        "tabulate": "0.10.0",
+        "text-unidecode": "1.3",
+        "texttable": "1.7.3",
+        "thinc": "8.3.14",
+        "tqdm": "4.70.1",
+        "trio": "0.35.0",
+        "trio-websocket": "0.12.2",
+        "typer": "0.29.1",
+        "typing-extensions": "4.16.0",
+        "typing-inspection": "0.4.5",
+        "tzdata": "2026.6",
+        "ujson": "6.1.0",
+        "unidecode": "1.4.0",
+        "urllib3": "2.8.0",
+        "uvicorn": "0.54.0",
+        "wasabi": "1.1.3",
+        "weasel": "1.0.1",
+        "websocket-client": "1.9.2",
+        "wrapt": "2.5.2",
+        "wsproto": "1.3.2",
+        "xlrd": "2.0.2",
+        "xmltodict": "1.0.4",
+        "xxhash": "4.1.0",
+        "zstandard": "0.25.0"
+      },
+      "package_imports": {
+        "argon2-cffi": [
+          "argon2-cffi"
+        ],
+        "argon2-cpp": [
+          "argon2-cpp"
+        ],
+        "bcrypt": [
+          "bcrypt"
+        ],
+        "beautifulsoup4": [
+          "beautifulsoup4"
+        ],
+        "click": [
+          "click"
+        ],
+        "cryptography": [
+          "cryptography"
+        ],
+        "csvkit": [
+          "csvkit"
+        ],
+        "email-validator": [
+          "email-validator"
+        ],
+        "fastapi": [
+          "fastapi"
+        ],
+        "filetype": [
+          "filetype"
+        ],
+        "idna": [
+          "idna"
+        ],
+        "ijson": [
+          "ijson"
+        ],
+        "ipy": [
+          "ipy"
+        ],
+        "json5": [
+          "json5"
+        ],
+        "jsonlines": [
+          "jsonlines"
+        ],
+        "jsonpath-ng": [
+          "jsonpath-ng"
+        ],
+        "jsonschema": [
+          "jsonschema"
+        ],
+        "lxml": [
+          "lxml"
+        ],
+        "netaddr": [
+          "netaddr"
+        ],
+        "nltk": [
+          "nltk"
+        ],
+        "none": [
+          "none"
+        ],
+        "numpy": [
+          "numpy"
+        ],
+        "orjson": [
+          "orjson"
+        ],
+        "pandas": [
+          "pandas"
+        ],
+        "passlib": [
+          "passlib"
+        ],
+        "py7zr": [
+          "py7zr"
+        ],
+        "pycryptodome": [
+          "pycryptodome"
+        ],
+        "pydantic": [
+          "pydantic"
+        ],
+        "pydiff": [
+          "pydiff"
+        ],
+        "pyhash": [
+          "pyhash"
+        ],
+        "pyhmac": [
+          "pyhmac"
+        ],
+        "pytest": [
+          "pytest"
+        ],
+        "python-csv": [
+          "python-csv"
+        ],
+        "python-dateutil": [
+          "python-dateutil"
+        ],
+        "python-magic": [
+          "python-magic"
+        ],
+        "python-magic-bin": [
+          "python-magic-bin"
+        ],
+        "pytz": [
+          "pytz"
+        ],
+        "pyyaml": [
+          "pyyaml"
+        ],
+        "regex": [
+          "regex"
+        ],
+        "requests": [
+          "requests"
+        ],
+        "spacy": [
+          "spacy"
+        ],
+        "tabulate": [
+          "tabulate"
+        ],
+        "ujson": [
+          "ujson"
+        ],
+        "unidecode": [
+          "unidecode"
+        ],
+        "uvicorn": [
+          "uvicorn"
+        ],
+        "xmltodict": [
+          "xmltodict"
+        ],
+        "xxhash": [
+          "xxhash"
+        ],
+        "zstandard": [
+          "zstandard"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-8p9g0slm/libreusebench_eval_2026-11-13T11:57:25.366688.json"
+  }
+}
