@@ -1,0 +1,69 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-3079/checkpoint-37",
+    "provider": "vllm",
+    "dataset": "humaneval_plus",
+    "dataset_file": "data/eval/humaneval_plus.jsonl",
+    "dataset_version": null,
+    "evaluator": "humaneval",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 533.3,
+      "evaluation": 292.8,
+      "model_load": 69.4
+    }
+  },
+  "analysis": {
+    "task": "humaneval",
+    "n_total": 820,
+    "n_tasks": 164,
+    "n_passed": 731,
+    "pass@1": 0.8914634146341462,
+    "pass@5": 0.9451219512195121,
+    "n_no_code": 4,
+    "n_overflow": 4,
+    "using_lib_rate": 0.0,
+    "avg_extlibs": 0.0,
+    "library_counts": {},
+    "code_metrics": {
+      "all": {
+        "n_measured": 816,
+        "avg_lloc": 9.294117647058824,
+        "avg_maintainability_index": 79.8529961243006
+      },
+      "passed": {
+        "n_measured": 731,
+        "avg_lloc": 9.162790697674419,
+        "avg_maintainability_index": 79.5188196234004
+      }
+    },
+    "environment": {
+      "installed_packages": [
+        "numpy"
+      ],
+      "install_failed": [],
+      "distributions": {
+        "numpy": "2.5.4",
+        "pip": "25.0.1"
+      }
+    }
+  }
+}
