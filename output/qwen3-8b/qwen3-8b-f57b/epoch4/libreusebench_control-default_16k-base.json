@@ -1,0 +1,113 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-f57b/checkpoint-148",
+    "provider": "vllm",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.2.0",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 444.3,
+      "evaluation": 52.5,
+      "model_load": 72.0
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 0.8333333333333334,
+    "pass@k": 0.9404761904761905,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.011904761904761904,
+          "avg_extlibs": 0.011904761904761904,
+          "library_counts": {
+            "regex": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.002380952380952381,
+          "avg_extlibs": 0.002380952380952381,
+          "library_counts": {
+            "regex": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.011904761904761904,
+          "avg_extlibs": 0.011904761904761904,
+          "library_counts": {
+            "regex": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.002380952380952381,
+          "avg_extlibs": 0.002380952380952381,
+          "library_counts": {
+            "regex": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 417,
+        "avg_lloc": 12.882494004796163,
+        "avg_maintainability_index": 86.73868526769539
+      },
+      "passed": {
+        "n_measured": 350,
+        "avg_lloc": 12.582857142857144,
+        "avg_maintainability_index": 87.10020371177352
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-tzh2x15u",
+      "source": "response_imports",
+      "installed_packages": [
+        "regex"
+      ],
+      "install_failed": [],
+      "task_packages": [],
+      "installed_package_versions": {
+        "pip": "25.0.1",
+        "regex": "2026.11.9"
+      },
+      "package_imports": {
+        "regex": [
+          "regex"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-3cc8lisl/libreusebench_eval_2026-11-13T09:28:11.528900.json"
+  }
+}
