@@ -2,7 +2,7 @@
 
 Shared by the build pipeline (to analyse BigCodeBench reference solutions and scan rewritten
 prompts) and by the evaluation harness (to find the code to run and the packages to install).
-The parsing and library analysis is done by lure (Library Usage REwards), the same package
+The parsing and library analysis is done by lure (Library-Use Rewards), the same package
 the project's training rewards use.
 """
 

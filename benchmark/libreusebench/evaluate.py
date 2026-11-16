@@ -739,8 +739,9 @@ def evaluate_responses(
     summary = f"pass@1 {results['pass@1']:.3f}"
     if results["k"] > 1:
         summary += f" | pass@{results['k']} {results['pass@k']:.3f}"
-    lib_imported = results["library_use"]["imported"]["per_task"]["using_lib_rate"]
-    lib_used = results["library_use"]["used"]["per_task"]["using_lib_rate"]
+    # per response, the headline library-use measure (per task counts any response)
+    lib_imported = results["library_use"]["imported"]["per_response"]["using_lib_rate"]
+    lib_used = results["library_use"]["used"]["per_response"]["using_lib_rate"]
     summary += f" | lib-imported {lib_imported:.3f} | lib-used {lib_used:.3f}"
     code_all = results["code_metrics"]["all"]
     if code_all["n_measured"]:

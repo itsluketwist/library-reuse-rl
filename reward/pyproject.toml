@@ -1,4 +1,4 @@
-# Package specification for lure (Library Usage REwards).
+# Package specification for lure (Library-Use Rewards).
 # https://packaging.python.org/en/latest/specifications/pyproject-toml/#pyproject-toml-spec
 
 [build-system]
@@ -21,7 +21,7 @@ version = { attr = "lure.__version__" }
 name = "lure"
 dynamic = ["version"]
 readme = "README.md"
-description = "lure (Library Usage REwards) - reward functions that score LLM code for reusing libraries."
+description = "lure (Library-Use Rewards) - reward functions that score LLM code for reusing libraries."
 authors = [{ name = "Lukas Twist", email = "itsluketwist@gmail.com" }]
 # lure is MIT licensed, separately from the rest of the repository (CC BY 4.0)
 license = "MIT"
@@ -52,6 +52,7 @@ requires-python = ">=3.10"
 # no dependencies - lure only uses the standard library
 dependencies = []
 
-[project.urls]
-Homepage = "https://github.com/itsluketwist/library-reuse-rl"
-Source = "https://github.com/itsluketwist/library-reuse-rl/tree/main/reward"
+# the repository stays private for the first release - uncomment once it is public
+# [project.urls]
+# Homepage = "https://github.com/itsluketwist/library-reuse-rl"
+# Source = "https://github.com/itsluketwist/library-reuse-rl/tree/main/reward"

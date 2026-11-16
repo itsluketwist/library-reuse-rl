@@ -249,7 +249,7 @@ them.
   see [`data/README.md`](data/README.md).
 - [`notebooks/`](notebooks/) - One-off, numbered notebooks for exploratory work that doesn't
   belong in `src/`.
-- [`reward/`](reward/) - lure (Library Usage REwards), our response parsing and library
+- [`reward/`](reward/) - lure (Library-Use Rewards), our response parsing and library
   analysis, released on PyPI as a standalone package (`pip install lure`); see
   [`reward/README.md`](reward/README.md). It is used by the rewards, the evaluators and the
   benchmark, and installed editable here.

@@ -1,13 +1,15 @@
-# lure: Library Usage REwards
+# lure: Library-Use Rewards
 
-Reward functions that score LLM-generated code for **reusing external libraries** instead of
-reimplementing them, for reinforcement learning (e.g. GRPO) or evaluation.
+Verifiable reward functions that score LLM-generated code for **reusing external libraries**
+instead of reimplementing existing functionality, for reinforcement learning (e.g. GRPO) or
+evaluation.
 
 - **Static and safe:** code is parsed with Python's `ast` module and never executed.
 - **No dependencies:** only the standard library is used, and Python 3.10+ is supported.
-- **Hard to fool:** a library only counts as used when the code actually references what it
-  imported. Unused imports, names that are rebound, imports inside strings, code in the
-  reasoning, and truncated code blocks earn no usage credit.
+- **Guards against common shortcuts:** a library only counts as used when the code actually
+  references what it imported. Unused imports, names that are rebound, imports inside strings,
+  code in the reasoning, truncated code blocks, and common placeholder modules (such as
+  `your_module` or `utils`) earn no usage credit.
 
 ```bash
 pip install lure
@@ -62,6 +64,16 @@ reward_func.components(response)
 # the highest possible reward, for normalising to [0, 1]
 reward_func.max_reward
 ```
+
+Three useful configurations, each with a highest reward of 2.0: Import credits any external
+import, Usage (the default) splits the credit between importing a library and using it, and
+Target does the same for the task's `target_libraries` only:
+
+| Configuration | `correct_format` | `passes_syntax_check` | `external_lib_imported` | `external_lib_used` | `target_lib_imported` | `target_lib_used` |
+|---|---|---|---|---|---|---|
+| Import | 0.5 | 0.5 | 1.0 | 0 | 0 | 0 |
+| Usage | 0.25 | 0.25 | 0.5 | 1.0 | 0 | 0 |
+| Target | 0.25 | 0.25 | 0 | 0 | 0.5 | 1.0 |
 
 When each dataset item has its own local modules or target libraries, give them as a
 dict keyed by item id, and pass each response's `item_id` when scoring it:
@@ -164,10 +176,6 @@ parse_response(response, reasoning_tags=("<|begin_of_thought|>", "<|end_of_thoug
 The building blocks are also available on their own: `split_reasoning`, `extract_code_blocks`,
 `analyse_code`, `is_placeholder_module`, and `pip_package` (e.g.
 `pip_package("PIL") == "Pillow"`).
-
-## Citation
-
-Paper coming soon.
 
 ## Licence
 

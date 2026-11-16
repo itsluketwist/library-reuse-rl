@@ -2,7 +2,8 @@
 # https://packaging.python.org/en/latest/specifications/pyproject-toml/#pyproject-toml-spec
 
 [build-system]
-requires = ["setuptools"]
+# 77+ understands the SPDX `license` expression below
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
@@ -20,9 +21,12 @@ version = { attr = "libreusebench.__version__" }
 name = "libreusebench"
 dynamic = ["version"]
 readme = "docs/PYPI_README.md"
-description = "LibReuseBench - a library-agnostic, test-backed benchmark for measuring library reuse."
+description = "LibReuseBench - a library-agnostic, execution-backed benchmark for measuring library reuse."
 authors = [{ name = "Lukas Twist", email = "itsluketwist@gmail.com" }]
-license-files = ["LICENSE"]
+# apache-2.0, separately from the rest of the repository (CC BY 4.0), to match BigCodeBench,
+# which the tasks are adapted from - NOTICE credits it
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
@@ -36,8 +40,9 @@ dependencies = [
     "radon",
 ]
 
-[project.urls]
-Homepage = "https://github.com/itsluketwist/library-reuse-rl"
+# the repository stays private for the first release - uncomment once it is public
+# [project.urls]
+# Homepage = "https://github.com/itsluketwist/library-reuse-rl"
 
 [project.optional-dependencies]
 dev = [

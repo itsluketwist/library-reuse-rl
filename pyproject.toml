@@ -38,7 +38,7 @@ dependencies = [
     "datasets>=4.7.0",
     "huggingface_hub",
     "Jupyter",
-    # lure (Library Usage REwards), the response parsing + library analysis shared by the
+    # lure (Library-Use Rewards), the response parsing + library analysis shared by the
     # rewards, eval and benchmark - lives in reward/, installed editable (see below)
     "lure",
     "llm-codegen-research",

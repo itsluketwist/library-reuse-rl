@@ -74,6 +74,8 @@ jobs:
           uvx --from 'huggingface_hub>=1.19.0' hf upload itsluketwist/LibReuseBench docs/HF_README.md README.md --repo-type dataset
           uvx --from 'huggingface_hub>=1.19.0' hf upload itsluketwist/LibReuseBench VERSION VERSION --repo-type dataset
           uvx --from 'huggingface_hub>=1.19.0' hf upload itsluketwist/LibReuseBench libreusebench/data/CANARY.txt CANARY.txt --repo-type dataset
+          uvx --from 'huggingface_hub>=1.19.0' hf upload itsluketwist/LibReuseBench LICENSE LICENSE --repo-type dataset
+          uvx --from 'huggingface_hub>=1.19.0' hf upload itsluketwist/LibReuseBench NOTICE NOTICE --repo-type dataset
           # the splits, in one commit that also deletes any other split file already there (the
           # dataset has one version: an earlier release's dev.jsonl must not linger beside it)
           uvx --from 'huggingface_hub>=1.19.0' hf upload itsluketwist/LibReuseBench libreusebench/data data --repo-type dataset --include "*.jsonl" --delete "*.jsonl"

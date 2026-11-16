@@ -1,4 +1,4 @@
-"""LibReuseBench - a library-agnostic, test-backed benchmark for measuring library reuse."""
+"""LibReuseBench - a library-agnostic, execution-backed benchmark for measuring library reuse."""
 
 from libreusebench.environment import (
     Environment,
@@ -27,7 +27,7 @@ from libreusebench.load import load_dataset, load_records
 
 
 # the single source of the package version (read by pyproject.toml when building)
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 __all__ = [
     "__version__",

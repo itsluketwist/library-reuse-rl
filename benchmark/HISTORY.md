@@ -94,4 +94,4 @@ each test task instead.
 
 - Release: the workflow (`.github/workflows/release-libreusebench.yaml`) uploads the dataset to
   Hugging Face, removing the earlier design's `dev.jsonl` there, and publishes the package
-  (`libreusebench` 0.2.0) to PyPI.
+  (`libreusebench` 0.3.1) to PyPI.

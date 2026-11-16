@@ -1,0 +1,16 @@
+LibReuseBench
+Copyright 2026 Lukas Twist
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The benchmark tasks are adapted from BigCodeBench, by the BigCode project
+(https://huggingface.co/datasets/bigcode/bigcodebench), which is licensed under the Apache
+License, Version 2.0. Each task was rewritten from one BigCodeBench task, named in its record's
+`source.seed_id`: a language model turned it into a request for one Python function, with its
+own test inputs and reference solutions, and the expected outputs come from running those
+solutions. Every task was then checked automatically and reviewed by hand.
+
+This software and data are provided "AS IS", without warranties or conditions of any kind (see
+sections 7 and 8 of the licence). The evaluation harness installs the third-party packages that
+responses import and runs model-written code, so run it on a machine or in a container you are
+willing to lose.
