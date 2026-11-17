@@ -23,10 +23,10 @@ OUTPUT_BASE="${PROJECTDIR:?PROJECTDIR is not set - are you on isambard?}/$USER/l
 # the base models to train (see config/models.yaml)
 models=(
     # "qwen3-debug"
-    "qwen3-8b"
+    # "qwen3-8b"  # done with the chosen rewards (f2ca, 3079, f57b)
     # "qwen3.5-9b"
     # "domyn-small"
-    # "olmo3-7b"
+    "olmo3-7b"
 )
 
 # training jobs are dataset|reward-profile|prompt-style|learning-rate. keeping these together

@@ -26,28 +26,17 @@ TIME="12:00:00"
 # api-served models are not submitted here: isambard has no cpu partition, and they only
 # need network access - run them with scripts/run_eval_local.sh instead.
 #
-# currently set to complete experiment 01's grid of training x prompting: base qwen3-8b and
-# the first three epochs of the usage (cc26), import (4474) and target (1f71) runs, with
-# every prompt (see prompt_styles below), on every dataset - livecodebench is new.
-# update=false skips the results that already exist, so each job only fills in what's
-# missing. the later epochs (and 8672's) need livecodebench alone, which is a
-# separate submission with EVAL_MODELS / EVAL_DATASETS / EVAL_PROMPT_STYLES set
+# currently set to the olmo3-7b base model's results on every dataset below, with the plain
+# prompt and the prompt-engineering suffix (see prompt_styles) - its epoch 0 for the next
+# training runs. update=false skips the results that already exist, so each job only
+# fills in what's missing
 models=(
-    "vllm:qwen3-8b"
-    "vllm:qwen3-8b-cc26-epoch1"
-    "vllm:qwen3-8b-cc26-epoch2"
-    "vllm:qwen3-8b-cc26-epoch3"
-    "vllm:qwen3-8b-4474-epoch1"
-    "vllm:qwen3-8b-4474-epoch2"
-    "vllm:qwen3-8b-4474-epoch3"
-    "vllm:qwen3-8b-1f71-epoch1"
-    "vllm:qwen3-8b-1f71-epoch2"
-    "vllm:qwen3-8b-1f71-epoch3"
+    "vllm:olmo3-7b"
+    # "vllm:qwen3-8b"
     # "vllm:qwen3-debug"
     # "vllm:qwen3-4b"
     # "vllm:qwen3-14b"
     # "vllm:qwen3-32b"  # ran out of the 12h limit on one gpu - submit with EVAL_GPUS=4
-    # "vllm:olmo3-7b"
     # "vllm:qwen3.5-9b"
     # "vllm:domyn-small"
     # the final epoch of each training run, for a quick check - training_runs below adds every
@@ -111,7 +100,7 @@ prompt_styles=(
     # "std"
     # "ext"
     "base"
-    "always"
+    # "always"  # left out of the paper, so not run for new models
     "appropriate"
 )
 
