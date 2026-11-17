@@ -161,8 +161,8 @@ def longer_hand_written_example(value):
             build_reward("library_usage", {"passed_tests": 1.0})
 
 
-# one response of each kind, scored by experiment 01's three main profiles in
-# config/rewards.yaml. "numpy" is the task's only target library
+# one response of each kind, scored by the three chosen profiles in config/rewards.yaml
+# and lu-import (import's first weights). "numpy" is the task's only target library
 _PROFILE_CASES = {
     "hand-written": "print(sum([1, 2]))",
     "unused target import": "import numpy\nprint(sum([1, 2]))",

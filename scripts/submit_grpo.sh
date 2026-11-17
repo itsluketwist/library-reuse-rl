@@ -33,17 +33,16 @@ models=(
 # avoids silently applying a reward or a python-specific system prompt to the wrong task. the
 # learning rate is optional - leave it off (e.g. "...|lu-v1|base") to use the recipe's.
 #
-# the final runs (qwen3-8b, 4 epochs - see num_train_epochs in the recipe): the three main
-# rewards again, since the 8-epoch runs (cc26, 4474, 1f71) had a different learning-rate
-# schedule, and each reward at its two other shaping weights (see config/rewards.yaml)
+# the chosen rewards (see the top of the library-usage section in config/rewards.yaml),
+# trained for each model above for 4 epochs (num_train_epochs in the recipe). the ablations
+# below ran on qwen3-8b only, with their run ids in brackets
 training_jobs=(
-    # import with the same shaping and library credit as usage and target
+    # the chosen rewards
     "data/train/library_usage|lu-import-matched|base|3e-6"
-    # done (run ids in brackets) - the main runs
+    "data/train/library_usage|lu-usage|base|3e-6"
+    "data/train/library_usage|lu-target|base|3e-6"
+    # done (qwen3-8b) - the shaping-weight ablations
     # "data/train/library_usage|lu-import|base|3e-6"  # (584b)
-    # "data/train/library_usage|lu-usage|base|3e-6"  # (3079)
-    # "data/train/library_usage|lu-target|base|3e-6"  # (f57b)
-    # done - the shaping-weight ablations
     # "data/train/library_usage|lu-import-s25|base|3e-6"  # (4db4)
     # "data/train/library_usage|lu-import-s0|base|3e-6"  # (9185)
     # "data/train/library_usage|lu-usage-s50|base|3e-6"  # (caf3)

@@ -110,7 +110,7 @@ were scored on the final benchmark: see [v5](#v5-audited-target-libraries).
 - Rows now list 0-8 more libraries each (most 1-4). Only the target reward and the target
   rates see the change; every v4 library is still listed, so the other rewards are unaffected.
 - **Result (runs 4474, cc26 and 1f71: the import, usage and target rewards, 8 epochs; see
-  `output/03/README.md`):** on the final LibReuseBench test split, library use rose from 15.7%
+  `output/03_epoch_ablation/README.md`):** on the final LibReuseBench test split, library use rose from 15.7%
   to a peak of about 37.5% under every reward (import at epoch 2, usage at 3, target at 3-4),
   then fell to 26-29% by epoch 8. On this dataset's held-out splits it kept rising, to 85-92% by
   the end, so the later epochs fit the training prompts rather than the benchmark; the next runs

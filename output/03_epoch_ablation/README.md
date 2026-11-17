@@ -5,10 +5,10 @@ run's training metrics are in `{run_id}/grpo/` and each epoch's evals in `{run_i
 
 - **Figures per run:** `{run_id}/lure-{reward}-summary.png`, made by
   `notebooks/01_grpo_training_summary.ipynb` (set `RUN_ID`).
-- **Prompt comparison figures:** `prompt_engineering_summary.png` and
-  `prompt_engineering_details.png`, made by `notebooks/05_prompt_engineering_comparison.ipynb`.
-- **Paper figures:** figures 1-2 (PDF and PNG) and table 1 (LaTeX) in `paper/`, made by
-  `notebooks/06_paper_figures.ipynb`.
+- **Prompt comparison figures:** `figures/prompt_engineering_summary.png` and
+  `figures/prompt_engineering_details.png`, made by `prompt_engineering_comparison.ipynb` (in this folder).
+- **Paper figures:** figures 1-2 (PNG) and table 1 (LaTeX) in `figures/`, made by
+  `paper_figures.ipynb` (in this folder).
 - **Base model results:** these stay in `output/baselines/qwen3-8b/`, because later iterations use
   them too. A rerun that records timings will replace those files. The numbers below are from the
   files as they stood in the commit that created this folder.

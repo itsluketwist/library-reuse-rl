@@ -38,9 +38,9 @@ fi
 accelerate_config="config/accelerate_configs/fsdp2.yaml"
 recipe_config="config/training.yaml"
 dataset="data/train/library_usage"
-# the import-only reward lists every component at a nonzero or zero weight, so a debug run
-# checks all six are logged (see config/rewards.yaml)
-reward_profile="lu-import"
+# one of the chosen rewards (see config/rewards.yaml) - every profile lists all six
+# components, so a debug run checks all six are logged
+reward_profile="lu-import-matched"
 prompt_style="base"
 seed=42
 

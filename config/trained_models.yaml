@@ -303,7 +303,7 @@ qwen3-8b-cc26-epoch1:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 1
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-4474-epoch1:
   base: Qwen/Qwen3-8B
@@ -318,7 +318,7 @@ qwen3-8b-4474-epoch1:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 1
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-cc26-epoch2:
   base: Qwen/Qwen3-8B
@@ -333,7 +333,7 @@ qwen3-8b-cc26-epoch2:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 2
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-4474-epoch2:
   base: Qwen/Qwen3-8B
@@ -348,7 +348,7 @@ qwen3-8b-4474-epoch2:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 2
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-1f71-epoch1:
   base: Qwen/Qwen3-8B
@@ -363,7 +363,7 @@ qwen3-8b-1f71-epoch1:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 1
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-cc26-epoch3:
   base: Qwen/Qwen3-8B
@@ -378,7 +378,7 @@ qwen3-8b-cc26-epoch3:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 3
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-4474-epoch3:
   base: Qwen/Qwen3-8B
@@ -393,7 +393,7 @@ qwen3-8b-4474-epoch3:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 3
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-1f71-epoch2:
   base: Qwen/Qwen3-8B
@@ -408,7 +408,7 @@ qwen3-8b-1f71-epoch2:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 2
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-4474-epoch4:
   base: Qwen/Qwen3-8B
@@ -423,7 +423,7 @@ qwen3-8b-4474-epoch4:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 4
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-cc26-epoch4:
   base: Qwen/Qwen3-8B
@@ -438,7 +438,7 @@ qwen3-8b-cc26-epoch4:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 4
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-1f71-epoch3:
   base: Qwen/Qwen3-8B
@@ -453,7 +453,7 @@ qwen3-8b-1f71-epoch3:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 3
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-cc26-epoch5:
   base: Qwen/Qwen3-8B
@@ -468,7 +468,7 @@ qwen3-8b-cc26-epoch5:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 5
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-4474-epoch5:
   base: Qwen/Qwen3-8B
@@ -483,7 +483,7 @@ qwen3-8b-4474-epoch5:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 5
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-cc26-epoch6:
   base: Qwen/Qwen3-8B
@@ -498,7 +498,7 @@ qwen3-8b-cc26-epoch6:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 6
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-1f71-epoch4:
   base: Qwen/Qwen3-8B
@@ -513,7 +513,7 @@ qwen3-8b-1f71-epoch4:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 4
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-4474-epoch6:
   base: Qwen/Qwen3-8B
@@ -528,7 +528,7 @@ qwen3-8b-4474-epoch6:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 6
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-cc26-epoch7:
   base: Qwen/Qwen3-8B
@@ -543,7 +543,7 @@ qwen3-8b-cc26-epoch7:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 7
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-1f71-epoch5:
   base: Qwen/Qwen3-8B
@@ -558,7 +558,7 @@ qwen3-8b-1f71-epoch5:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 5
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-4474-epoch7:
   base: Qwen/Qwen3-8B
@@ -573,7 +573,7 @@ qwen3-8b-4474-epoch7:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 7
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-cc26-epoch8:
   base: Qwen/Qwen3-8B
@@ -588,7 +588,7 @@ qwen3-8b-cc26-epoch8:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 8
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-4474-epoch8:
   base: Qwen/Qwen3-8B
@@ -603,7 +603,7 @@ qwen3-8b-4474-epoch8:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 8
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-1f71-epoch6:
   base: Qwen/Qwen3-8B
@@ -618,7 +618,7 @@ qwen3-8b-1f71-epoch6:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 6
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-1f71-epoch7:
   base: Qwen/Qwen3-8B
@@ -633,7 +633,7 @@ qwen3-8b-1f71-epoch7:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 7
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-1f71-epoch8:
   base: Qwen/Qwen3-8B
@@ -648,7 +648,7 @@ qwen3-8b-1f71-epoch8:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 8
-    iteration: '03'
+    iteration: '03_epoch_ablation'
 
 qwen3-8b-584b-epoch1:
   base: Qwen/Qwen3-8B
@@ -663,6 +663,7 @@ qwen3-8b-584b-epoch1:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 1
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-3079-epoch1:
   base: Qwen/Qwen3-8B
@@ -705,6 +706,7 @@ qwen3-8b-4db4-epoch1:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 1
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-caf3-epoch1:
   base: Qwen/Qwen3-8B
@@ -719,6 +721,7 @@ qwen3-8b-caf3-epoch1:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 1
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-9185-epoch1:
   base: Qwen/Qwen3-8B
@@ -733,6 +736,7 @@ qwen3-8b-9185-epoch1:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 1
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-255a-epoch1:
   base: Qwen/Qwen3-8B
@@ -747,6 +751,7 @@ qwen3-8b-255a-epoch1:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 1
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-a342-epoch1:
   base: Qwen/Qwen3-8B
@@ -761,6 +766,7 @@ qwen3-8b-a342-epoch1:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 1
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-8a38-epoch1:
   base: Qwen/Qwen3-8B
@@ -775,6 +781,7 @@ qwen3-8b-8a38-epoch1:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 1
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-6626-epoch1:
   base: Qwen/Qwen3-8B
@@ -789,6 +796,7 @@ qwen3-8b-6626-epoch1:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 1
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-584b-epoch2:
   base: Qwen/Qwen3-8B
@@ -803,6 +811,7 @@ qwen3-8b-584b-epoch2:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 2
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-3079-epoch2:
   base: Qwen/Qwen3-8B
@@ -845,6 +854,7 @@ qwen3-8b-4db4-epoch2:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 2
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-caf3-epoch2:
   base: Qwen/Qwen3-8B
@@ -859,6 +869,7 @@ qwen3-8b-caf3-epoch2:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 2
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-255a-epoch2:
   base: Qwen/Qwen3-8B
@@ -873,6 +884,7 @@ qwen3-8b-255a-epoch2:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 2
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-9185-epoch2:
   base: Qwen/Qwen3-8B
@@ -887,6 +899,7 @@ qwen3-8b-9185-epoch2:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 2
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-8a38-epoch2:
   base: Qwen/Qwen3-8B
@@ -901,6 +914,7 @@ qwen3-8b-8a38-epoch2:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 2
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-a342-epoch2:
   base: Qwen/Qwen3-8B
@@ -915,6 +929,7 @@ qwen3-8b-a342-epoch2:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 2
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-6626-epoch2:
   base: Qwen/Qwen3-8B
@@ -929,6 +944,7 @@ qwen3-8b-6626-epoch2:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 2
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-584b-epoch3:
   base: Qwen/Qwen3-8B
@@ -943,6 +959,7 @@ qwen3-8b-584b-epoch3:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 3
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-3079-epoch3:
   base: Qwen/Qwen3-8B
@@ -985,6 +1002,7 @@ qwen3-8b-4db4-epoch3:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 3
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-caf3-epoch3:
   base: Qwen/Qwen3-8B
@@ -999,6 +1017,7 @@ qwen3-8b-caf3-epoch3:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 3
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-255a-epoch3:
   base: Qwen/Qwen3-8B
@@ -1013,6 +1032,7 @@ qwen3-8b-255a-epoch3:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 3
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-8a38-epoch3:
   base: Qwen/Qwen3-8B
@@ -1027,6 +1047,7 @@ qwen3-8b-8a38-epoch3:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 3
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-9185-epoch3:
   base: Qwen/Qwen3-8B
@@ -1041,6 +1062,7 @@ qwen3-8b-9185-epoch3:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 3
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-a342-epoch3:
   base: Qwen/Qwen3-8B
@@ -1055,6 +1077,7 @@ qwen3-8b-a342-epoch3:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 3
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-6626-epoch3:
   base: Qwen/Qwen3-8B
@@ -1069,6 +1092,7 @@ qwen3-8b-6626-epoch3:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 3
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-584b-epoch4:
   base: Qwen/Qwen3-8B
@@ -1083,6 +1107,7 @@ qwen3-8b-584b-epoch4:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 4
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-3079-epoch4:
   base: Qwen/Qwen3-8B
@@ -1125,6 +1150,7 @@ qwen3-8b-4db4-epoch4:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 4
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-caf3-epoch4:
   base: Qwen/Qwen3-8B
@@ -1139,6 +1165,7 @@ qwen3-8b-caf3-epoch4:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 4
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-255a-epoch4:
   base: Qwen/Qwen3-8B
@@ -1153,6 +1180,7 @@ qwen3-8b-255a-epoch4:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 4
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-8a38-epoch4:
   base: Qwen/Qwen3-8B
@@ -1167,6 +1195,7 @@ qwen3-8b-8a38-epoch4:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 4
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-9185-epoch4:
   base: Qwen/Qwen3-8B
@@ -1181,6 +1210,7 @@ qwen3-8b-9185-epoch4:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 4
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-a342-epoch4:
   base: Qwen/Qwen3-8B
@@ -1195,6 +1225,7 @@ qwen3-8b-a342-epoch4:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 4
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-6626-epoch4:
   base: Qwen/Qwen3-8B
@@ -1209,6 +1240,7 @@ qwen3-8b-6626-epoch4:
     library_prompt_style: base
     learning_rate: 3.0e-06
     epoch: 4
+    iteration: '04_shaping_ablation'
 
 qwen3-8b-f2ca-epoch1:
   base: Qwen/Qwen3-8B

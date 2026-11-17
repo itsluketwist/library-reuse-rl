@@ -30,57 +30,22 @@ product_choice:
 # programmatically from the imports (no execution). the target components only count
 # libraries in the row's target_libs (the libraries listed for its task category).
 #
-# experiment 01 compares three rewards - import, usage and target - each at three shaping
-# weights: the weight given to correct_format and passes_syntax_check (0, 0.25 or 0.5),
-# with the library weights fixed. grpo compares rewards within each prompt's group of
-# rollouts, so only the ratios between weights matter, not the maximum. the unsuffixed
-# profile is each reward's main run. every profile lists all six components, so a
-# zero-weighted one is still logged (eg. how often import-only runs use what they import)
-#
-# the shaping ablations ask whether library credit alone keeps answers well formed. format
-# and syntax failures were rare after epoch 1 (2-9% of rollouts), so little difference is
-# expected. lu-target-half (below) gives half credit for a library outside the target
-# list. the import / use split isn't ablated: a rollout that imports a library almost always uses
-# it (unused imports stayed around 1% in every main run), so moving weight between the two
-# barely changes any rollout's reward
+# grpo compares rewards within each prompt's group of rollouts, so only the ratios between
+# weights matter, not the maximum. every profile lists all six components, so a
+# zero-weighted one is still logged (eg. how often import-only runs use what they import).
+# the import / use split isn't varied: a rollout that imports a library almost always uses
+# it (unused imports stayed around 1%), so moving weight between the two barely changes
+# any rollout's reward
 
-# the iteration 01/02 reward (runs 4796, e650, 8672), kept for their records - the same
-# weights as lu-usage
-lu-v1:
-  correct_format: 0.25
-  passes_syntax_check: 0.25
-  external_lib_imported: 0.5
-  external_lib_used: 1.0
-  target_lib_imported: 0
-  target_lib_used: 0
+###############################################################################
+#        the chosen rewards - the ones scripts/submit_grpo.sh trains with      #
+###############################################################################
+# all three give 0.25 / 0.25 for the shaping terms (correct_format, passes_syntax_check)
+# and up to 1.5 library credit (max 2.0), so they differ only in which library use earns
+# the credit. qwen3-8b runs: f2ca (import), 3079 (usage), f57b (target)
 
-# import: any third-party import earns the library credit, used or not - the
-# main run first, then its two shaping ablations
-lu-import:
-  correct_format: 0.5
-  passes_syntax_check: 0.5
-  external_lib_imported: 1.0
-  external_lib_used: 0
-  target_lib_imported: 0
-  target_lib_used: 0
-lu-import-s25:
-  correct_format: 0.25
-  passes_syntax_check: 0.25
-  external_lib_imported: 1.0
-  external_lib_used: 0
-  target_lib_imported: 0
-  target_lib_used: 0
-lu-import-s0:
-  correct_format: 0
-  passes_syntax_check: 0
-  external_lib_imported: 1.0
-  external_lib_used: 0
-  target_lib_imported: 0
-  target_lib_used: 0
-# import with the same shaping and library credit as usage and target (0.25 / 0.25 / 1.5,
-# max 2.0), so the three rewards differ only in which library use earns the credit.
-# lu-import gives shaping twice the share of the library credit, and the 4-epoch
-# ablations showed that share moves library use by about 5 points
+# import: any third-party import earns the library credit, used or not. "matched" as its
+# shaping was matched to usage and target after the first ablations (lu-import, below)
 lu-import-matched:
   correct_format: 0.25
   passes_syntax_check: 0.25
@@ -89,8 +54,7 @@ lu-import-matched:
   target_lib_imported: 0
   target_lib_used: 0
 
-# usage: importing a library earns part of the credit, actually using it the rest - the
-# main run first, then its two shaping ablations
+# usage: importing a library earns part of the credit, actually using it the rest
 lu-usage:
   correct_format: 0.25
   passes_syntax_check: 0.25
@@ -98,23 +62,8 @@ lu-usage:
   external_lib_used: 1.0
   target_lib_imported: 0
   target_lib_used: 0
-lu-usage-s50:
-  correct_format: 0.5
-  passes_syntax_check: 0.5
-  external_lib_imported: 0.5
-  external_lib_used: 1.0
-  target_lib_imported: 0
-  target_lib_used: 0
-lu-usage-s0:
-  correct_format: 0
-  passes_syntax_check: 0
-  external_lib_imported: 0.5
-  external_lib_used: 1.0
-  target_lib_imported: 0
-  target_lib_used: 0
 
-# target: as usage, but only libraries in the task's target_libs count - the
-# main run first, then its two shaping ablations
+# target: as usage, but only libraries in the task's target_libs count
 lu-target:
   correct_format: 0.25
   passes_syntax_check: 0.25
@@ -122,6 +71,57 @@ lu-target:
   external_lib_used: 0
   target_lib_imported: 0.5
   target_lib_used: 1.0
+
+###############################################################################
+#           ablations - qwen3-8b, results in output/04_shaping_ablation/       #
+###############################################################################
+# shaping: the format and syntax weights changed, the library weights kept. the shaping
+# ratio (each shaping weight / the library credit) is what training sees: 0.17 for the
+# chosen rewards. library use peaked at 0.17-0.25, fell a little with more shaping and
+# clearly with none
+
+# import's first weights (0.5 / 0.5 / 1.0, ratio 0.5), also used by iteration 03's 8-epoch
+# run 4474 and run 584b
+lu-import:
+  correct_format: 0.5
+  passes_syntax_check: 0.5
+  external_lib_imported: 1.0
+  external_lib_used: 0
+  target_lib_imported: 0
+  target_lib_used: 0
+# ratio 0.25 (4db4)
+lu-import-s25:
+  correct_format: 0.25
+  passes_syntax_check: 0.25
+  external_lib_imported: 1.0
+  external_lib_used: 0
+  target_lib_imported: 0
+  target_lib_used: 0
+# no shaping (9185)
+lu-import-s0:
+  correct_format: 0
+  passes_syntax_check: 0
+  external_lib_imported: 1.0
+  external_lib_used: 0
+  target_lib_imported: 0
+  target_lib_used: 0
+# ratio 0.33 (caf3)
+lu-usage-s50:
+  correct_format: 0.5
+  passes_syntax_check: 0.5
+  external_lib_imported: 0.5
+  external_lib_used: 1.0
+  target_lib_imported: 0
+  target_lib_used: 0
+# no shaping (a342)
+lu-usage-s0:
+  correct_format: 0
+  passes_syntax_check: 0
+  external_lib_imported: 0.5
+  external_lib_used: 1.0
+  target_lib_imported: 0
+  target_lib_used: 0
+# ratio 0.33 (255a)
 lu-target-s50:
   correct_format: 0.5
   passes_syntax_check: 0.5
@@ -129,6 +129,7 @@ lu-target-s50:
   external_lib_used: 0
   target_lib_imported: 0.5
   target_lib_used: 1.0
+# no shaping (6626)
 lu-target-s0:
   correct_format: 0
   passes_syntax_check: 0
@@ -137,9 +138,8 @@ lu-target-s0:
   target_lib_imported: 0.5
   target_lib_used: 1.0
 
-# halfway between usage and target: the average of their weights. a target library earns
-# the full library credit (1.5), any other library half of it (0.75), where usage pays both
-# the same and target pays the other library nothing. shaping as in the main runs
+# halfway between usage and target, the average of their weights (8a38): a target library
+# earns the full library credit (1.5), any other library half of it (0.75)
 lu-target-half:
   correct_format: 0.25
   passes_syntax_check: 0.25
@@ -147,3 +147,16 @@ lu-target-half:
   external_lib_used: 0.5
   target_lib_imported: 0.25
   target_lib_used: 0.5
+
+###############################################################################
+#                    earlier iterations, kept for their records               #
+###############################################################################
+
+# the iteration 01/02 reward (runs 4796, e650, 8672) - the same weights as lu-usage
+lu-v1:
+  correct_format: 0.25
+  passes_syntax_check: 0.25
+  external_lib_imported: 0.5
+  external_lib_used: 1.0
+  target_lib_imported: 0
+  target_lib_used: 0
