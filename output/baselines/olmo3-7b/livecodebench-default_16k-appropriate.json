@@ -1,0 +1,101 @@
+{
+  "metadata": {
+    "base": "allenai/OLMo-3-7B-Think",
+    "weights": null,
+    "provider": "vllm",
+    "dataset": "livecodebench",
+    "dataset_file": "data/eval/livecodebench.jsonl",
+    "dataset_version": [
+      "release_v5",
+      "release_v6"
+    ],
+    "evaluator": "libreusebench",
+    "lure_version": "0.3.1",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": "Use an external library when appropriate.",
+    "prompt_style": "appropriate",
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 4720.7,
+      "evaluation": 102.6,
+      "model_load": 52.9
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 435,
+    "n_tasks": 87,
+    "n_responses": 435,
+    "k": 5,
+    "pass@1": 0.5586206896551724,
+    "pass@k": 0.7011494252873564,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.0,
+          "avg_extlibs": 0.0,
+          "library_counts": {}
+        },
+        "per_response": {
+          "using_lib_rate": 0.0,
+          "avg_extlibs": 0.0,
+          "library_counts": {}
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.0,
+          "avg_extlibs": 0.0,
+          "library_counts": {}
+        },
+        "per_response": {
+          "using_lib_rate": 0.0,
+          "avg_extlibs": 0.0,
+          "library_counts": {}
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 271,
+        "avg_lloc": 18.690036900369005,
+        "avg_maintainability_index": 70.90450808534996
+      },
+      "passed": {
+        "n_measured": 243,
+        "avg_lloc": 17.925925925925927,
+        "avg_maintainability_index": 70.71892844099067
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-5_taeill",
+      "source": "response_imports",
+      "installed_packages": [],
+      "install_failed": [],
+      "task_packages": [],
+      "installed_package_versions": {
+        "pip": "25.0.1"
+      },
+      "package_imports": {}
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-gkg8ev54/libreusebench_eval_2026-11-17T22:33:46.606679.json"
+  }
+}
