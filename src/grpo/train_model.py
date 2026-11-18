@@ -488,7 +488,6 @@ def train_model_with_grpo(
     resume_save_steps: int | None = None,
     split_eval_steps: int | None = None,
     restart_after_save: bool | None = None,
-    eos_token: str | None = None,
 ) -> dict[int, Path]:
     """
     Run full-weight GRPO training for `model_name_or_path` against the dataset at
@@ -667,12 +666,6 @@ def train_model_with_grpo(
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     if training_args.chat_template is not None:
         tokenizer.chat_template = training_args.chat_template
-    # trl and the reward both judge a rollout finished by its last token being the eos
-    # token. some tokenizers name a different one from the token that ends a chat reply
-    # (olmo 3's), so the model's registry entry can set it (eos_token in config/models.yaml)
-    if eos_token is not None:
-        tokenizer.eos_token = eos_token
-        logger.info(f"eos token set to {eos_token} (id {tokenizer.eos_token_id})")
 
     # one reward function per component, so each is logged as its own rate during
     # training and validation (see build_reward_functions)

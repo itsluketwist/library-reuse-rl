@@ -67,6 +67,13 @@ eval_datasets=(
     "livecodebench"
 )
 
+# the eval datasets also scored with the prompt-engineering suffix ("appropriate", see
+# TASK_SUFFIXES in src/prompts.py), at the same epochs, to compare training with prompting
+suffix_eval_datasets=(
+    "libreusebench_test"
+    "libreusebench_control"
+)
+
 # which epoch checkpoints get those eval jobs: "all", or "final" for just the last epoch
 eval_epochs="all"
 
@@ -145,6 +152,7 @@ echo "  Recipe: $recipe_config"
 echo "  Sharding: $accelerate_config (${GPUS} gpus)"
 echo "  Seed: $seed"
 echo "  Epoch eval datasets: ${eval_datasets[*]} (epochs: $eval_epochs)"
+echo "  ... and with the \"appropriate\" suffix: ${suffix_eval_datasets[*]}"
 echo "  Checkpoints: $OUTPUT_BASE"
 
 # one timestamped directory per invocation, holding the training logs and the logs of the
@@ -259,7 +267,8 @@ EOF
 
         # queue one single-gpu eval job per epoch checkpoint, held until training succeeds.
         # submit_eval.sh owns the other eval settings (samples, decoding, prompt style), so
-        # they are configured in one place only; the datasets are eval_datasets above.
+        # they are configured in one place only; the datasets are eval_datasets above, and
+        # suffix_eval_datasets again with the "appropriate" suffix.
         if [ "$debug" != true ]; then
             first_epoch=1
             if [ "$eval_epochs" = "final" ]; then
@@ -273,6 +282,12 @@ EOF
             EVAL_MODELS="$eval_models" \
                 EVAL_DATASETS="${eval_datasets[*]}" \
                 EVAL_PROMPT_STYLES="base" \
+                EVAL_DEPENDENCY="afterok:${train_job_id}" \
+                EVAL_LOG_DIR="$log_dir" \
+                bash scripts/submit_eval.sh
+            EVAL_MODELS="$eval_models" \
+                EVAL_DATASETS="${suffix_eval_datasets[*]}" \
+                EVAL_PROMPT_STYLES="appropriate" \
                 EVAL_DEPENDENCY="afterok:${train_job_id}" \
                 EVAL_LOG_DIR="$log_dir" \
                 bash scripts/submit_eval.sh

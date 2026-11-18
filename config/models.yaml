@@ -48,12 +48,11 @@ qwen3-32b:
 
 # a dense 7b reasoning model, fully open (weights, data and code). its chat template puts
 # the opening <think> in the prompt, and adds its own system prompt when there is none.
-# its tokenizer's eos token is <|endoftext|>, but a chat reply ends with <|im_end|>:
-# training uses eos_token instead, so a reply that finished isn't counted as cut off
+# it ends a reply with its tokenizer's eos token, <|endoftext|> (<|im_end|> only closes
+# earlier turns), so the tokenizer needs no change for training
 olmo3-7b:
   base: "allenai/OLMo-3-7B-Think"
   path:
-  eos_token: "<|im_end|>"
 
 deepseek-flash:
   provider: api

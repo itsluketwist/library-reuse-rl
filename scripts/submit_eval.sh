@@ -59,8 +59,8 @@ training_runs=(
 # scripts/submit_grpo.sh queues a run's epochs before training has registered them;
 # EVAL_DATASETS likewise replaces the datasets below, so a run's epochs are always scored on
 # the datasets submit_grpo.sh names, whatever this file is set up for; EVAL_PROMPT_STYLES
-# replaces the prompt styles the same way (a trained model is only scored with the plain
-# "base" prompt, never the prompt-engineering suffixes); EVAL_DEPENDENCY holds
+# replaces the prompt styles the same way (a trained model is scored with the plain
+# "base" prompt, and on libreusebench with the "appropriate" suffix); EVAL_DEPENDENCY holds
 # those jobs until training succeeds, and EVAL_LOG_DIR puts their logs in the training run's
 # log directory.
 

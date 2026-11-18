@@ -315,7 +315,6 @@ def run_grpo(
 
     checkpoints = train_model_with_grpo(
         model_name_or_path=model_settings["base"],
-        eos_token=model_settings.get("eos_token"),
         dataset_dir=dataset,
         output_dir=output_path,
         metrics_dir=metrics_path,
