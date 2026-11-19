@@ -19,6 +19,7 @@ models=(
     # "qwen3.5-9b"
     # "domyn-small"
     # "olmo3-7b"
+    # "opencodereasoning-1.1-7b"
     # "gpt-5.6-sol"
     # "gpt-5.6-terra"
     # "gpt-5.6-luna"

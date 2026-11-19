@@ -54,6 +54,14 @@ olmo3-7b:
   base: "allenai/OLMo-3-7B-Think"
   path:
 
+# a 7b reasoning model for code: qwen2.5-7b-instruct fine-tuned by nvidia on deepseek-r1's
+# competitive-programming solutions (version 1.1, nvidia open model license). a plain qwen2.5
+# chat template - the model writes its own <think> and ends with the tokenizer's eos token,
+# <|im_end|>, like qwen3
+opencodereasoning-1.1-7b:
+  base: "nvidia/OpenCodeReasoning-Nemotron-1.1-7B"
+  path:
+
 deepseek-flash:
   provider: api
   base: "deepseek-flash"

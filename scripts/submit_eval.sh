@@ -26,12 +26,13 @@ TIME="12:00:00"
 # api-served models are not submitted here: isambard has no cpu partition, and they only
 # need network access - run them with scripts/run_eval_local.sh instead.
 #
-# currently set to the olmo3-7b base model's results on every dataset below, with the plain
-# prompt and the prompt-engineering suffix (see prompt_styles) - its epoch 0 for the next
-# training runs. update=false skips the results that already exist, so each job only
-# fills in what's missing
+# currently set to the opencodereasoning-1.1-7b base model's results on every dataset below,
+# with the plain prompt and the prompt-engineering suffix (see prompt_styles) - its epoch 0
+# for the next training runs. update=false skips the results that already exist, so each job
+# only fills in what's missing
 models=(
-    "vllm:olmo3-7b"
+    "vllm:opencodereasoning-1.1-7b"
+    # "vllm:olmo3-7b"
     # "vllm:qwen3-8b"
     # "vllm:qwen3-debug"
     # "vllm:qwen3-4b"
