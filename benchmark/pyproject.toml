@@ -40,9 +40,10 @@ dependencies = [
     "radon",
 ]
 
-# the repository stays private for the first release - uncomment once it is public
-# [project.urls]
-# Homepage = "https://github.com/itsluketwist/library-reuse-rl"
+[project.urls]
+Homepage = "https://github.com/itsluketwist/library-reuse-rl"
+Source = "https://github.com/itsluketwist/library-reuse-rl/tree/main/benchmark"
+Dataset = "https://huggingface.co/datasets/itsluketwist/LibReuseBench"
 
 [project.optional-dependencies]
 dev = [

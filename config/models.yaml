@@ -62,6 +62,15 @@ opencodereasoning-1.1-7b:
   base: "nvidia/OpenCodeReasoning-Nemotron-1.1-7B"
   path:
 
+# mistral's 8b reasoning model (apache 2.0), a vision-language model whose vision encoder goes
+# unused. it reasons in [THINK]...[/THINK] when its chat template's default system prompt asks
+# it to. loaded from a local copy of mistralai/Ministral-3-8B-Reasoning-2512 without the
+# mistral-format files, and with the reasoning tags no longer special tokens - made by
+# scripts/prepare_ministral.py, which explains why
+ministral3-8b:
+  base: "/projects/u6yb/twist.u6yb/models/Ministral-3-8B-Reasoning-2512-hf"
+  path:
+
 deepseek-flash:
   provider: api
   base: "deepseek-flash"

@@ -52,7 +52,6 @@ requires-python = ">=3.10"
 # no dependencies - lure only uses the standard library
 dependencies = []
 
-# the repository stays private for the first release - uncomment once it is public
-# [project.urls]
-# Homepage = "https://github.com/itsluketwist/library-reuse-rl"
-# Source = "https://github.com/itsluketwist/library-reuse-rl/tree/main/reward"
+[project.urls]
+Homepage = "https://github.com/itsluketwist/library-reuse-rl"
+Source = "https://github.com/itsluketwist/library-reuse-rl/tree/main/reward"

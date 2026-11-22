@@ -19,6 +19,15 @@ are trained and evaluated on stdin/stdout coding problems, with a reward functio
 optionally reward library imports/usage on top of plain correctness (see
 [`src/grpo/rewards/`](src/grpo/rewards/)).
 
+The project releases a benchmark and a reward package, both built from this repository:
+
+- **LibReuseBench**, the library reuse benchmark: the dataset is on
+  [Hugging Face](https://huggingface.co/datasets/itsluketwist/LibReuseBench), and its evaluator is
+  on PyPI as [`libreusebench`](https://pypi.org/project/libreusebench/). Source in
+  [`benchmark/`](benchmark/).
+- **lure** (Library-Use Rewards), the reward functions used for training: on PyPI as
+  [`lure`](https://pypi.org/project/lure/). Source in [`reward/`](reward/).
+
 ## *installation*
 
 The project was built using Python, and is managed with `uv`, ensure it is installed or get it from [*uv docs*](https://docs.astral.sh/uv/getting-started/installation/).
@@ -295,10 +304,24 @@ pre-commit run --all-files
 uv lock --upgrade
 ```
 
+## *authors*
+
+Lukas Twist, Shuyin Ouyang, Helen Yannakoudakis and Jie M. Zhang, all at King's College London.
+
 ## *paper*
 
-todo
+This repository accompanies the paper *Reinforcement Learning with Library-Use Rewards*, coming
+soon.
 
 ## *citation*
 
-todo
+If you use this code, LibReuseBench or lure, please cite:
+
+```bibtex
+@misc{twist2026reinforcement,
+  title        = {Reinforcement Learning with Library-Use Rewards},
+  author       = {Twist, Lukas and Ouyang, Shuyin and Yannakoudakis, Helen and Zhang, Jie M.},
+  year         = {2026},
+  howpublished = {\url{https://github.com/itsluketwist/library-reuse-rl}},
+}
+```

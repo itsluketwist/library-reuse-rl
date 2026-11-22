@@ -14,6 +14,8 @@ DEFAULT_REASONING_TAGS: tuple[tuple[str, str], ...] = (
     ("<thinking>", "</thinking>"),
     ("<reasoning>", "</reasoning>"),
     ("<thought>", "</thought>"),
+    # mistral's reasoning models (e.g. ministral 3)
+    ("[THINK]", "[/THINK]"),
 )
 
 # reasoning tags, given as (opening, closing) pairs, or as a single pair
@@ -115,8 +117,9 @@ def split_reasoning(
     </think>, when the template put <think> in the prompt), and there is no answer.
 
     `reasoning_tags` are the (opening, closing) pairs to look for, matched ignoring case,
-    e.g. [("[THINK]", "[/THINK]")]. By default the common xml-style tags are used (<think>,
-    <thinking>, <reasoning> and <thought>). With no tags, the whole response is the answer.
+    e.g. [("<|begin_of_thought|>", "<|end_of_thought|>")]. By default the common tags are used
+    (<think>, <thinking>, <reasoning>, <thought> and mistral's [THINK]). With no tags, the whole
+    response is the answer.
 
     Returns a (reasoning, answer) tuple, both stripped of surrounding whitespace.
     """
