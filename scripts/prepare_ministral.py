@@ -1,26 +1,31 @@
-"""Make a local copy of Ministral 3 8B Reasoning that loads like any other hugging face model.
+"""Make a local, text-only copy of Ministral 3 8B Reasoning that loads like any other llm.
 
-The hub repo ships two formats side by side, and the mistral-format files change how the
-model is loaded:
+The hub repo needs three changes before our pipeline can use it:
 
-- with `tekken.json` present, transformers and vllm both switch to mistral's own tokenizer,
-  which ignores the repo's chat template - and with it the default system prompt that tells
-  the model to reason in [THINK]...[/THINK]. our checkpoints are saved without it, so the
-  base model and its trained epochs would be prompted differently.
-- with `params.json` and `consolidated.safetensors` present, vllm prefers the mistral-format
-  config and weights, whose parameter names differ from the hugging face ones that training
-  syncs into its rollout engine.
+- it is a vision-language model, and vllm 0.28's code for its vision encoder (pixtral) no
+  longer imports with transformers 5.17. we never pass images, so the copy keeps only the
+  language model: its weights (renamed from "language_model.model.*" to "model.*") and its
+  text config, which both libraries load as a plain mistral-style causal lm. the outputs for
+  text prompts are unchanged, and training no longer carries an unused vision encoder.
+- it ships mistral's own format beside the hugging face one. with `tekken.json` present,
+  transformers and vllm both switch to mistral's tokenizer, which ignores the repo's chat
+  template - and with it the default system prompt that tells the model to reason in
+  [THINK]...[/THINK]. the copy leaves the mistral-format files out.
+- trl and vllm decode with skip_special_tokens, which would delete [THINK] and [/THINK] and
+  leave the reward unable to tell reasoning from answer. the copy stops treating them as
+  special tokens. they are still single tokens, so tokenisation is unchanged - only decoding
+  now keeps them.
 
-So the copy leaves those three files out. It also stops the tokenizer treating [THINK] and
-[/THINK] as special tokens: trl and vllm decode with skip_special_tokens, which would delete
-them and leave the reward unable to tell reasoning from answer. They are still single tokens,
-so tokenisation is unchanged - only decoding now keeps them.
+vllm reads the model's extra attention scaling for long contexts (`llama_4_scaling_beta`) only
+from mistral's format, not from the hugging face config. it starts at position 16384, past
+training's context limit, so it changes nothing for training.
 
-Loading the copy logs transformers' "incorrect regex pattern" warning. It is a false alarm,
-raised because config.json was written by a transformers 5 pre-release: the pattern is already
-the corrected one, and the check below confirms tokenisation matches mistral's own tokenizer.
+Loading the copy's tokenizer logs transformers' "incorrect regex pattern" warning. It is a
+false alarm, raised because the original config was written by a transformers 5 pre-release:
+the pattern is already the corrected one, and the check below confirms tokenisation matches
+mistral's own tokenizer.
 
-Run once, on a login node (it downloads ~17GB):
+Run once, on a login node (it downloads ~17GB to the hugging face cache, and writes ~16GB):
 
     python scripts/prepare_ministral.py
 
@@ -30,16 +35,27 @@ config/models.yaml points the `ministral3-8b` entry at the copy.
 import argparse
 import json
 import os
+import shutil
 from pathlib import Path
 
+import torch
 from huggingface_hub import snapshot_download
-from transformers import AutoTokenizer
+from safetensors import safe_open
+from safetensors.torch import save_file
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 
 REPO_ID = "mistralai/Ministral-3-8B-Reasoning-2512"
 # pinned, so every run uses the same weights and tokenizer
 REVISION = "81eaece1948f3875421d9a45bc55487d10e2d894"
 MISTRAL_FORMAT_FILES = ["tekken.json", "params.json", "consolidated.safetensors"]
+# rewritten for the text-only model, rather than copied
+REWRITTEN_FILES = [
+    "config.json",
+    "model.safetensors.index.json",
+    "processor_config.json",
+]
+LANGUAGE_MODEL_PREFIX = "language_model."
 REASONING_TAGS = ("[THINK]", "[/THINK]")
 
 
@@ -60,6 +76,47 @@ def default_output_dir() -> Path:
         / "models"
         / "Ministral-3-8B-Reasoning-2512-hf"
     )
+
+
+def write_text_only_model(
+    source: Path,
+    folder: Path,
+) -> None:
+    """
+    Write the language model alone: its config, its weights under their causal-lm names, and
+    every other file (tokenizer, chat template, generation config) as it is.
+    """
+    folder.mkdir(parents=True)
+    for path in source.iterdir():
+        if path.name not in REWRITTEN_FILES and path.suffix != ".safetensors":
+            # follows the cache's symlinks, so the tokenizer edits never touch the cache
+            shutil.copy(path, folder / path.name)
+
+    config = json.loads((source / "config.json").read_text())
+    text_config = config["text_config"]
+    text_config["architectures"] = ["Ministral3ForCausalLM"]
+    text_config["dtype"] = config["dtype"]
+    text_config["tie_word_embeddings"] = False
+    (folder / "config.json").write_text(json.dumps(text_config, indent=2))
+
+    # each shard keeps its name, holding just its language-model tensors
+    index = json.loads((source / "model.safetensors.index.json").read_text())
+    weight_map = {}
+    total_size = 0
+    for shard in sorted(set(index["weight_map"].values())):
+        tensors = {}
+        with safe_open(source / shard, framework="pt") as weights:
+            for name in weights.keys():
+                if name.startswith(LANGUAGE_MODEL_PREFIX):
+                    tensors[name.removeprefix(LANGUAGE_MODEL_PREFIX)] = (
+                        weights.get_tensor(name)
+                    )
+        save_file(tensors, folder / shard, metadata={"format": "pt"})
+        for name, tensor in tensors.items():
+            weight_map[name] = shard
+            total_size += tensor.nbytes
+    index = {"metadata": {"total_size": total_size}, "weight_map": weight_map}
+    (folder / "model.safetensors.index.json").write_text(json.dumps(index, indent=2))
 
 
 def unmark_reasoning_tags(
@@ -105,10 +162,18 @@ def check_copy(
     folder: Path,
 ) -> None:
     """
-    Check the copy loads as a hugging face tokenizer, tokenises text as mistral's own tokenizer
-    does, renders the reasoning system prompt, tokenises prompts exactly as the original does,
-    and keeps the tags when decoding.
+    Check the weights are exactly those a text-only model expects, and the tokenizer loads as
+    a hugging face tokenizer, tokenises text as mistral's own tokenizer does, renders the
+    reasoning system prompt, tokenises prompts exactly as the original does, and keeps the
+    tags when decoding.
     """
+    # an empty (meta-device) model lists the weight names it will load
+    with torch.device("meta"):
+        model = AutoModelForCausalLM.from_config(AutoConfig.from_pretrained(folder))
+    assert type(model).__name__ == "Ministral3ForCausalLM", type(model).__name__
+    index = json.loads((folder / "model.safetensors.index.json").read_text())
+    assert set(index["weight_map"]) == set(model.state_dict())
+
     copy = AutoTokenizer.from_pretrained(folder)
     original = AutoTokenizer.from_pretrained(
         REPO_ID, revision=REVISION, mistral_format=False
@@ -148,22 +213,25 @@ def check_copy(
     )
     decoded = copy.decode(completion, skip_special_tokens=True)
     assert decoded == "[THINK]plan[/THINK]answer", repr(decoded)
-    print(f"ok - {folder} decodes {decoded!r} (eos {copy.eos_token!r} dropped)")
+    print(
+        f"ok - {folder} holds the {len(index['weight_map'])} language-model weights, "
+        f"and decodes {decoded!r} (eos {copy.eos_token!r} dropped)"
+    )
 
 
 def main() -> None:
-    """Download the hugging face-format files, unmark the reasoning tags, and check the copy."""
+    """Download the hugging face-format files, write the text-only copy, and check it."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--output-dir", type=Path, default=None)
     args = parser.parse_args()
     output_dir = args.output_dir or default_output_dir()
 
-    snapshot_download(
+    source = snapshot_download(
         REPO_ID,
         revision=REVISION,
-        local_dir=output_dir,
         ignore_patterns=MISTRAL_FORMAT_FILES,
     )
+    write_text_only_model(Path(source), output_dir)
     unmark_reasoning_tags(output_dir)
     check_copy(output_dir)
 

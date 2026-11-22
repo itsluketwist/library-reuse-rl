@@ -28,7 +28,7 @@ models=(
     # "domyn-small"
     # "olmo3-7b"  # done with the chosen rewards (e93f, cb85, 15e4)
     # "opencodereasoning-1.1-7b"  # done with the chosen rewards (9f39, 0ee8, 58fa)
-    "ministral3-8b"  # needs scripts/prepare_ministral.py run first
+    # "ministral3-8b"  # needs the text-only copy (scripts/prepare_ministral.py) and a debug run
     "seed-coder-8b"
 )
 
@@ -40,10 +40,10 @@ models=(
 # trained for each model above for 4 epochs (num_train_epochs in the recipe). the ablations
 # below ran on qwen3-8b only, with their run ids in brackets
 training_jobs=(
-    # the chosen rewards
-    "data/train/library_usage|lu-import-matched|base|3e-6"
+    # the chosen rewards (seed-coder-8b: usage first, the others once it looks healthy)
+    # "data/train/library_usage|lu-import-matched|base|3e-6"
     "data/train/library_usage|lu-usage|base|3e-6"
-    "data/train/library_usage|lu-target|base|3e-6"
+    # "data/train/library_usage|lu-target|base|3e-6"
     # done (qwen3-8b) - the shaping-weight ablations
     # "data/train/library_usage|lu-import|base|3e-6"  # (584b)
     # "data/train/library_usage|lu-import-s25|base|3e-6"  # (4db4)
