@@ -20,6 +20,8 @@ models=(
     # "domyn-small"
     # "olmo3-7b"
     # "opencodereasoning-1.1-7b"
+    # "ministral3-8b"
+    # "seed-coder-8b"
     # "gpt-5.6-sol"
     # "gpt-5.6-terra"
     # "gpt-5.6-luna"

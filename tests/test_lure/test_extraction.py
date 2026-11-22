@@ -42,6 +42,14 @@ class TestSplitReasoning:
         """The common reasoning tag names are recognised, in any case."""
         assert split_reasoning(f"<{tag}>a</{tag}>b") == ("a", "b")
 
+    def test_mistral_tags_are_a_default(self):
+        """Mistral's [THINK] tags are recognised without passing them."""
+        assert split_reasoning("[THINK]a[/THINK]b") == ("a", "b")
+        assert split_reasoning("[THINK]still going", require_reasoning=True) == (
+            "still going",
+            "",
+        )
+
     def test_only_first_close_tag_splits(self):
         """A later closing tag stays in the answer."""
         assert split_reasoning("a</think>b</think>c") == ("a", "b</think>c")

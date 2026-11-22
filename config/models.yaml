@@ -71,6 +71,13 @@ ministral3-8b:
   base: "/projects/u6yb/twist.u6yb/models/Ministral-3-8B-Reasoning-2512-hf"
   path:
 
+# bytedance's 8b reasoning model for code (mit), a llama-architecture model trained from
+# scratch. a plain chat template that rejects system messages, and weights stored in fp32
+# (eval and training run it in bf16, as for every model)
+seed-coder-8b:
+  base: "ByteDance-Seed/Seed-Coder-8B-Reasoning"
+  path:
+
 deepseek-flash:
   provider: api
   base: "deepseek-flash"

@@ -26,8 +26,10 @@ models=(
     # "qwen3-8b"  # done with the chosen rewards (f2ca, 3079, f57b)
     # "qwen3.5-9b"
     # "domyn-small"
-    # "olmo3-7b"  # running with the chosen rewards (e93f, cb85, 15e4)
-    "opencodereasoning-1.1-7b"
+    # "olmo3-7b"  # done with the chosen rewards (e93f, cb85, 15e4)
+    # "opencodereasoning-1.1-7b"  # done with the chosen rewards (9f39, 0ee8, 58fa)
+    "ministral3-8b"  # needs scripts/prepare_ministral.py run first
+    "seed-coder-8b"
 )
 
 # training jobs are dataset|reward-profile|prompt-style|learning-rate. keeping these together
