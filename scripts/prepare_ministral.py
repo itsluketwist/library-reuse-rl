@@ -88,9 +88,12 @@ def write_text_only_model(
     """
     folder.mkdir(parents=True)
     for path in source.iterdir():
-        if path.name not in REWRITTEN_FILES and path.suffix != ".safetensors":
-            # follows the cache's symlinks, so the tokenizer edits never touch the cache
-            shutil.copy(path, folder / path.name)
+        # the cache can hold the mistral-format files too, once anything has loaded them
+        skip = REWRITTEN_FILES + MISTRAL_FORMAT_FILES
+        if path.name not in skip and path.suffix != ".safetensors":
+            # copies the contents only (the cache's files are read-only), following the cache's
+            # symlinks, so the tokenizer edits never touch the cache
+            shutil.copyfile(path, folder / path.name)
 
     config = json.loads((source / "config.json").read_text())
     text_config = config["text_config"]
