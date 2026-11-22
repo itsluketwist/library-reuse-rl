@@ -16,9 +16,16 @@ The hub repo needs three changes before our pipeline can use it:
   special tokens. they are still single tokens, so tokenisation is unchanged - only decoding
   now keeps them.
 
-vllm reads the model's extra attention scaling for long contexts (`llama_4_scaling_beta`) only
-from mistral's format, not from the hugging face config. it starts at position 16384, past
-training's context limit, so it changes nothing for training.
+The copy's config also repeats two of mistral's attention settings in the form vllm reads
+from a hugging face config. without them vllm runs a different model from transformers, and
+training's rollouts come from the wrong one (a log-probability gap 10x qwen3's):
+
+- mistral's yarn rope has `apply_scale: false`. transformers gets this from `mscale` and
+  `mscale_all_dim`, but vllm ignores those and scales attention by 1.28 unless the config
+  says `apply_yarn_scaling: false`. transformers warns that it doesn't recognise the key,
+  which is harmless (vllm's own mistral-format loader adds it too).
+- the extra attention scaling for long contexts (past position 16384) is
+  `rope_parameters.llama_4_scaling_beta` to transformers, but `llama_4_scaling` to vllm.
 
 Loading the copy's tokenizer logs transformers' "incorrect regex pattern" warning. It is a
 false alarm, raised because the original config was written by a transformers 5 pre-release:
@@ -36,6 +43,7 @@ import argparse
 import json
 import os
 import shutil
+import tempfile
 from pathlib import Path
 
 import torch
@@ -78,6 +86,22 @@ def default_output_dir() -> Path:
     )
 
 
+def add_vllm_attention_settings(
+    config: dict,
+) -> None:
+    """
+    Repeat mistral's yarn and long-context attention settings in the keys vllm reads (see
+    the module docstring), taking their values from the hugging face config's own keys.
+    """
+    rope = config["rope_parameters"]
+    # mistral's params.json: "yarn": {"apply_scale": false, ...}
+    rope["apply_yarn_scaling"] = False
+    config["llama_4_scaling"] = {
+        "original_max_position_embeddings": rope["original_max_position_embeddings"],
+        "beta": rope["llama_4_scaling_beta"],
+    }
+
+
 def write_text_only_model(
     source: Path,
     folder: Path,
@@ -100,6 +124,7 @@ def write_text_only_model(
     text_config["architectures"] = ["Ministral3ForCausalLM"]
     text_config["dtype"] = config["dtype"]
     text_config["tie_word_embeddings"] = False
+    add_vllm_attention_settings(text_config)
     (folder / "config.json").write_text(json.dumps(text_config, indent=2))
 
     # each shard keeps its name, holding just its language-model tensors
@@ -165,17 +190,28 @@ def check_copy(
     folder: Path,
 ) -> None:
     """
-    Check the weights are exactly those a text-only model expects, and the tokenizer loads as
-    a hugging face tokenizer, tokenises text as mistral's own tokenizer does, renders the
+    Check the weights are exactly those a text-only model expects, the vllm attention settings
+    survive saving (as every training checkpoint is saved), and the tokenizer loads as a
+    hugging face tokenizer, tokenises text as mistral's own tokenizer does, renders the
     reasoning system prompt, tokenises prompts exactly as the original does, and keeps the
     tags when decoding.
     """
+    config = AutoConfig.from_pretrained(folder)
     # an empty (meta-device) model lists the weight names it will load
     with torch.device("meta"):
-        model = AutoModelForCausalLM.from_config(AutoConfig.from_pretrained(folder))
+        model = AutoModelForCausalLM.from_config(config)
     assert type(model).__name__ == "Ministral3ForCausalLM", type(model).__name__
     index = json.loads((folder / "model.safetensors.index.json").read_text())
     assert set(index["weight_map"]) == set(model.state_dict())
+
+    with tempfile.TemporaryDirectory() as saved:
+        config.save_pretrained(saved)
+        resaved = json.loads((Path(saved) / "config.json").read_text())
+    assert resaved["rope_parameters"]["apply_yarn_scaling"] is False, resaved
+    assert resaved["llama_4_scaling"] == {
+        "original_max_position_embeddings": 16384,
+        "beta": 0.1,
+    }, resaved
 
     copy = AutoTokenizer.from_pretrained(folder)
     original = AutoTokenizer.from_pretrained(
