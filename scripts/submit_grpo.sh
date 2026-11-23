@@ -9,7 +9,9 @@ echo ">>> Submitting train jobs to slurm >>>"
 
 ACCOUNT="brics.u6yb"
 PARTITION="workq"
-GPUS=4                           # one node's gpus; the model is sharded across them
+GPUS=4                           # one node's gpus; the model is sharded across them (and
+                                 # across nodes, for a model with "training_nodes" in
+                                 # config/models.yaml)
 TIME="24:00:00"                  # the workq qos limit; the job requeues and resumes if hit
 
 # checkpoints are large and must outlive the run, so they go to project storage rather
@@ -28,8 +30,9 @@ models=(
     # "domyn-small"
     # "olmo3-7b"  # done with the chosen rewards (e93f, cb85, 15e4)
     # "opencodereasoning-1.1-7b"  # done with the chosen rewards (9f39, 0ee8, 58fa)
-    "ministral3-8b"  # needs the text-only copy made by scripts/prepare_ministral.py
+    # "ministral3-8b"  # needs the text-only copy made by scripts/prepare_ministral.py - lu-usage running (5463)
     # "seed-coder-8b"  # lu-usage running (eee7)
+    # "qwen3-14b"  # on hold until there are hours to spare - trains across 2 nodes (see config/models.yaml), lu-usage only, as an ablation
 )
 
 # training jobs are dataset|reward-profile|prompt-style|learning-rate. keeping these together
@@ -168,7 +171,25 @@ echo "  Log directory: $log_dir"
 echo
 
 for model in "${models[@]}"; do
-    echo "Submitting jobs for $model"
+    # the nodes to train this model across: its "training_nodes" in config/models.yaml, or 1
+    nodes=$(awk -v entry="$model:" '
+        $0 == entry { found = 1; next }
+        found && /^[^ #]/ { exit }
+        found && $1 == "training_nodes:" { print $2; exit }
+    ' config/models.yaml)
+    nodes=${nodes:-1}
+    echo "Submitting jobs for $model ($nodes node(s), $((GPUS * nodes)) gpus)"
+
+    # one node launches accelerate directly. several each run a copy of it under srun, and
+    # accelerate joins them into one run with the first node as the meeting point (the
+    # escaped variables are filled in when the job runs, on its own nodes)
+    launch="\$HOST_MEMBIND accelerate launch"
+    if [ "$nodes" -gt 1 ]; then
+        launch="srun --nodes=$nodes --ntasks-per-node=1 --cpus-per-task=\$SLURM_CPUS_ON_NODE \
+--gpus-per-node=$GPUS --kill-on-bad-exit=1 \$HOST_MEMBIND bash scripts/launch_on_node.sh \
+--num_machines $nodes --main_process_port \$MASTER_PORT \
+--main_process_ip \$(scontrol show hostnames \$SLURM_JOB_NODELIST | head -n 1)"
+    fi
 
     for training_job in "${training_jobs[@]}"; do
         IFS="|" read -r training_dataset reward_profile library_prompt_style learning_rate \
@@ -200,8 +221,8 @@ for model in "${models[@]}"; do
 #SBATCH --output=${log_dir}/${job_name}-%j.out
 #SBATCH --account=${ACCOUNT}
 #SBATCH --partition=${PARTITION}
-#SBATCH --nodes=1
-#SBATCH --gpus=${GPUS}
+#SBATCH --nodes=${nodes}
+#SBATCH --gpus=$((GPUS * nodes))
 #SBATCH --time=${TIME}
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@120
@@ -223,7 +244,7 @@ while true; do
     launch_start=\$(date +%s)
     # --module runs src.run_grpo as "python -m" would; the flags after it are the script's.
     # \$HOST_MEMBIND (see setup_job.sh) stops cpu-side memory spilling into the gpus
-    \$HOST_MEMBIND accelerate launch --config_file $accelerate_config --num_processes ${GPUS} \
+    $launch --config_file $accelerate_config --num_processes $((GPUS * nodes)) \
         --module src.run_grpo \
         --model $model \
         -d $training_dataset \

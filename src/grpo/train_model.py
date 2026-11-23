@@ -451,10 +451,7 @@ def _periodic_eval_history(log_history: list[dict]) -> dict[str, dict]:
     }
 
 
-def _configure_trl_vllm_engine(
-    kv_cache_memory_gib: float | None,
-    tensor_parallel_size: int,
-) -> None:
+def _configure_trl_vllm_engine(kv_cache_memory_gib: float | None) -> None:
     """
     Pass extra settings to trl's colocated vllm engine, which trl exposes no setting for,
     by swapping the engine class trl builds for one with them filled in.
@@ -465,20 +462,12 @@ def _configure_trl_vllm_engine(
     in between. In colocate mode the training model shares the process, and gpu memory it
     frees mid-profile (e.g. fsdp's weight broadcast buffers) trips that assertion (vllm
     issue #56830, unfixed in 0.28). Giving vllm a fixed cache size skips the check.
-
-    When vllm splits the model across gpus (tensor_parallel_size above 1, qwen3-14b only),
-    its custom all-reduce is turned off, so the gpus exchange results through nccl instead.
-    The custom one shares buffers between gpus through cuda ipc, which fails ("invalid
-    argument") on memory from the expandable-segments allocator our jobs use (see
-    scripts/setup_job.sh).
     """
     from trl.generation import vllm_generation
 
     engine_settings: dict = {"additional_config": dict(VLLM_ADDITIONAL_CONFIG)}
     if kv_cache_memory_gib is not None:
         engine_settings["kv_cache_memory_bytes"] = int(kv_cache_memory_gib * 1024**3)
-    if tensor_parallel_size > 1:
-        engine_settings["disable_custom_all_reduce"] = True
 
     vllm_generation.LLM = partial(vllm_generation.LLM, **engine_settings)
 
@@ -703,10 +692,7 @@ def train_model_with_grpo(
     # Initialize the GRPO trainer
     #############################
     if training_args.use_vllm:
-        _configure_trl_vllm_engine(
-            kv_cache_memory_gib=training_args.vllm_kv_cache_memory_gib,
-            tensor_parallel_size=training_args.vllm_tensor_parallel_size,
-        )
+        _configure_trl_vllm_engine(training_args.vllm_kv_cache_memory_gib)
 
     with log_timer(
         "trainer init (model loading, vllm startup)", enabled=is_main_process
