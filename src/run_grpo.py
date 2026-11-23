@@ -300,6 +300,7 @@ def run_grpo(
         log(f"Recipe: {recipe_config}")
         log(f"Library prompt style: {library_prompt_style}")
         log(f"Debug: {debug}")
+        log(f"Model's training overrides: {model_settings.get('training_overrides')}")
 
     # the large epoch checkpoints go under output_root (project storage on the HPC, see
     # trained_model_path)
@@ -330,6 +331,7 @@ def run_grpo(
         resume_save_steps=resume_save_steps,
         split_eval_steps=split_eval_steps,
         restart_after_save=restart_after_save,
+        model_overrides=model_settings.get("training_overrides"),
     )
 
     # every process trained; only one of them writes to the shared registry
@@ -366,6 +368,8 @@ def run_grpo(
             "learning_rate": learning_rate,
             "epoch": epoch,
         }
+        if model_settings.get("training_overrides"):
+            properties["training_overrides"] = model_settings["training_overrides"]
         model_key = f"{run_id}-epoch{epoch}"
         register_model(
             model_key=model_key,

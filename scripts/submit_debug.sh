@@ -82,8 +82,8 @@ case "$mode" in
         job_model="$scale_model"
         gpus=4
         # generous, since a new model's startup (e.g. qwen3.5's vllm kernel warmup) and step
-        # time aren't known yet
-        time_limit="02:00:00"
+        # time aren't known yet (8b took ~1 hour, 14b steps should be ~2x as long)
+        time_limit="03:00:00"
         command="\$HOST_MEMBIND accelerate launch --config_file $accelerate_config --num_processes 4 \
     --module src.run_grpo --model $scale_model --max-steps 3 --resume-save-steps 1 --split-eval-steps 0 --no-restart-after-save -d $dataset \
     --reward-profile $reward_profile --library-prompt-style $prompt_style \

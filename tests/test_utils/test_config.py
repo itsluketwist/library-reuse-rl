@@ -3,7 +3,12 @@
 import pytest
 import yaml
 
-from src.utils.config import check_config_keys, load_model_settings, register_model
+from src.utils.config import (
+    check_config_keys,
+    load_model_settings,
+    merge_recipe_overrides,
+    register_model,
+)
 
 
 class TestCheckConfigKeys:
@@ -25,6 +30,31 @@ class TestCheckConfigKeys:
                 known={"learning_rate", "warmup_steps"},
                 source="config/training.yaml",
             )
+
+
+class TestMergeRecipeOverrides:
+    """A model's training_overrides replace only the recipe settings they name."""
+
+    def test_nested_settings_merge_key_by_key(self) -> None:
+        recipe = {
+            "beta": 0.01,
+            "model_init_kwargs": {"dtype": "float32", "attn_implementation": "sdpa"},
+        }
+        merged = merge_recipe_overrides(
+            recipe,
+            {
+                "model_init_kwargs": {"dtype": "bfloat16"},
+                "vllm_tensor_parallel_size": 2,
+            },
+        )
+
+        assert merged == {
+            "beta": 0.01,
+            "model_init_kwargs": {"dtype": "bfloat16", "attn_implementation": "sdpa"},
+            "vllm_tensor_parallel_size": 2,
+        }
+        # the recipe itself is left as it was, for any other model
+        assert recipe["model_init_kwargs"]["dtype"] == "float32"
 
 
 class TestModelRegistry:

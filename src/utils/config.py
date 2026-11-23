@@ -73,6 +73,25 @@ def check_config_keys(
         )
 
 
+def merge_recipe_overrides(
+    recipe: dict[str, Any],
+    overrides: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Apply a model's own training settings (`training_overrides` in config/models.yaml) on
+    top of the recipe. A dict-valued setting, such as model_init_kwargs, is merged key by
+    key, so an override changes only the keys it names and keeps the rest of the recipe's.
+
+    Returns a new recipe dict, leaving both inputs unchanged.
+    """
+    merged = dict(recipe)
+    for key, value in overrides.items():
+        if isinstance(value, dict) and isinstance(recipe.get(key), dict):
+            value = {**recipe[key], **value}
+        merged[key] = value
+    return merged
+
+
 # the model registry is split so each file has a single owner, and a model is looked up
 # in all three (see load_model_settings):
 # - models.yaml holds the base and api-served models, written by hand - code never
