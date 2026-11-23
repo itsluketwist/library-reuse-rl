@@ -1,0 +1,36 @@
+\begin{table*}[t]
+\centering
+
+\caption{
+\textbf{Effect of \lure{} training on \qwlil{} and \olmo{}.}
+Each run is reported at its final (fourth) epoch.
+Training substantially increases library reuse while preserving correctness on \libreusebench{}, its control split, and general coding benchmarks.
+\emph{Lines saved} measures the reduction in bespoke logical lines attributable to library use, while \emph{Tokens} reports the mean number of generated tokens per task.
+}
+
+\label{tab:main-results}
+
+    \begin{adjustbox}{width=\textwidth}
+    \bgroup
+    \def\arraystretch{1.4}
+
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+ & \multicolumn{5}{c}{\libreusebench{} test} & \multicolumn{2}{c}{Control} & \multicolumn{2}{c}{General coding \textit{pass@1}} \\
+\cmidrule(lr){2-6} \cmidrule(lr){7-8} \cmidrule(lr){9-10}
+Model & Library use & High-value reuse & \textit{pass@1} & Lines saved & Tokens & Library use & \textit{pass@1} & \humaneval & \livecodebench \\
+\midrule
+\qwlil & 15.7\% & 39.6\% & 75.5\% & 0.7 & 9,158 & 0.0\% & 80.5\% & 89.6\% & 66.9\% \\
++ Import reward & 37.7\% & 69.6\% & 78.0\% & 3.9 & 7,434 & 0.0\% & 79.8\% & 89.1\% & 67.8\% \\
++ Usage reward & 34.6\% & 67.3\% & 76.5\% & 3.5 & 7,146 & 0.7\% & 83.3\% & 89.9\% & 71.5\% \\
++ Target reward & 41.8\% & 72.7\% & 78.3\% & 4.5 & 6,868 & 0.2\% & 83.3\% & 89.3\% & 69.7\% \\
+\midrule
+\olmo & 2.2\% & 6.5\% & 60.1\% & 0.6 & 11,283 & 0.0\% & 72.6\% & 91.0\% & 55.4\% \\
++ Import reward & 35.8\% & 63.5\% & 63.0\% & 6.8 & 7,358 & 0.2\% & 78.6\% & 90.1\% & 63.2\% \\
++ Usage reward & 26.6\% & 52.7\% & 66.0\% & 5.4 & 7,375 & 0.0\% & 78.6\% & 90.6\% & 65.5\% \\
++ Target reward & 25.6\% & 50.0\% & 64.8\% & 5.6 & 7,576 & 0.0\% & 76.4\% & 89.8\% & 62.3\% \\
+\bottomrule
+\end{tabular}
+\egroup
+    \end{adjustbox}
+\end{table*}
