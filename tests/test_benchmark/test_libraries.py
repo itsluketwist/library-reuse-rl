@@ -69,6 +69,24 @@ print(value)
         assert imported_libraries(response) == {"pandas", "numpy"}
         assert used_libraries(response) == {"pandas"}
 
+    def test_used_libraries_preserves_optional_import(self) -> None:
+        """A fallback assignment must not erase the successful import's usage."""
+        response = """```python
+try:
+    import numpy as np
+except ImportError:
+    np = None
+
+def mean(values):
+    if np is not None:
+        return np.mean(values)
+    return sum(values) / len(values)
+```"""
+
+        assert imported_libraries(response) == {"numpy"}
+        assert used_libraries(response) == {"numpy"}
+        assert required_pip_packages(response) == {"numpy"}
+
     def test_required_pip_packages_maps_external(self) -> None:
         response = "```python\nimport bs4\nprint(bs4)\n```"
         assert required_pip_packages(response) == {"beautifulsoup4"}

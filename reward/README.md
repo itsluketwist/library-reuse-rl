@@ -159,6 +159,12 @@ The rules it follows:
   A library is *used* when a single code block imports it and then references it.
   Referencing it in a different block doesn't count, and neither does a name rebound by
   assignment, loop variable, argument or similar.
+- **Alternative paths** retain possible import bindings: for example, `except ImportError:
+  np = None` does not erase a successful `import numpy as np` from the `try` path. Imports
+  in sibling `if`/`except` branches do not supply names to each other. An unconditional
+  reassignment still clears a binding. This is static evidence of a possible reference,
+  not proof that a library call executes: branch conditions and exception types are not
+  evaluated, and this is not a complete control-flow analysis.
 - **Placeholder modules** aren't counted as libraries either, by default. These are names that
   stand for code the response doesn't have: a placeholder such as `your_module` or `my_app`, a
   generic project-module name such as `utils` or `models`, or a name like `data_utils` or
