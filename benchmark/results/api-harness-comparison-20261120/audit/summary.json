@@ -1,0 +1,205 @@
+{
+  "updated_utc": "2026-11-21T19:33:59.171889+00:00",
+  "test_submissions_scanned": 1944,
+  "programs_with_imports": 90,
+  "library_only_used": 26,
+  "mixed_or_partial_used": 50,
+  "no_library_calls_on_tests": 14,
+  "no_call_import_branch_not_reached": 11,
+  "no_call_import_executed": 3,
+  "solutions_with_any_inactive_import": 15,
+  "inactive_library_solution_pairs": 15,
+  "syntactically_unreferenced_import_pairs": 0,
+  "runtime_test_inputs": 1022,
+  "execution_errors": 0,
+  "test_output_mismatches": 0,
+  "conditions": [
+    {
+      "model": "ML4",
+      "model_key": "ml4",
+      "arm": "single",
+      "test_tasks": 216,
+      "with_imports": 5,
+      "library_only_used": 4,
+      "mixed_or_partial_used": 1,
+      "no_library_calls": 0,
+      "some_import_inactive": 0,
+      "library_only_tasks": [
+        "LRB/T045",
+        "LRB/T062",
+        "LRB/T131",
+        "LRB/T148"
+      ],
+      "no_call_tasks": [],
+      "average_library_only_lloc": 10.25
+    },
+    {
+      "model": "ML4",
+      "model_key": "ml4",
+      "arm": "vibe",
+      "test_tasks": 216,
+      "with_imports": 3,
+      "library_only_used": 0,
+      "mixed_or_partial_used": 3,
+      "no_library_calls": 0,
+      "some_import_inactive": 0,
+      "library_only_tasks": [],
+      "no_call_tasks": [],
+      "average_library_only_lloc": null
+    },
+    {
+      "model": "ML4",
+      "model_key": "ml4",
+      "arm": "mini_swe",
+      "test_tasks": 216,
+      "with_imports": 17,
+      "library_only_used": 1,
+      "mixed_or_partial_used": 10,
+      "no_library_calls": 6,
+      "some_import_inactive": 6,
+      "library_only_tasks": [
+        "LRB/T062"
+      ],
+      "no_call_tasks": [
+        "LRB/T017",
+        "LRB/T051",
+        "LRB/T054",
+        "LRB/T085",
+        "LRB/T148",
+        "LRB/T174"
+      ],
+      "average_library_only_lloc": 19
+    },
+    {
+      "model": "GLM-5.3",
+      "model_key": "glm53",
+      "arm": "single",
+      "test_tasks": 216,
+      "with_imports": 7,
+      "library_only_used": 5,
+      "mixed_or_partial_used": 1,
+      "no_library_calls": 1,
+      "some_import_inactive": 1,
+      "library_only_tasks": [
+        "LRB/T045",
+        "LRB/T051",
+        "LRB/T062",
+        "LRB/T131",
+        "LRB/T166"
+      ],
+      "no_call_tasks": [
+        "LRB/T113"
+      ],
+      "average_library_only_lloc": 11.8
+    },
+    {
+      "model": "GLM-5.3",
+      "model_key": "glm53",
+      "arm": "vibe",
+      "test_tasks": 216,
+      "with_imports": 4,
+      "library_only_used": 2,
+      "mixed_or_partial_used": 2,
+      "no_library_calls": 0,
+      "some_import_inactive": 0,
+      "library_only_tasks": [
+        "LRB/T062",
+        "LRB/T115"
+      ],
+      "no_call_tasks": [],
+      "average_library_only_lloc": 15
+    },
+    {
+      "model": "GLM-5.3",
+      "model_key": "glm53",
+      "arm": "mini_swe",
+      "test_tasks": 216,
+      "with_imports": 24,
+      "library_only_used": 2,
+      "mixed_or_partial_used": 17,
+      "no_library_calls": 5,
+      "some_import_inactive": 6,
+      "library_only_tasks": [
+        "LRB/T158",
+        "LRB/T211"
+      ],
+      "no_call_tasks": [
+        "LRB/T046",
+        "LRB/T051",
+        "LRB/T054",
+        "LRB/T124",
+        "LRB/T152"
+      ],
+      "average_library_only_lloc": 39.5
+    },
+    {
+      "model": "DeepSeek Flash",
+      "model_key": "deepseek_flash",
+      "arm": "single",
+      "test_tasks": 216,
+      "with_imports": 9,
+      "library_only_used": 7,
+      "mixed_or_partial_used": 2,
+      "no_library_calls": 0,
+      "some_import_inactive": 0,
+      "library_only_tasks": [
+        "LRB/T045",
+        "LRB/T051",
+        "LRB/T062",
+        "LRB/T131",
+        "LRB/T158",
+        "LRB/T166",
+        "LRB/T206"
+      ],
+      "no_call_tasks": [],
+      "average_library_only_lloc": 12.714285714285714
+    },
+    {
+      "model": "DeepSeek Flash",
+      "model_key": "deepseek_flash",
+      "arm": "vibe",
+      "test_tasks": 216,
+      "with_imports": 7,
+      "library_only_used": 1,
+      "mixed_or_partial_used": 5,
+      "no_library_calls": 1,
+      "some_import_inactive": 1,
+      "library_only_tasks": [
+        "LRB/T062"
+      ],
+      "no_call_tasks": [
+        "LRB/T051"
+      ],
+      "average_library_only_lloc": 12
+    },
+    {
+      "model": "DeepSeek Flash",
+      "model_key": "deepseek_flash",
+      "arm": "mini_swe",
+      "test_tasks": 216,
+      "with_imports": 14,
+      "library_only_used": 4,
+      "mixed_or_partial_used": 9,
+      "no_library_calls": 1,
+      "some_import_inactive": 1,
+      "library_only_tasks": [
+        "LRB/T032",
+        "LRB/T045",
+        "LRB/T062",
+        "LRB/T131"
+      ],
+      "no_call_tasks": [
+        "LRB/T166"
+      ],
+      "average_library_only_lloc": 22
+    }
+  ],
+  "boundary_case": {
+    "id": "deepseek_flash__mini_swe__LRB_T160",
+    "excluded_reason": "Histogram is delegated to NumPy; the separately requested Gaussian PDF is implemented explicitly. Conservatively considered partial reuse.",
+    "if_pdf_formula_is_allowed_as_glue": {
+      "overall_library_only": 27,
+      "deepseek_mini_library_only": 5
+    }
+  }
+}

@@ -1,0 +1,152 @@
+[
+  {
+    "id": "ml4__mini_swe__LRB_T017",
+    "model": "ml4",
+    "arm": "mini_swe",
+    "task": "LRB/T017",
+    "library": "numpy",
+    "reason": "import branch never executed",
+    "solution_has_other_library_calls": false,
+    "structural_reason": "Handwritten exact and floating solvers plus a NumPy fallback."
+  },
+  {
+    "id": "ml4__mini_swe__LRB_T051",
+    "model": "ml4",
+    "arm": "mini_swe",
+    "task": "LRB/T051",
+    "library": "dateutil",
+    "reason": "import branch never executed",
+    "solution_has_other_library_calls": false,
+    "structural_reason": "Handwritten date parser plus dateutil fallback."
+  },
+  {
+    "id": "ml4__mini_swe__LRB_T054",
+    "model": "ml4",
+    "arm": "mini_swe",
+    "task": "LRB/T054",
+    "library": "backports",
+    "reason": "import branch never executed",
+    "solution_has_other_library_calls": false,
+    "structural_reason": "Third-party backports import is only a Python <3.9 compatibility branch; Python 3.12 uses stdlib zoneinfo."
+  },
+  {
+    "id": "ml4__mini_swe__LRB_T085",
+    "model": "ml4",
+    "arm": "mini_swe",
+    "task": "LRB/T085",
+    "library": "numpy",
+    "reason": "import branch never executed",
+    "solution_has_other_library_calls": false,
+    "structural_reason": "Handwritten exact OLS and floating solver, with NumPy as numerical fallback."
+  },
+  {
+    "id": "ml4__mini_swe__LRB_T148",
+    "model": "ml4",
+    "arm": "mini_swe",
+    "task": "LRB/T148",
+    "library": "numpy",
+    "reason": "import branch never executed",
+    "solution_has_other_library_calls": false,
+    "structural_reason": "Handwritten high-precision and floating DFTs; NumPy is only one optional path."
+  },
+  {
+    "id": "ml4__mini_swe__LRB_T174",
+    "model": "ml4",
+    "arm": "mini_swe",
+    "task": "LRB/T174",
+    "library": "numpy",
+    "reason": "import branch never executed",
+    "solution_has_other_library_calls": false,
+    "structural_reason": "Handwritten exact and floating least-squares solvers plus NumPy fallback."
+  },
+  {
+    "id": "glm53__single__LRB_T113",
+    "model": "glm53",
+    "arm": "direct",
+    "task": "LRB/T113",
+    "library": "dateutil",
+    "reason": "import branch never executed",
+    "solution_has_other_library_calls": false,
+    "structural_reason": "Explicit format-dispatch parser runs first; dateutil is only a last-resort fallback."
+  },
+  {
+    "id": "glm53__mini_swe__LRB_T002",
+    "model": "glm53",
+    "arm": "mini_swe",
+    "task": "LRB/T002",
+    "library": "numpy",
+    "reason": "import branch never executed",
+    "solution_has_other_library_calls": true,
+    "structural_reason": "Scikit-learn plus handwritten NumPy and pure-Python k-means."
+  },
+  {
+    "id": "glm53__mini_swe__LRB_T046",
+    "model": "glm53",
+    "arm": "mini_swe",
+    "task": "LRB/T046",
+    "library": "numpy",
+    "reason": "import branch never executed",
+    "solution_has_other_library_calls": false,
+    "structural_reason": "Submitted solver is handwritten; NumPy occurs only in a self-test not called by benchmark loading."
+  },
+  {
+    "id": "glm53__mini_swe__LRB_T051",
+    "model": "glm53",
+    "arm": "mini_swe",
+    "task": "LRB/T051",
+    "library": "dateutil",
+    "reason": "import branch never executed",
+    "solution_has_other_library_calls": false,
+    "structural_reason": "Handwritten date parser plus dateutil fallback."
+  },
+  {
+    "id": "glm53__mini_swe__LRB_T054",
+    "model": "glm53",
+    "arm": "mini_swe",
+    "task": "LRB/T054",
+    "library": "backports",
+    "reason": "import branch never executed",
+    "solution_has_other_library_calls": false,
+    "structural_reason": "backports.zoneinfo is only a legacy compatibility import; Python 3.12 uses stdlib zoneinfo."
+  },
+  {
+    "id": "glm53__mini_swe__LRB_T124",
+    "model": "glm53",
+    "arm": "mini_swe",
+    "task": "LRB/T124",
+    "library": "HTMLParser",
+    "reason": "import branch never executed",
+    "solution_has_other_library_calls": false,
+    "structural_reason": "External-looking HTMLParser name is a Python-2 compatibility branch; Python 3.12 uses html.parser."
+  },
+  {
+    "id": "glm53__mini_swe__LRB_T152",
+    "model": "glm53",
+    "arm": "mini_swe",
+    "task": "LRB/T152",
+    "library": "numpy",
+    "reason": "import executed, but no library function called",
+    "solution_has_other_library_calls": false,
+    "structural_reason": "Handwritten Lloyd/refinement algorithms in both NumPy and pure Python."
+  },
+  {
+    "id": "deepseek_flash__vibe__LRB_T051",
+    "model": "deepseek_flash",
+    "arm": "vibe",
+    "task": "LRB/T051",
+    "library": "dateutil",
+    "reason": "import executed, but no library function called",
+    "solution_has_other_library_calls": false,
+    "structural_reason": "Handwritten regex/date parser handles ordinary inputs; dateutil is the last fallback."
+  },
+  {
+    "id": "deepseek_flash__mini_swe__LRB_T166",
+    "model": "deepseek_flash",
+    "arm": "mini_swe",
+    "task": "LRB/T166",
+    "library": "numpy",
+    "reason": "import executed, but no library function called",
+    "solution_has_other_library_calls": false,
+    "structural_reason": "Handwritten exact regression runs first; NumPy is a fallback."
+  }
+]
