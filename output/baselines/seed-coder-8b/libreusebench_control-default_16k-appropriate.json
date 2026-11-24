@@ -1,0 +1,137 @@
+{
+  "metadata": {
+    "base": "ByteDance-Seed/Seed-Coder-8B-Reasoning",
+    "weights": null,
+    "provider": "vllm",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.3.1",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": "Use an external library when appropriate.",
+    "prompt_style": "appropriate",
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 957.1,
+      "evaluation": 50.4,
+      "model_load": 55.2
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 0.7547619047619047,
+    "pass@k": 0.9523809523809523,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.03571428571428571,
+          "avg_extlibs": 0.03571428571428571,
+          "library_counts": {
+            "simplejson": 1,
+            "unidecode": 1,
+            "nltk": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.01904761904761905,
+          "avg_extlibs": 0.01904761904761905,
+          "library_counts": {
+            "unidecode": 5,
+            "nltk": 2,
+            "simplejson": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.03571428571428571,
+          "avg_extlibs": 0.03571428571428571,
+          "library_counts": {
+            "simplejson": 1,
+            "unidecode": 1,
+            "nltk": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.01904761904761905,
+          "avg_extlibs": 0.01904761904761905,
+          "library_counts": {
+            "unidecode": 5,
+            "nltk": 2,
+            "simplejson": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 385,
+        "avg_lloc": 14.654545454545454,
+        "avg_maintainability_index": 82.18693268497617
+      },
+      "passed": {
+        "n_measured": 317,
+        "avg_lloc": 14.277602523659306,
+        "avg_maintainability_index": 82.46025259016649
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-4bzmwhfe",
+      "source": "response_imports",
+      "installed_packages": [
+        "nltk",
+        "simplejson",
+        "unidecode"
+      ],
+      "install_failed": [],
+      "task_packages": [],
+      "installed_package_versions": {
+        "click": "8.5.1",
+        "cloudpickle": "3.1.3",
+        "defusedxml": "0.7.1",
+        "joblib": "1.6.0",
+        "nltk": "3.10.4",
+        "pip": "25.0.1",
+        "regex": "2026.11.19",
+        "simplejson": "4.3.0",
+        "tqdm": "4.70.1",
+        "unidecode": "1.4.0"
+      },
+      "package_imports": {
+        "nltk": [
+          "nltk"
+        ],
+        "simplejson": [
+          "simplejson"
+        ],
+        "unidecode": [
+          "unidecode"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-x0oqvlid/libreusebench_eval_2026-11-22T17:34:06.198379.json"
+  }
+}
