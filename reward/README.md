@@ -15,6 +15,10 @@ evaluation.
 pip install lure
 ```
 
+Source on [GitHub](https://github.com/itsluketwist/library-reuse-rl/tree/main/reward), as part
+of the research project that also built the
+[LibReuseBench](https://huggingface.co/datasets/itsluketwist/LibReuseBench) benchmark.
+
 ## Reward functions
 
 ````python
@@ -139,7 +143,7 @@ parsed.longest_block     # the longest code block, e.g. to run it
 The rules it follows:
 
 - **Reasoning** is everything before the first `</think>` (also `</thinking>`, `</reasoning>`,
-  `</thought>`, or your own tags, see below), and is never analysed. The opening tag is
+  `</thought>`, Mistral's `[/THINK]`, or your own tags, see below), and is never analysed. The opening tag is
   optional, because some chat templates put it in the prompt. An opening tag with no closing
   tag means there is no answer. A response with no tags at all is the answer, unless you pass
   `require_reasoning=True`: then it counts as unfinished reasoning (e.g. cut off before
@@ -176,6 +180,11 @@ parse_response(response, reasoning_tags=("<|begin_of_thought|>", "<|end_of_thoug
 The building blocks are also available on their own: `split_reasoning`, `extract_code_blocks`,
 `analyse_code`, `is_placeholder_module`, and `pip_package` (e.g.
 `pip_package("PIL") == "Pillow"`).
+
+## Citation
+
+If you use lure, please cite our paper; the BibTeX entry is in the
+[repository's readme](https://github.com/itsluketwist/library-reuse-rl#citation).
 
 ## Licence
 

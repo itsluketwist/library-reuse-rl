@@ -9,7 +9,9 @@ echo ">>> Submitting train jobs to slurm >>>"
 
 ACCOUNT="brics.u6yb"
 PARTITION="workq"
-GPUS=4                           # one node's gpus; the model is sharded across them
+GPUS=4                           # one node's gpus; the model is sharded across them (and
+                                 # across nodes, for a model with "training_nodes" in
+                                 # config/models.yaml)
 TIME="24:00:00"                  # the workq qos limit; the job requeues and resumes if hit
 
 # checkpoints are large and must outlive the run, so they go to project storage rather
@@ -26,7 +28,11 @@ models=(
     # "qwen3-8b"  # done with the chosen rewards (f2ca, 3079, f57b)
     # "qwen3.5-9b"
     # "domyn-small"
-    "olmo3-7b"
+    # "olmo3-7b"  # done with the chosen rewards (e93f, cb85, 15e4)
+    # "opencodereasoning-1.1-7b"  # done with the chosen rewards (9f39, 0ee8, 58fa)
+    # "ministral3-8b"  # not used - over-used libraries in lu-usage (5463), and needs the text-only copy made by scripts/prepare_ministral.py
+    "seed-coder-8b"  # lu-usage done (eee7) - import-matched and target to finish the seed
+    # "qwen3-14b"  # on hold until there are hours to spare - trains across 2 nodes (see config/models.yaml), lu-usage only, as an ablation
 )
 
 # training jobs are dataset|reward-profile|prompt-style|learning-rate. keeping these together
@@ -37,9 +43,9 @@ models=(
 # trained for each model above for 4 epochs (num_train_epochs in the recipe). the ablations
 # below ran on qwen3-8b only, with their run ids in brackets
 training_jobs=(
-    # the chosen rewards
+    # the chosen rewards (seed-coder-8b: usage done, the other two now)
     "data/train/library_usage|lu-import-matched|base|3e-6"
-    "data/train/library_usage|lu-usage|base|3e-6"
+    # "data/train/library_usage|lu-usage|base|3e-6"
     "data/train/library_usage|lu-target|base|3e-6"
     # done (qwen3-8b) - the shaping-weight ablations
     # "data/train/library_usage|lu-import|base|3e-6"  # (584b)
@@ -65,6 +71,13 @@ eval_datasets=(
     # regression tests of general coding ability - pass@1 shouldn't drop
     "humaneval_plus"
     "livecodebench"
+)
+
+# the eval datasets also scored with the prompt-engineering suffix ("appropriate", see
+# TASK_SUFFIXES in src/prompts.py), at the same epochs, to compare training with prompting
+suffix_eval_datasets=(
+    "libreusebench_test"
+    "libreusebench_control"
 )
 
 # which epoch checkpoints get those eval jobs: "all", or "final" for just the last epoch
@@ -145,6 +158,7 @@ echo "  Recipe: $recipe_config"
 echo "  Sharding: $accelerate_config (${GPUS} gpus)"
 echo "  Seed: $seed"
 echo "  Epoch eval datasets: ${eval_datasets[*]} (epochs: $eval_epochs)"
+echo "  ... and with the \"appropriate\" suffix: ${suffix_eval_datasets[*]}"
 echo "  Checkpoints: $OUTPUT_BASE"
 
 # one timestamped directory per invocation, holding the training logs and the logs of the
@@ -156,7 +170,25 @@ echo "  Log directory: $log_dir"
 echo
 
 for model in "${models[@]}"; do
-    echo "Submitting jobs for $model"
+    # the nodes to train this model across: its "training_nodes" in config/models.yaml, or 1
+    nodes=$(awk -v entry="$model:" '
+        $0 == entry { found = 1; next }
+        found && /^[^ #]/ { exit }
+        found && $1 == "training_nodes:" { print $2; exit }
+    ' config/models.yaml)
+    nodes=${nodes:-1}
+    echo "Submitting jobs for $model ($nodes node(s), $((GPUS * nodes)) gpus)"
+
+    # one node launches accelerate directly. several each run a copy of it under srun, and
+    # accelerate joins them into one run with the first node as the meeting point (the
+    # escaped variables are filled in when the job runs, on its own nodes)
+    launch="\$HOST_MEMBIND accelerate launch"
+    if [ "$nodes" -gt 1 ]; then
+        launch="srun --nodes=$nodes --ntasks-per-node=1 --cpus-per-task=\$SLURM_CPUS_ON_NODE \
+--gpus-per-node=$GPUS --kill-on-bad-exit=1 \$HOST_MEMBIND bash scripts/launch_on_node.sh \
+--num_machines $nodes --main_process_port \$MASTER_PORT \
+--main_process_ip \$(scontrol show hostnames \$SLURM_JOB_NODELIST | head -n 1)"
+    fi
 
     for training_job in "${training_jobs[@]}"; do
         IFS="|" read -r training_dataset reward_profile library_prompt_style learning_rate \
@@ -188,8 +220,8 @@ for model in "${models[@]}"; do
 #SBATCH --output=${log_dir}/${job_name}-%j.out
 #SBATCH --account=${ACCOUNT}
 #SBATCH --partition=${PARTITION}
-#SBATCH --nodes=1
-#SBATCH --gpus=${GPUS}
+#SBATCH --nodes=${nodes}
+#SBATCH --gpus=$((GPUS * nodes))
 #SBATCH --time=${TIME}
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@120
@@ -211,7 +243,7 @@ while true; do
     launch_start=\$(date +%s)
     # --module runs src.run_grpo as "python -m" would; the flags after it are the script's.
     # \$HOST_MEMBIND (see setup_job.sh) stops cpu-side memory spilling into the gpus
-    \$HOST_MEMBIND accelerate launch --config_file $accelerate_config --num_processes ${GPUS} \
+    $launch --config_file $accelerate_config --num_processes $((GPUS * nodes)) \
         --module src.run_grpo \
         --model $model \
         -d $training_dataset \
@@ -259,7 +291,8 @@ EOF
 
         # queue one single-gpu eval job per epoch checkpoint, held until training succeeds.
         # submit_eval.sh owns the other eval settings (samples, decoding, prompt style), so
-        # they are configured in one place only; the datasets are eval_datasets above.
+        # they are configured in one place only; the datasets are eval_datasets above, and
+        # suffix_eval_datasets again with the "appropriate" suffix.
         if [ "$debug" != true ]; then
             first_epoch=1
             if [ "$eval_epochs" = "final" ]; then
@@ -273,6 +306,12 @@ EOF
             EVAL_MODELS="$eval_models" \
                 EVAL_DATASETS="${eval_datasets[*]}" \
                 EVAL_PROMPT_STYLES="base" \
+                EVAL_DEPENDENCY="afterok:${train_job_id}" \
+                EVAL_LOG_DIR="$log_dir" \
+                bash scripts/submit_eval.sh
+            EVAL_MODELS="$eval_models" \
+                EVAL_DATASETS="${suffix_eval_datasets[*]}" \
+                EVAL_PROMPT_STYLES="appropriate" \
                 EVAL_DEPENDENCY="afterok:${train_job_id}" \
                 EVAL_LOG_DIR="$log_dir" \
                 bash scripts/submit_eval.sh

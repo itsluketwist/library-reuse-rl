@@ -150,6 +150,7 @@ exclude = ["benchmark/v1"]
 [[tool.ty.overrides]]
 include = [
     "scripts/check_gpu_stack.py",
+    "scripts/prepare_ministral.py",
     "src/eval/evaluate.py",
     "src/eval/generate_vllm.py",
     "src/grpo/config.py",

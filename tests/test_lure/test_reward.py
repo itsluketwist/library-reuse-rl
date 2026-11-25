@@ -177,12 +177,15 @@ class TestCreateLibraryReward:
     def test_custom_reasoning_tags(self):
         """The reward recognises a model's own reasoning tags for the format check."""
         response = (
-            "[THINK]plan[/THINK]\n```python\nimport requests\nrequests.get(u)\n```"
+            "<|begin_of_thought|>plan<|end_of_thought|>\n"
+            "```python\nimport requests\nrequests.get(u)\n```"
         )
 
         # with the default tags, nothing is recognised, so it all counts as unfinished reasoning
         assert create_library_reward()(response) == 0.0
-        reward = create_library_reward(reasoning_tags=[("[THINK]", "[/THINK]")])
+        reward = create_library_reward(
+            reasoning_tags=[("<|begin_of_thought|>", "<|end_of_thought|>")],
+        )
         assert reward(response) == 2.0
 
     def test_bad_reasoning_tags_raise_on_creation(self):

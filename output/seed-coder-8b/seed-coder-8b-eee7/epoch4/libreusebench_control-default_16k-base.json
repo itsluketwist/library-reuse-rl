@@ -1,0 +1,269 @@
+{
+  "metadata": {
+    "base": "ByteDance-Seed/Seed-Coder-8B-Reasoning",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/seed-coder-8b-eee7/checkpoint-148",
+    "provider": "vllm",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.3.1",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 333.0,
+      "evaluation": 118.5,
+      "model_load": 77.9
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 0.8,
+    "pass@k": 0.9642857142857143,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.2261904761904762,
+          "avg_extlibs": 0.23809523809523808,
+          "library_counts": {
+            "nltk": 3,
+            "numpy": 2,
+            "urlextract": 2,
+            "netaddr": 1,
+            "validate_email": 1,
+            "validators": 1,
+            "bs4": 1,
+            "more_itertools": 1,
+            "parso": 1,
+            "dateutil": 1,
+            "pandas": 1,
+            "StringIO": 1,
+            "unidecode": 1,
+            "lxml": 1,
+            "simplejson": 1,
+            "orjson": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.07857142857142857,
+          "avg_extlibs": 0.07857142857142857,
+          "library_counts": {
+            "nltk": 7,
+            "unidecode": 5,
+            "numpy": 4,
+            "lxml": 3,
+            "dateutil": 2,
+            "urlextract": 2,
+            "netaddr": 1,
+            "validate_email": 1,
+            "validators": 1,
+            "bs4": 1,
+            "more_itertools": 1,
+            "parso": 1,
+            "pandas": 1,
+            "StringIO": 1,
+            "orjson": 1,
+            "simplejson": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.21428571428571427,
+          "avg_extlibs": 0.2261904761904762,
+          "library_counts": {
+            "nltk": 3,
+            "numpy": 2,
+            "urlextract": 2,
+            "netaddr": 1,
+            "validate_email": 1,
+            "validators": 1,
+            "bs4": 1,
+            "parso": 1,
+            "dateutil": 1,
+            "pandas": 1,
+            "StringIO": 1,
+            "unidecode": 1,
+            "lxml": 1,
+            "simplejson": 1,
+            "orjson": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.0761904761904762,
+          "avg_extlibs": 0.0761904761904762,
+          "library_counts": {
+            "nltk": 7,
+            "unidecode": 5,
+            "numpy": 4,
+            "lxml": 3,
+            "dateutil": 2,
+            "urlextract": 2,
+            "netaddr": 1,
+            "validate_email": 1,
+            "validators": 1,
+            "bs4": 1,
+            "parso": 1,
+            "pandas": 1,
+            "StringIO": 1,
+            "orjson": 1,
+            "simplejson": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 417,
+        "avg_lloc": 14.714628297362111,
+        "avg_maintainability_index": 83.06844019310981
+      },
+      "passed": {
+        "n_measured": 336,
+        "avg_lloc": 14.220238095238095,
+        "avg_maintainability_index": 83.02920347421794
+      }
+    },
+    "not_run": {
+      "n_responses": 1,
+      "packages": [
+        "StringIO"
+      ],
+      "responses": [
+        {
+          "task_id": "LRB/C045",
+          "idx": 2,
+          "packages": [
+            "StringIO"
+          ]
+        }
+      ]
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-3lv8r5bs",
+      "source": "response_imports",
+      "installed_packages": [
+        "beautifulsoup4",
+        "lxml",
+        "more_itertools",
+        "netaddr",
+        "nltk",
+        "numpy",
+        "orjson",
+        "pandas",
+        "parso",
+        "python-dateutil",
+        "simplejson",
+        "unidecode",
+        "urlextract",
+        "validate_email",
+        "validators"
+      ],
+      "install_failed": [
+        "StringIO"
+      ],
+      "task_packages": [],
+      "installed_package_versions": {
+        "beautifulsoup4": "4.15.0",
+        "click": "8.5.1",
+        "cloudpickle": "3.1.3",
+        "defusedxml": "0.7.1",
+        "filelock": "4.3.1",
+        "idna": "3.20",
+        "joblib": "1.6.0",
+        "lxml": "6.1.3",
+        "more-itertools": "11.2.1",
+        "netaddr": "1.3.0",
+        "nltk": "3.10.4",
+        "numpy": "2.5.5",
+        "orjson": "3.13.0",
+        "pandas": "3.1.1",
+        "parso": "0.8.7",
+        "pip": "25.0.1",
+        "platformdirs": "4.14.8",
+        "python-dateutil": "4.0.0",
+        "regex": "2026.11.23",
+        "simplejson": "4.3.0",
+        "soupsieve": "4.1.3",
+        "tqdm": "4.70.1",
+        "typing-extensions": "4.16.0",
+        "tzdata": "2026.6",
+        "unidecode": "1.4.0",
+        "uritools": "7.0.1",
+        "urlextract": "1.10.0",
+        "validate-email": "1.3",
+        "validators": "0.36.0"
+      },
+      "package_imports": {
+        "StringIO": [
+          "StringIO"
+        ],
+        "beautifulsoup4": [
+          "bs4"
+        ],
+        "lxml": [
+          "lxml"
+        ],
+        "more_itertools": [
+          "more_itertools"
+        ],
+        "netaddr": [
+          "netaddr"
+        ],
+        "nltk": [
+          "nltk"
+        ],
+        "numpy": [
+          "numpy"
+        ],
+        "orjson": [
+          "orjson"
+        ],
+        "pandas": [
+          "pandas"
+        ],
+        "parso": [
+          "parso"
+        ],
+        "python-dateutil": [
+          "dateutil"
+        ],
+        "simplejson": [
+          "simplejson"
+        ],
+        "unidecode": [
+          "unidecode"
+        ],
+        "urlextract": [
+          "urlextract"
+        ],
+        "validate_email": [
+          "validate_email"
+        ],
+        "validators": [
+          "validators"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-7cagorzs/libreusebench_eval_2026-11-24T02:58:30.687012.json"
+  }
+}

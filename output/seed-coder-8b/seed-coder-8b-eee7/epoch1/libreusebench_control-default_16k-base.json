@@ -1,0 +1,131 @@
+{
+  "metadata": {
+    "base": "ByteDance-Seed/Seed-Coder-8B-Reasoning",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/seed-coder-8b-eee7/checkpoint-37",
+    "provider": "vllm",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.3.1",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 355.3,
+      "evaluation": 58.8,
+      "model_load": 64.2
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 0.7619047619047619,
+    "pass@k": 0.9166666666666666,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.03571428571428571,
+          "avg_extlibs": 0.03571428571428571,
+          "library_counts": {
+            "asttokens": 1,
+            "Crypto": 1,
+            "unidecode": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.014285714285714285,
+          "avg_extlibs": 0.014285714285714285,
+          "library_counts": {
+            "unidecode": 4,
+            "asttokens": 1,
+            "Crypto": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.03571428571428571,
+          "avg_extlibs": 0.03571428571428571,
+          "library_counts": {
+            "asttokens": 1,
+            "Crypto": 1,
+            "unidecode": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.014285714285714285,
+          "avg_extlibs": 0.014285714285714285,
+          "library_counts": {
+            "unidecode": 4,
+            "asttokens": 1,
+            "Crypto": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 412,
+        "avg_lloc": 14.754854368932039,
+        "avg_maintainability_index": 82.44241659200581
+      },
+      "passed": {
+        "n_measured": 320,
+        "avg_lloc": 14.5,
+        "avg_maintainability_index": 82.90553805404276
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-3dykn1mo",
+      "source": "response_imports",
+      "installed_packages": [
+        "asttokens",
+        "pycryptodome",
+        "unidecode"
+      ],
+      "install_failed": [],
+      "task_packages": [],
+      "installed_package_versions": {
+        "asttokens": "3.0.2",
+        "pip": "25.0.1",
+        "pycryptodome": "4.6.0",
+        "unidecode": "1.4.0"
+      },
+      "package_imports": {
+        "asttokens": [
+          "asttokens"
+        ],
+        "pycryptodome": [
+          "Crypto"
+        ],
+        "unidecode": [
+          "unidecode"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-01sqjvzk/libreusebench_eval_2026-11-24T03:03:55.359425.json"
+  }
+}

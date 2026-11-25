@@ -77,6 +77,34 @@ export VLLM_USE_DEEP_GEMM=0
 # unique port per job, so co-located jobs don't race for the same vllm port
 export MASTER_PORT=$((20000 + ${SLURM_JOB_ID:-$$} % 10000))
 
+# a job across several nodes (a model too large for one, see "training_nodes" in
+# config/models.yaml) sends nccl's traffic between the nodes over isambard's slingshot
+# network, through the aws-ofi-nccl plugin (paths from `module show brics/aws-ofi-nccl/1.8.1`,
+# settings from isambard's own multi-node setup, brics/apptainer-multi-node). the module
+# itself isn't loaded, as it would also put an older nccl ahead of torch's own
+if [ "${SLURM_JOB_NUM_NODES:-1}" -gt 1 ]; then
+    ofi_nccl_lib="/tools/brics/apps/linux-sles15-neoverse_v2/gcc-12.3.0/aws-ofi-nccl-1.8.1-c47cd5ivrugm3jzlyqyis4igyflnydmo/lib"
+    export LD_LIBRARY_PATH="$ofi_nccl_lib:/opt/cray/libfabric/2.3.1/lib64:${LD_LIBRARY_PATH:-}"
+    # fail if the plugin doesn't load, rather than fall back to (far slower) tcp sockets
+    export NCCL_NET="AWS Libfabric"
+    export NCCL_SOCKET_IFNAME="hsn"
+    export NCCL_CROSS_NIC="0"
+    export NCCL_NET_GDR_LEVEL="PHB"
+    export NCCL_MIN_NCHANNELS="4"
+    export NCCL_GDRCOPY_ENABLE="1"
+    export NCCL_NET_FORCE_FLUSH="1"
+    export FI_MR_CACHE_MONITOR="userfaultfd"
+    export FI_CXI_DISABLE_HOST_REGISTER="1"
+    export FI_HMEM_CUDA_USE_GDRCOPY="1"
+    export FI_CXI_DEFAULT_CQ_SIZE="131072"
+    export FI_CXI_DEFAULT_TX_SIZE="1024"
+    export FI_CXI_RDZV_PROTO="alt_read"
+    export FI_CXI_RDZV_THRESHOLD="0"
+    export FI_CXI_RDZV_GET_MIN="0"
+    export FI_CXI_RDZV_EAGER_SIZE="0"
+    echo "Multi-node job: ${SLURM_JOB_NUM_NODES} nodes, nccl over slingshot (aws-ofi-nccl)"
+fi
+
 # on isambard's gh200 nodes each gpu's memory is also visible to linux as a numa node, so
 # ordinary cpu-side memory (e.g. model weights being loaded) can silently fill a gpu. the
 # training launch is prefixed with $HOST_MEMBIND, which keeps cpu-side memory on the

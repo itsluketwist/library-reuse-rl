@@ -1,0 +1,149 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-f57b/checkpoint-37",
+    "provider": "vllm",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.3.1",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": "Use an external library when appropriate.",
+    "prompt_style": "appropriate",
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 354.7,
+      "evaluation": 59.7,
+      "model_load": 53.0
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 0.888095238095238,
+    "pass@k": 0.9761904761904762,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.047619047619047616,
+          "avg_extlibs": 0.047619047619047616,
+          "library_counts": {
+            "email_validator": 1,
+            "regex": 1,
+            "scipy": 1,
+            "cryptography": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.009523809523809525,
+          "avg_extlibs": 0.009523809523809525,
+          "library_counts": {
+            "email_validator": 1,
+            "regex": 1,
+            "scipy": 1,
+            "cryptography": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.047619047619047616,
+          "avg_extlibs": 0.047619047619047616,
+          "library_counts": {
+            "email_validator": 1,
+            "regex": 1,
+            "scipy": 1,
+            "cryptography": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.009523809523809525,
+          "avg_extlibs": 0.009523809523809525,
+          "library_counts": {
+            "email_validator": 1,
+            "regex": 1,
+            "scipy": 1,
+            "cryptography": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 416,
+        "avg_lloc": 12.401442307692308,
+        "avg_maintainability_index": 89.40322466945169
+      },
+      "passed": {
+        "n_measured": 373,
+        "avg_lloc": 12.359249329758713,
+        "avg_maintainability_index": 89.18901854396495
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-rpf8wpqr",
+      "source": "response_imports",
+      "installed_packages": [
+        "cryptography",
+        "email-validator",
+        "email_validator",
+        "regex",
+        "scipy"
+      ],
+      "install_failed": [],
+      "task_packages": [],
+      "installed_package_versions": {
+        "cffi": "2.1.1",
+        "cryptography": "50.0.2",
+        "dnspython": "2.9.2",
+        "email-validator": "2.4.0",
+        "idna": "3.20",
+        "numpy": "2.5.5",
+        "pip": "25.0.1",
+        "pycparser": "3.12",
+        "regex": "2026.11.18",
+        "scipy": "1.18.1"
+      },
+      "package_imports": {
+        "cryptography": [
+          "cryptography"
+        ],
+        "email-validator": [
+          "email-validator"
+        ],
+        "email_validator": [
+          "email_validator"
+        ],
+        "regex": [
+          "regex"
+        ],
+        "scipy": [
+          "scipy"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-es0y8hne/libreusebench_eval_2026-11-18T15:44:57.363559.json"
+  }
+}

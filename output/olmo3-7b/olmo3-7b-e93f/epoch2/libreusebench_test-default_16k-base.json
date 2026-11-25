@@ -1,0 +1,307 @@
+{
+  "metadata": {
+    "base": "allenai/OLMo-3-7B-Think",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/olmo3-7b-e93f/checkpoint-74",
+    "provider": "vllm",
+    "dataset": "libreusebench_test",
+    "dataset_file": "benchmark/libreusebench/data/test.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.3.1",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 6331.1,
+      "evaluation": 266.6,
+      "model_load": 62.2
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 1080,
+    "n_tasks": 216,
+    "n_responses": 1080,
+    "k": 5,
+    "pass@1": 0.6388888888888888,
+    "pass@k": 0.8564814814814815,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.4212962962962963,
+          "avg_extlibs": 0.5879629629629629,
+          "library_counts": {
+            "numpy": 68,
+            "sklearn": 18,
+            "scipy": 17,
+            "bs4": 12,
+            "dateutil": 4,
+            "pandas": 3,
+            "pytz": 2,
+            "geopy": 1,
+            "stats": 1,
+            "yaml": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.25925925925925924,
+          "avg_extlibs": 0.31203703703703706,
+          "library_counts": {
+            "numpy": 187,
+            "sklearn": 49,
+            "bs4": 47,
+            "scipy": 25,
+            "pytz": 10,
+            "pandas": 6,
+            "dateutil": 6,
+            "yaml": 5,
+            "geopy": 1,
+            "stats": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.4212962962962963,
+          "avg_extlibs": 0.5787037037037037,
+          "library_counts": {
+            "numpy": 67,
+            "sklearn": 18,
+            "scipy": 17,
+            "bs4": 12,
+            "dateutil": 4,
+            "pandas": 3,
+            "pytz": 2,
+            "geopy": 1,
+            "yaml": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.25925925925925924,
+          "avg_extlibs": 0.3055555555555556,
+          "library_counts": {
+            "numpy": 182,
+            "sklearn": 49,
+            "bs4": 47,
+            "scipy": 24,
+            "pytz": 10,
+            "pandas": 6,
+            "dateutil": 6,
+            "yaml": 5,
+            "geopy": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 1014,
+        "avg_lloc": 25.790927021696252,
+        "avg_maintainability_index": 72.27674372365671
+      },
+      "passed": {
+        "n_measured": 690,
+        "avg_lloc": 24.940579710144927,
+        "avg_maintainability_index": 71.20176838980002
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "reuse_value": {
+      "tiers": {
+        "low": {
+          "n_tasks": 58,
+          "pass@1": 0.7586206896551724,
+          "library_use": 0.13793103448275862
+        },
+        "medium": {
+          "n_tasks": 106,
+          "pass@1": 0.6509433962264151,
+          "library_use": 0.18490566037735848
+        },
+        "high": {
+          "n_tasks": 52,
+          "pass@1": 0.4807692307692308,
+          "library_use": 0.5461538461538461
+        }
+      },
+      "high_value_library_use": 0.5461538461538461
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-8dchmy_p",
+      "source": "response_imports",
+      "installed_packages": [
+        "PyYAML",
+        "beautifulsoup4",
+        "geopy",
+        "levenshtein",
+        "lxml",
+        "matplotlib",
+        "natsort",
+        "nltk",
+        "numpy",
+        "opencv-python",
+        "pandas",
+        "prettytable",
+        "pyquery",
+        "python-dateutil",
+        "pytz",
+        "pyyaml",
+        "regex",
+        "rsa",
+        "scikit-learn",
+        "scipy",
+        "stats",
+        "statsmodels",
+        "sympy",
+        "textblob",
+        "xmltodict"
+      ],
+      "install_failed": [],
+      "task_packages": [
+        "beautifulsoup4",
+        "geopy",
+        "levenshtein",
+        "lxml",
+        "matplotlib",
+        "natsort",
+        "nltk",
+        "numpy",
+        "opencv-python",
+        "pandas",
+        "prettytable",
+        "pyquery",
+        "python-dateutil",
+        "pytz",
+        "pyyaml",
+        "regex",
+        "rsa",
+        "scikit-learn",
+        "scipy",
+        "statsmodels",
+        "sympy",
+        "textblob",
+        "xmltodict"
+      ],
+      "installed_package_versions": {
+        "beautifulsoup4": "4.15.0",
+        "click": "8.5.1",
+        "cloudpickle": "3.1.3",
+        "contourpy": "1.4.0",
+        "cssselect": "1.6.0",
+        "cycler": "0.12.1",
+        "defusedxml": "0.7.1",
+        "fonttools": "4.68.0",
+        "formulaic": "1.2.2",
+        "geographiclib": "2.1",
+        "geopy": "2.5.0",
+        "interface-meta": "2.0.1",
+        "joblib": "1.6.0",
+        "kiwisolver": "1.5.1",
+        "levenshtein": "0.27.5",
+        "lxml": "6.1.3",
+        "matplotlib": "3.11.2",
+        "mpmath": "1.3.0",
+        "narwhals": "2.29.0",
+        "natsort": "8.4.0",
+        "nltk": "3.10.4",
+        "numpy": "2.5.5",
+        "opencv-python": "5.1.0.95",
+        "packaging": "26.3",
+        "pandas": "3.1.1",
+        "patsy": "1.0.3",
+        "pillow": "13.0.0",
+        "pip": "25.0.1",
+        "prettytable": "3.19.0",
+        "pyasn1": "0.6.5",
+        "pyparsing": "3.3.3",
+        "pyquery": "2.1.0",
+        "python-dateutil": "4.0.0",
+        "pytz": "2026.6",
+        "pyyaml": "6.0.4",
+        "rapidfuzz": "3.14.6",
+        "regex": "2026.11.19",
+        "rsa": "4.9.1",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "soupsieve": "4.1.3",
+        "stats": "0.1.2a0",
+        "statsmodels": "0.15.0",
+        "sympy": "1.14.0",
+        "textblob": "0.20.1",
+        "threadpoolctl": "3.8.0",
+        "tqdm": "4.70.1",
+        "typing-extensions": "4.16.0",
+        "tzdata": "2026.6",
+        "wcwidth": "0.9.4",
+        "wrapt": "2.5.2",
+        "xmltodict": "1.0.4"
+      },
+      "package_imports": {
+        "PyYAML": [
+          "yaml"
+        ],
+        "beautifulsoup4": [
+          "bs4"
+        ],
+        "geopy": [
+          "geopy"
+        ],
+        "levenshtein": [],
+        "lxml": [],
+        "matplotlib": [],
+        "natsort": [],
+        "nltk": [],
+        "numpy": [
+          "numpy"
+        ],
+        "opencv-python": [],
+        "pandas": [
+          "pandas"
+        ],
+        "prettytable": [],
+        "pyquery": [],
+        "python-dateutil": [
+          "dateutil"
+        ],
+        "pytz": [
+          "pytz"
+        ],
+        "pyyaml": [],
+        "regex": [],
+        "rsa": [],
+        "scikit-learn": [
+          "sklearn"
+        ],
+        "scipy": [
+          "scipy"
+        ],
+        "stats": [
+          "stats"
+        ],
+        "statsmodels": [],
+        "sympy": [],
+        "textblob": [],
+        "xmltodict": []
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-piail54m/libreusebench_eval_2026-11-21T06:33:22.056099.json"
+  }
+}

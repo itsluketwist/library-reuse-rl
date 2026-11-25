@@ -1,0 +1,69 @@
+{
+  "metadata": {
+    "base": "ByteDance-Seed/Seed-Coder-8B-Reasoning",
+    "weights": null,
+    "provider": "vllm",
+    "dataset": "humaneval_plus",
+    "dataset_file": "data/eval/humaneval_plus.jsonl",
+    "dataset_version": null,
+    "evaluator": "humaneval",
+    "lure_version": "0.3.1",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": "Use an external library when appropriate.",
+    "prompt_style": "appropriate",
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 923.8,
+      "evaluation": 417.2,
+      "model_load": 55.2
+    }
+  },
+  "analysis": {
+    "task": "humaneval",
+    "n_total": 820,
+    "n_tasks": 164,
+    "n_passed": 665,
+    "pass@1": 0.8109756097560976,
+    "pass@5": 0.9390243902439024,
+    "n_no_code": 38,
+    "n_overflow": 39,
+    "using_lib_rate": 0.0,
+    "avg_extlibs": 0.0,
+    "library_counts": {},
+    "code_metrics": {
+      "all": {
+        "n_measured": 782,
+        "avg_lloc": 9.398976982097187,
+        "avg_maintainability_index": 76.79062102529451
+      },
+      "passed": {
+        "n_measured": 665,
+        "avg_lloc": 8.878195488721804,
+        "avg_maintainability_index": 76.7534730967436
+      }
+    },
+    "environment": {
+      "installed_packages": [
+        "numpy"
+      ],
+      "install_failed": [],
+      "distributions": {
+        "numpy": "2.5.5",
+        "pip": "25.0.1"
+      }
+    }
+  }
+}

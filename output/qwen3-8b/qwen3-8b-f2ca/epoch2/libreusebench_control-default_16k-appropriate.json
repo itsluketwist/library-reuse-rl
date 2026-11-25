@@ -1,0 +1,142 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-8B",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/qwen3-8b-f2ca/checkpoint-74",
+    "provider": "vllm",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.3.1",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": "Use an external library when appropriate.",
+    "prompt_style": "appropriate",
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 396.1,
+      "evaluation": 64.1,
+      "model_load": 54.4
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 0.8666666666666666,
+    "pass@k": 0.9642857142857143,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.03571428571428571,
+          "avg_extlibs": 0.047619047619047616,
+          "library_counts": {
+            "scipy": 1,
+            "numpy": 1,
+            "cryptography": 1,
+            "unidecode": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.009523809523809525,
+          "avg_extlibs": 0.014285714285714285,
+          "library_counts": {
+            "scipy": 2,
+            "numpy": 2,
+            "cryptography": 1,
+            "unidecode": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.03571428571428571,
+          "avg_extlibs": 0.047619047619047616,
+          "library_counts": {
+            "scipy": 1,
+            "numpy": 1,
+            "cryptography": 1,
+            "unidecode": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.009523809523809525,
+          "avg_extlibs": 0.014285714285714285,
+          "library_counts": {
+            "scipy": 2,
+            "numpy": 2,
+            "cryptography": 1,
+            "unidecode": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 419,
+        "avg_lloc": 12.83293556085919,
+        "avg_maintainability_index": 91.67914749799974
+      },
+      "passed": {
+        "n_measured": 364,
+        "avg_lloc": 12.675824175824175,
+        "avg_maintainability_index": 91.27925616178258
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-r07z5w0s",
+      "source": "response_imports",
+      "installed_packages": [
+        "cryptography",
+        "numpy",
+        "scipy",
+        "unidecode"
+      ],
+      "install_failed": [],
+      "task_packages": [],
+      "installed_package_versions": {
+        "cffi": "2.1.1",
+        "cryptography": "50.0.2",
+        "numpy": "2.5.5",
+        "pip": "25.0.1",
+        "pycparser": "3.12",
+        "scipy": "1.18.1",
+        "unidecode": "1.4.0"
+      },
+      "package_imports": {
+        "cryptography": [
+          "cryptography"
+        ],
+        "numpy": [
+          "numpy"
+        ],
+        "scipy": [
+          "scipy"
+        ],
+        "unidecode": [
+          "unidecode"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-6av6e3jg/libreusebench_eval_2026-11-18T15:49:43.868220.json"
+  }
+}

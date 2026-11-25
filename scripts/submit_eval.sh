@@ -26,12 +26,15 @@ TIME="12:00:00"
 # api-served models are not submitted here: isambard has no cpu partition, and they only
 # need network access - run them with scripts/run_eval_local.sh instead.
 #
-# currently set to the olmo3-7b base model's results on every dataset below, with the plain
-# prompt and the prompt-engineering suffix (see prompt_styles) - its epoch 0 for the next
-# training runs. update=false skips the results that already exist, so each job only
-# fills in what's missing
+# currently set to the ministral3-8b base model's results on every dataset
+# below, with the plain prompt and the prompt-engineering suffix (see prompt_styles) - their
+# epoch 0 for the next training runs. update=false skips the results that already exist, so each job
+# only fills in what's missing
 models=(
-    "vllm:olmo3-7b"
+    "vllm:ministral3-8b"
+    # "vllm:seed-coder-8b"
+    # "vllm:opencodereasoning-1.1-7b"
+    # "vllm:olmo3-7b"
     # "vllm:qwen3-8b"
     # "vllm:qwen3-debug"
     # "vllm:qwen3-4b"
@@ -59,8 +62,8 @@ training_runs=(
 # scripts/submit_grpo.sh queues a run's epochs before training has registered them;
 # EVAL_DATASETS likewise replaces the datasets below, so a run's epochs are always scored on
 # the datasets submit_grpo.sh names, whatever this file is set up for; EVAL_PROMPT_STYLES
-# replaces the prompt styles the same way (a trained model is only scored with the plain
-# "base" prompt, never the prompt-engineering suffixes); EVAL_DEPENDENCY holds
+# replaces the prompt styles the same way (a trained model is scored with the plain
+# "base" prompt, and on libreusebench with the "appropriate" suffix); EVAL_DEPENDENCY holds
 # those jobs until training succeeds, and EVAL_LOG_DIR puts their logs in the training run's
 # log directory.
 

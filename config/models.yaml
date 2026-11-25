@@ -4,7 +4,9 @@
 # git-ignored) - eval looks a model key up in all three (see src/utils/config.py).
 #
 # every entry has a "base" (the huggingface model id) and a "path", which is blank here
-# and, for a trained model, points at its checkpoint.
+# and, for a trained model, points at its checkpoint. an optional "training_overrides"
+# replaces recipe settings (config/training.yaml) when training that model only, and an
+# optional "training_nodes" trains it across that many 4-gpu nodes (default 1).
 #
 # entries default to "provider: vllm" (local weights). "provider: api" entries are served
 # over an OpenAI-compatible api instead, and carry "api_key_env" (the .env variable holding
@@ -38,9 +40,23 @@ domyn-small:
   base: "domyn/Domyn-Small-v1.0"
   path:
 
+# 14b's training state does not fit beside vllm on one 4-gpu node, so it trains across two
+# ("training_nodes", read by scripts/submit_grpo.sh), with two recipe settings replaced for
+# this model only. neither changes what is trained:
+# - gradient accumulation is halved, as twice as many gpus each take a micro-batch: 1 x 8
+#   gpus x 64 = 512 completions per optimizer step, as in the recipe
+# - both models load in bf16, the checkpoint's own dtype, which halves the host memory each
+#   node's 4 processes need while loading (in fp32 it passes the node's 460GB). the policy
+#   still trains in fp32, as fsdp's setup upcasts it exactly before sharding, and the
+#   reference model computes in bf16 either way, as fsdp casts it to bf16 for compute
 qwen3-14b:
   base: "Qwen/Qwen3-14B"
   path:
+  training_nodes: 2
+  training_overrides:
+    model_init_kwargs:
+      dtype: bfloat16
+    gradient_accumulation_steps: 64
 
 qwen3-32b:
   base: "Qwen/Qwen3-32B"
@@ -48,12 +64,35 @@ qwen3-32b:
 
 # a dense 7b reasoning model, fully open (weights, data and code). its chat template puts
 # the opening <think> in the prompt, and adds its own system prompt when there is none.
-# its tokenizer's eos token is <|endoftext|>, but a chat reply ends with <|im_end|>:
-# training uses eos_token instead, so a reply that finished isn't counted as cut off
+# it ends a reply with its tokenizer's eos token, <|endoftext|> (<|im_end|> only closes
+# earlier turns), so the tokenizer needs no change for training
 olmo3-7b:
   base: "allenai/OLMo-3-7B-Think"
   path:
-  eos_token: "<|im_end|>"
+
+# a 7b reasoning model for code: qwen2.5-7b-instruct fine-tuned by nvidia on deepseek-r1's
+# competitive-programming solutions (version 1.1, nvidia open model license). a plain qwen2.5
+# chat template - the model writes its own <think> and ends with the tokenizer's eos token,
+# <|im_end|>, like qwen3
+opencodereasoning-1.1-7b:
+  base: "nvidia/OpenCodeReasoning-Nemotron-1.1-7B"
+  path:
+
+# mistral's 8b reasoning model (apache 2.0). it reasons in [THINK]...[/THINK] when its chat
+# template's default system prompt asks it to. loaded from a local, text-only copy of the
+# vision-language mistralai/Ministral-3-8B-Reasoning-2512, without the mistral-format files,
+# and with the reasoning tags no longer special tokens - made by scripts/prepare_ministral.py,
+# which explains why
+ministral3-8b:
+  base: "/projects/u6yb/twist.u6yb/models/Ministral-3-8B-Reasoning-2512-hf"
+  path:
+
+# bytedance's 8b reasoning model for code (mit), a llama-architecture model trained from
+# scratch. a plain chat template that rejects system messages, and weights stored in fp32
+# (eval and training run it in bf16, as for every model)
+seed-coder-8b:
+  base: "ByteDance-Seed/Seed-Coder-8B-Reasoning"
+  path:
 
 deepseek-flash:
   provider: api

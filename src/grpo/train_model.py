@@ -21,6 +21,7 @@ import sys
 from dataclasses import fields
 from functools import partial
 from pathlib import Path
+from typing import Any
 
 import datasets
 import lure
@@ -54,7 +55,7 @@ from src.grpo.split_eval import (
 )
 from src.grpo.wandb_logging import init_wandb_training
 from src.prompts import PromptStyle, build_system_prompt
-from src.utils.config import check_config_keys, load_full_yaml
+from src.utils.config import check_config_keys, load_full_yaml, merge_recipe_overrides
 from src.utils.io import save_json
 from src.utils.log import log, log_gpu_memory, log_timer
 from src.utils.vllm_settings import VLLM_ADDITIONAL_CONFIG
@@ -488,7 +489,7 @@ def train_model_with_grpo(
     resume_save_steps: int | None = None,
     split_eval_steps: int | None = None,
     restart_after_save: bool | None = None,
-    eos_token: str | None = None,
+    model_overrides: dict[str, Any] | None = None,
 ) -> dict[int, Path]:
     """
     Run full-weight GRPO training for `model_name_or_path` against the dataset at
@@ -505,10 +506,11 @@ def train_model_with_grpo(
     often a resume checkpoint is saved (the scale check saves every step),
     `split_eval_steps` how often the val/test splits are scored (0 for never),
     `restart_after_save` whether the process ends after each save, and
-    `learning_rate` its peak learning rate (see training_jobs in scripts/submit_grpo.sh);
-    every other
-    hyperparameter, including libraries_requirements_file and the rollout decoding
-    settings, comes from `recipe_config`.
+    `learning_rate` its peak learning rate (see training_jobs in scripts/submit_grpo.sh),
+    and `model_overrides` the model's own settings from its registry entry (e.g. qwen3-14b's
+    memory settings, see config/models.yaml); every other hyperparameter, including
+    libraries_requirements_file and the rollout decoding settings, comes from
+    `recipe_config`.
 
     `reward_profile` and `reward_weights` (see config/rewards.yaml) are recorded into
     train_results.json, so the reward function stays recoverable from the metrics dir.
@@ -529,6 +531,15 @@ def train_model_with_grpo(
         known={field.name for field in fields(GRPOConfig)} | _EVAL_ONLY_RECIPE_KEYS,
         source=recipe_config,
     )
+    # the model's own settings (training_overrides in config/models.yaml), checked the
+    # same way and then applied over the recipe
+    if model_overrides:
+        check_config_keys(
+            config=model_overrides,
+            known={field.name for field in fields(GRPOConfig)},
+            source="training_overrides in config/models.yaml",
+        )
+        recipe = merge_recipe_overrides(recipe, model_overrides)
 
     # settings that replace the recipe's for this run. they are merged in before parsing,
     # not set on the parsed config afterwards, because trl derives other settings from
@@ -667,12 +678,6 @@ def train_model_with_grpo(
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     if training_args.chat_template is not None:
         tokenizer.chat_template = training_args.chat_template
-    # trl and the reward both judge a rollout finished by its last token being the eos
-    # token. some tokenizers name a different one from the token that ends a chat reply
-    # (olmo 3's), so the model's registry entry can set it (eos_token in config/models.yaml)
-    if eos_token is not None:
-        tokenizer.eos_token = eos_token
-        logger.info(f"eos token set to {eos_token} (id {tokenizer.eos_token_id})")
 
     # one reward function per component, so each is logged as its own rate during
     # training and validation (see build_reward_functions)

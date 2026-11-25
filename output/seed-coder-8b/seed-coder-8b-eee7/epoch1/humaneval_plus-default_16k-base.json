@@ -1,0 +1,79 @@
+{
+  "metadata": {
+    "base": "ByteDance-Seed/Seed-Coder-8B-Reasoning",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/seed-coder-8b-eee7/checkpoint-37",
+    "provider": "vllm",
+    "dataset": "humaneval_plus",
+    "dataset_file": "data/eval/humaneval_plus.jsonl",
+    "dataset_version": null,
+    "evaluator": "humaneval",
+    "lure_version": "0.3.1",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 521.8,
+      "evaluation": 435.9,
+      "model_load": 64.2
+    }
+  },
+  "analysis": {
+    "task": "humaneval",
+    "n_total": 820,
+    "n_tasks": 164,
+    "n_passed": 677,
+    "pass@1": 0.825609756097561,
+    "pass@5": 0.9207317073170732,
+    "n_no_code": 12,
+    "n_overflow": 12,
+    "using_lib_rate": 0.0012195121951219512,
+    "avg_extlibs": 0.0012195121951219512,
+    "library_counts": {
+      "nltk": 1
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 808,
+        "avg_lloc": 9.862623762376238,
+        "avg_maintainability_index": 76.73446184508278
+      },
+      "passed": {
+        "n_measured": 677,
+        "avg_lloc": 9.400295420974889,
+        "avg_maintainability_index": 76.65962866384398
+      }
+    },
+    "environment": {
+      "installed_packages": [
+        "nltk",
+        "numpy"
+      ],
+      "install_failed": [],
+      "distributions": {
+        "click": "8.5.1",
+        "cloudpickle": "3.1.3",
+        "defusedxml": "0.7.1",
+        "joblib": "1.6.0",
+        "nltk": "3.10.4",
+        "numpy": "2.5.5",
+        "pip": "25.0.1",
+        "regex": "2026.11.23",
+        "tqdm": "4.70.1"
+      }
+    }
+  }
+}
