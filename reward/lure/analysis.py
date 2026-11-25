@@ -1,5 +1,7 @@
 """Statically find the libraries a python code block imports and actually uses."""
 
+from __future__ import annotations
+
 import ast
 import sys
 import warnings
@@ -99,9 +101,12 @@ class _ImportUsageVisitor(ast.NodeVisitor):
     """
     Walk a syntax tree, tracking which names are bound to imported libraries.
 
-    Each scope (module, function, class, lambda, comprehension) maps a name to the library
-    it was imported from, or to None once the name is rebound to something else. This
-    shadowing check stops `pd = object(); pd.x` counting as using pandas.
+    Each scope maps a name to possible import origins. An empty set is an
+    explicit non-import binding. Alternative paths start from independent copies
+    and join their origins, so an exception fallback cannot erase a successful
+    import. An unconditional rebind still clears all import origins.
+
+    This is conservative static evidence, not execution or predicate evaluation.
     """
 
     def __init__(
@@ -109,7 +114,7 @@ class _ImportUsageVisitor(ast.NodeVisitor):
         local_modules: set[str],
     ) -> None:
         self.local_modules = local_modules
-        self.scopes: list[dict[str, str | None]] = [{}]
+        self.scopes: list[dict[str, frozenset[str]]] = [{}]
         self.imported: set[str] = set()
         self.used: set[str] = set()
 
@@ -130,7 +135,7 @@ class _ImportUsageVisitor(ast.NodeVisitor):
         root: str,
     ) -> None:
         """Bind a name in the current scope to the library it was imported from."""
-        self.scopes[-1][name] = root
+        self.scopes[-1][name] = frozenset({root})
         if self._is_library(root):
             self.imported.add(root)
 
@@ -139,21 +144,153 @@ class _ImportUsageVisitor(ast.NodeVisitor):
         name: str,
     ) -> None:
         """Rebind a name in the current scope to something that is not a library."""
-        self.scopes[-1][name] = None
+        self.scopes[-1][name] = frozenset()
 
     def _resolve(
         self,
         name: str,
-    ) -> str | None:
+    ) -> frozenset[str]:
         """
         Look a name up from the innermost scope outwards.
 
-        Returns the library the name refers to, or None if it isn't bound to one.
+        Returns possible import origins, or an empty set for an untracked binding.
         """
         for scope in reversed(self.scopes):
             if name in scope:
                 return scope[name]
-        return None
+        return frozenset()
+
+    def _snapshot(self) -> list[dict[str, frozenset[str]]]:
+        return [scope.copy() for scope in self.scopes]
+
+    @staticmethod
+    def _join(
+        states: list[list[dict[str, frozenset[str]]]],
+    ) -> list[dict[str, frozenset[str]]]:
+        """Join alternative bindings without sharing mutable dictionaries."""
+        assert states and all(len(state) == len(states[0]) for state in states)
+        joined = []
+        for index in range(len(states[0])):
+            names = set().union(*(state[index] for state in states))
+            joined.append(
+                {
+                    name: frozenset().union(
+                        *(state[index].get(name, frozenset()) for state in states)
+                    )
+                    for name in names
+                }
+            )
+        return joined
+
+    def _path(
+        self,
+        nodes: Iterable[ast.AST],
+        entry: list[dict[str, frozenset[str]]],
+    ) -> list[dict[str, frozenset[str]]]:
+        self.scopes = [scope.copy() for scope in entry]
+        for node in nodes:
+            self.visit(node)
+        return self._snapshot()
+
+    # Alternative paths must not overwrite or leak bindings into one another.
+
+    def visit_If(self, node: ast.If) -> None:
+        self.visit(node.test)
+        entry = self._snapshot()
+        self.scopes = self._join(
+            [
+                self._path(node.body, entry),
+                self._path(node.orelse, entry),
+            ]
+        )
+
+    def visit_IfExp(self, node: ast.IfExp) -> None:
+        self.visit(node.test)
+        entry = self._snapshot()
+        self.scopes = self._join(
+            [
+                self._path([node.body], entry),
+                self._path([node.orelse], entry),
+            ]
+        )
+
+    def visit_BoolOp(self, node: ast.BoolOp) -> None:
+        exits = []
+        for value in node.values:
+            self.visit(value)
+            exits.append(self._snapshot())
+        self.scopes = self._join(exits)
+
+    @staticmethod
+    def _can_raise(node: ast.AST) -> bool:
+        """Ignore trivial non-raising writes when finding exception entries.
+
+        Other operations may raise; exception types and general expression
+        reachability are deliberately not solved.
+        """
+        if isinstance(node, (ast.Pass, ast.Global, ast.Nonlocal)):
+            return False
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
+            return False
+        if (
+            isinstance(node, ast.Assign)
+            and isinstance(node.value, ast.Constant)
+            and all(isinstance(target, ast.Name) for target in node.targets)
+        ):
+            return False
+        return True
+
+    def visit_Try(self, node: ast.Try | ast.TryStar) -> None:
+        exceptional = []
+        for statement in node.body:
+            # Multi-name imports bind left to right and can fail partway through.
+            if isinstance(statement, (ast.Import, ast.ImportFrom)):
+                for alias in statement.names:
+                    exceptional.append(self._snapshot())
+                    if isinstance(statement, ast.Import):
+                        self.visit_Import(ast.Import(names=[alias]))
+                    else:
+                        self.visit_ImportFrom(
+                            ast.ImportFrom(
+                                module=statement.module,
+                                names=[alias],
+                                level=statement.level,
+                            )
+                        )
+            else:
+                if self._can_raise(statement):
+                    exceptional.append(self._snapshot())
+                self.visit(statement)
+                if isinstance(
+                    statement,
+                    (
+                        ast.If,
+                        ast.For,
+                        ast.AsyncFor,
+                        ast.While,
+                        ast.With,
+                        ast.AsyncWith,
+                        ast.Try,
+                    ),
+                ):
+                    # Compound statements can change bindings before raising.
+                    exceptional.append(self._snapshot())
+        body_exit = self._snapshot()
+        normal_exit = self._path(node.orelse, body_exit)
+        handler_entry = self._join(exceptional) if exceptional else body_exit
+        exits = [normal_exit]
+        for handler in node.handlers:
+            handler_exit = self._path([handler], handler_entry)
+            exits.append(handler_exit)
+            if sys.version_info >= (3, 11) and isinstance(node, ast.TryStar):
+                # Several except* handlers can run, unlike ordinary except handlers.
+                # A later handler may see an earlier one's bindings or skip it.
+                handler_entry = self._join([handler_entry, handler_exit])
+        self.scopes = self._join(exits)
+        for statement in node.finalbody:
+            self.visit(statement)
+
+    visit_TryStar = visit_Try
 
     def _shadow_target(
         self,
@@ -201,9 +338,9 @@ class _ImportUsageVisitor(ast.NodeVisitor):
         node: ast.Name,
     ) -> None:
         if isinstance(node.ctx, ast.Load):
-            root = self._resolve(node.id)
-            if root is not None and self._is_library(root):
-                self.used.add(root)
+            self.used.update(
+                root for root in self._resolve(node.id) if self._is_library(root)
+            )
 
     # --- assignments, which shadow previously imported names ---
 
@@ -283,13 +420,16 @@ class _ImportUsageVisitor(ast.NodeVisitor):
             self._shadow(node.name)
         for statement in node.body:
             self.visit(statement)
+        if node.name is not None:
+            # Python deletes the exception target when the handler exits.
+            self._shadow(node.name)
 
     # --- new scopes ---
 
     def _visit_arguments(
         self,
         arguments: ast.arguments,
-    ) -> dict[str, str | None]:
+    ) -> dict[str, frozenset[str]]:
         """
         Visit argument defaults and annotations, which belong to the enclosing scope.
 
@@ -309,11 +449,11 @@ class _ImportUsageVisitor(ast.NodeVisitor):
         if arguments.kwarg is not None:
             all_arguments.append(arguments.kwarg)
 
-        scope: dict[str, str | None] = {}
+        scope: dict[str, frozenset[str]] = {}
         for argument in all_arguments:
             if argument.annotation is not None:
                 self.visit(argument.annotation)
-            scope[argument.arg] = None
+            scope[argument.arg] = frozenset()
         return scope
 
     def visit_FunctionDef(

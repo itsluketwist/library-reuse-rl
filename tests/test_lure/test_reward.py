@@ -103,6 +103,27 @@ class TestLibraryComponents:
         assert components["target_lib_imported"]
         assert not components["target_lib_used"]
 
+    def test_optional_target_import_retains_usage_credit(self):
+        """An exception fallback does not erase the successful target-library path."""
+        response = _response(
+            "try:\n"
+            "    import numpy as np\n"
+            "except ImportError:\n"
+            "    np = None\n"
+            "def mean(values):\n"
+            "    if np is not None:\n"
+            "        return np.mean(values)\n"
+            "    return sum(values) / len(values)\n"
+        )
+
+        components = library_components(response, target_libraries=["numpy"])
+
+        assert components["external_lib_imported"]
+        assert components["external_lib_used"]
+        assert components["target_lib_imported"]
+        assert components["target_lib_used"]
+        assert create_library_reward()(response) == 2.0
+
     def test_other_library_is_not_a_target(self):
         """A library outside the target list earns the external checks only."""
         components = library_components(
