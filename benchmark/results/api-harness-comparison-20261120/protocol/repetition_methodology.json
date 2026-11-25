@@ -1,0 +1,32 @@
+{
+  "frozen_utc": "2026-11-20T20:40:58.245906+00:00",
+  "cohorts": {
+    "LibReuseBench": "216 test tasks x 3 models x 3 arms; controls reported separately"
+  },
+  "text": "Only newly generated reasoning text from response bodies/SSE deltas; exclude requests, prior reasoning echoed in history, visible answer text, and tool arguments",
+  "normalization": "Unicode words and numbers, lowercase, preserve apostrophes; punctuation and whitespace ignored",
+  "repeat_metric": "A word position is repeated if it belongs to a later exact n-word sequence previously seen at a non-overlapping earlier position in the same response. Count the union of repeated positions, never double-count overlaps. Do not compare different response turns.",
+  "primary_ngram_words": 20,
+  "sensitivity_ngram_words": [
+    10,
+    40
+  ],
+  "primary_task_flag": {
+    "repeat_fraction_at_least": 0.2,
+    "repeated_words_at_least": 200
+  },
+  "sensitivity_flag_fractions": [
+    0.1,
+    0.3
+  ],
+  "aggregation": "Sum repeated-word and reasoning-word counts across responses, then aggregate per task and cohort. Show task-level numerator/denominator separately.",
+  "limits": "Record API finish_reason=length, empty final answers, and agent wall-time limits separately. No finite capped trace proves literally infinite generation.",
+  "manual_review": "Inspect high-repetition and capped examples plus selected non-flagged/agent cases. Exact repetition is a proxy, not a semantic judgment that every repeated passage is unnecessary.",
+  "new_model_calls": 0,
+  "additional_predeclared_diagnostics": {
+    "fenced_code_sensitivity": "Recompute 20-word repetition after removing balanced triple-backtick code blocks from reasoning. This does not remove all unfenced code.",
+    "finalization_marker": "Count paragraphs beginning with an intent to write/provide/produce/finalize the final answer, response, code, or solution. Flag a task if a single reasoning response has >=5 such markers and >=1000 normalized words. This is a diagnostic phrase pattern, not a semantic infinite-loop label.",
+    "partial_responses": "Include recorded reasoning prefixes in text statistics, label partial blocks explicitly; provider-token averages retain their previously recorded usage scope. Failed requests with no captured text are unobservable."
+  },
+  "addendum_utc": "2026-11-20T20:48:59.317007+00:00"
+}

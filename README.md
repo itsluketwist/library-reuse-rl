@@ -168,6 +168,11 @@ python scripts/summarize_eval.py
 
 ### *api-served models*
 
+A saved [LibReuseBench comparison of ML4, GLM-5.3 and DeepSeek Flash across direct
+API calls, Vibe and mini-swe](benchmark/results/api-harness-comparison-20261120/README.md)
+includes per-task submissions, corrected library-use metrics, token statistics,
+source/runtime audits, plots and regeneration instructions.
+
 Models can be evaluated over an OpenAI-compatible API instead of local weights, by giving
 their `config/models.yaml` entry `provider: api` and an `api_key_env` naming the `.env`
 variable that holds the key (copy [`.env.example`](.env.example) to `.env` and fill it in).

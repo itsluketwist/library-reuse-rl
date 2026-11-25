@@ -1,0 +1,18 @@
+{
+  "model": "ml4",
+  "arm": "direct",
+  "task_id": "LRB/T179",
+  "reported_thinking_tokens": 17496,
+  "repeated_intent_cue_count": 10,
+  "excerpts": [
+    "Now, final answer should be concise. We can write:",
+    "Now, final answer can include code only. But maybe include a short note: \"Uses HTMLParser so nested tags/entities are handled.\" Good.",
+    "Now, final answer.",
+    "Now, final code with no override startendtag.",
+    "Now, final answer can be:",
+    "Now, final answer should be in Python. We'll provide code block.",
+    "Now, final answer with code and brief explanation.",
+    "Now, final."
+  ],
+  "excerpt_policy": "First 220 characters of the first eight matching paragraphs; verbatim excerpts, not full trace."
+}
