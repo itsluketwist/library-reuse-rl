@@ -173,6 +173,11 @@ API calls, Vibe and mini-swe](benchmark/results/api-harness-comparison-20261120/
 includes per-task submissions, corrected library-use metrics, token statistics,
 source/runtime audits, plots and regeneration instructions.
 
+The follow-up [five-replica non-agentic comparison](benchmark/results/nonagentic-five-replicas-20261125/README.md)
+uses high reasoning, temperature 1 and top-p 1 for all three models. It includes
+3,240 full accepted generations with thinking text, paired native-format analysis
+files, pooled and per-replica results, and reproducible summaries.
+
 Models can be evaluated over an OpenAI-compatible API instead of local weights, by giving
 their `config/models.yaml` entry `provider: api` and an `api_key_env` naming the `.env`
 variable that holds the key (copy [`.env.example`](.env.example) to `.env` and fill it in).
