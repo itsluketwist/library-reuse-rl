@@ -112,13 +112,12 @@ vllm_max_model_length: 12288  # prompt + completion ceiling; sizes the kv cache,
 vllm_importance_sampling_mode: token_truncate
 vllm_importance_sampling_clip_max: 3.0
 chat_template_kwargs:
-  # rollouts use the model's reasoning mode, as eval does - some templates (e.g. domyn-small's)
-  # only reason when this is switched on
+  # rollouts use the model's reasoning mode, as eval does - some templates only reason when this is switched on
   enable_thinking: true
 
 # compute the loss straight from the model's last hidden layer in chunks, never building the
-# full [tokens x vocabulary] table of scores (~10-17 GB per 8k-token completion with qwen3.5's
-# and domyn-small's ~250k-token vocabularies). the same objective, just less gpu memory -
+# full [tokens x vocabulary] table of scores (several GB per 8k-token completion with
+# 150k-token vocabularies like qwen3's). the same objective, just less gpu memory -
 # trl ships the loss itself, but needs the liger-kernel package installed (the [hpc] extra)
 use_liger_kernel: true
 

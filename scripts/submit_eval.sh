@@ -10,8 +10,9 @@ echo ">>> Submitting eval jobs to slurm >>>"
 ACCOUNT="brics.u6yb"
 PARTITION="workq"
 # evaluation generates with one vllm engine, split across the job's gpus (tensor parallel).
-# one gpu fits every model up to 14b; give qwen3-32b four with EVAL_GPUS=4, as it ran out of
-# the 12h limit on one
+# one gpu fits every model up to 14b; qwen3-32b ran out of the 12h limit on one, so give it
+# four, in a submission of its own:
+#   EVAL_MODELS="vllm:qwen3-32b" EVAL_GPUS=4 bash scripts/submit_eval.sh
 GPUS="${EVAL_GPUS:-1}"
 TIME="12:00:00"
 
@@ -26,22 +27,15 @@ TIME="12:00:00"
 # api-served models are not submitted here: isambard has no cpu partition, and they only
 # need network access - run them with scripts/run_eval_local.sh instead.
 #
-# currently set to the ministral3-8b base model's results on every dataset
-# below, with the plain prompt and the prompt-engineering suffix (see prompt_styles) - their
-# epoch 0 for the next training runs. update=false skips the results that already exist, so each job
-# only fills in what's missing
+# currently set to the qwen3-14b base model, for its baseline results. update=false skips the
+# results that already exist, so each job only fills in what's missing
 models=(
-    "vllm:ministral3-8b"
+    "vllm:qwen3-14b"
     # "vllm:seed-coder-8b"
-    # "vllm:opencodereasoning-1.1-7b"
     # "vllm:olmo3-7b"
     # "vllm:qwen3-8b"
     # "vllm:qwen3-debug"
-    # "vllm:qwen3-4b"
-    # "vllm:qwen3-14b"
-    # "vllm:qwen3-32b"  # ran out of the 12h limit on one gpu - submit with EVAL_GPUS=4
-    # "vllm:qwen3.5-9b"
-    # "vllm:domyn-small"
+    # "vllm:qwen3-32b"  # needs 4 gpus - see GPUS above
     # the final epoch of each training run, for a quick check - training_runs below adds every
     # epoch instead
     # "vllm:qwen3-8b-4796-epoch5"

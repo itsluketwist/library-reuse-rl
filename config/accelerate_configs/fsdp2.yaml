@@ -26,9 +26,8 @@ fsdp_config:
   fsdp_auto_wrap_policy: TRANSFORMER_BASED_WRAP
   # each transformer block is sharded as a unit, and gathered only while it is in use. the
   # block classes aren't named here, so accelerate uses the model's own list of them
-  # (`_no_split_modules`) - so the same config works for every model (Qwen3DecoderLayer for
-  # qwen3, NemotronDecoderLayer for domyn-small, Qwen3_5DecoderLayer + Qwen3_5VisionBlock for
-  # qwen3.5)
+  # (`_no_split_modules`) - so the same config works for every model (e.g. Qwen3DecoderLayer for
+  # qwen3, LlamaDecoderLayer for seed-coder)
   # saves each checkpoint as one consolidated model.safetensors, which vllm can load
   # directly at evaluation time - sharded checkpoints would need converting first
   fsdp_state_dict_type: FULL_STATE_DICT

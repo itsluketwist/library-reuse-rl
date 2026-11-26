@@ -18,26 +18,8 @@ qwen3-debug:
   base: "Qwen/Qwen3-0.6B"
   path:
 
-qwen3-4b:
-  base: "Qwen/Qwen3-4B"
-  path:
-
 qwen3-8b:
   base: "Qwen/Qwen3-8B"
-  path:
-
-# candidate - being checked on isambard. a vision-language model with mostly linear-attention
-# (gated deltanet) layers: training builds the full model (the vision encoder is carried but
-# unused) and needs flash-linear-attention for fast linear-attention kernels (the [hpc] extra)
-qwen3.5-9b:
-  base: "Qwen/Qwen3.5-9B"
-  path:
-
-# candidate - being checked on isambard. a dense ~10b reasoning model (nemotron architecture,
-# MIT licence). its chat template only reasons with enable_thinking on, which the decoding
-# profiles pass through to both training and eval
-domyn-small:
-  base: "domyn/Domyn-Small-v1.0"
   path:
 
 # 14b's training state does not fit beside vllm on one 4-gpu node, so it trains across two

@@ -135,7 +135,7 @@ bash scripts/submit_debug.sh clean   # no job - deletes the checks' checkpoints 
 ```
 
 `eval` and `scale` also take a model key, to check a new candidate model before using it
-(e.g. `bash scripts/submit_debug.sh eval domyn-small`, then `scale domyn-small`).
+(e.g. `bash scripts/submit_debug.sh eval seed-coder-8b`, then `scale seed-coder-8b`).
 
 There are two eval launchers, each with its own configuration block at the top (models,
 datasets, decoding profiles, prompt styles, debug, update), so the two can be pointed at different

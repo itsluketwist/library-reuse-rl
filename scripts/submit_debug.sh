@@ -11,8 +11,8 @@
 # untrained base model, or a new candidate model:
 #
 #   bash scripts/submit_debug.sh eval qwen3-debug
-#   bash scripts/submit_debug.sh eval domyn-small
-#   bash scripts/submit_debug.sh scale domyn-small
+#   bash scripts/submit_debug.sh eval seed-coder-8b
+#   bash scripts/submit_debug.sh scale seed-coder-8b
 #
 # afterwards, delete what the checks leave behind (it lists everything and asks first):
 #
@@ -81,7 +81,7 @@ case "$mode" in
         # its last checkpoint (~130GB) - run the clean mode afterwards
         job_model="$scale_model"
         gpus=4
-        # generous, since a new model's startup (e.g. qwen3.5's vllm kernel warmup) and step
+        # generous, since a new model's startup (e.g. vllm's kernel warmup) and step
         # time aren't known yet (8b took ~1 hour, 14b steps should be ~2x as long)
         time_limit="03:00:00"
         command="\$HOST_MEMBIND accelerate launch --config_file $accelerate_config --num_processes 4 \
@@ -169,7 +169,7 @@ fi
 mkdir -p logs/debug
 
 echo
-# the job and its log are named after the mode and the model, e.g. debug-scale-domyn-small
+# the job and its log are named after the mode and the model, e.g. debug-scale-seed-coder-8b
 job_name="${mode}-${job_model}"
 
 echo ">>> Submitting debug job: $mode ($job_model) >>>"

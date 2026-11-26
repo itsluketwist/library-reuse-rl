@@ -85,8 +85,8 @@ def test_training_metrics_and_epochs_share_the_run_folder() -> None:
 
 def test_debug_results_mirror_the_normal_layout_under_debug() -> None:
     """Debug evals never land in (and so can't be mistaken for) real result folders."""
-    assert debug_output_dir(baseline_dir("domyn-small")) == Path(
-        "output/debug/baselines/domyn-small"
+    assert debug_output_dir(baseline_dir("olmo3-7b")) == Path(
+        "output/debug/baselines/olmo3-7b"
     )
     assert debug_output_dir(training_run_dir("qwen3-debug", "run")) == Path(
         "output/debug/qwen3-debug/run"
@@ -111,4 +111,4 @@ def test_a_moved_baseline_result_is_found_but_a_debug_one_is_not(
     moved.parent.mkdir(parents=True)
     moved.write_text("{}")
     assert moved_baseline_result(model="qwen3-8b", file_name=name) == moved
-    assert moved_baseline_result(model="qwen3-4b", file_name=name) is None
+    assert moved_baseline_result(model="olmo3-7b", file_name=name) is None

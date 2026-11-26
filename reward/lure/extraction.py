@@ -107,7 +107,7 @@ def split_reasoning(
 
     Everything before the first closing reasoning tag (e.g. </think>) is reasoning, and
     everything after it is the answer. Only the closing tag is required, because some chat
-    templates (e.g. Qwen3.5) put the opening <think> tag in the prompt rather than the
+    templates (e.g. OLMo 3) put the opening <think> tag in the prompt rather than the
     response. If there is an opening tag but no closing tag, the model never finished
     reasoning, so there is no answer.
 

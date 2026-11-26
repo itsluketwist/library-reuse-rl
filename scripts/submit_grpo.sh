@@ -22,16 +22,12 @@ OUTPUT_BASE="${PROJECTDIR:?PROJECTDIR is not set - are you on isambard?}/$USER/l
 #                          rl training configuration                          #
 ###############################################################################
 
-# the base models to train (see config/models.yaml)
+# the base models to train (see config/models.yaml), with their seed 42 runs (import, usage, target)
 models=(
     # "qwen3-debug"
-    # "qwen3-8b"  # done with the chosen rewards (f2ca, 3079, f57b)
-    # "qwen3.5-9b"
-    # "domyn-small"
-    # "olmo3-7b"  # done with the chosen rewards (e93f, cb85, 15e4)
-    # "opencodereasoning-1.1-7b"  # done with the chosen rewards (9f39, 0ee8, 58fa)
-    # "ministral3-8b"  # not used - over-used libraries in lu-usage (5463), and needs the text-only copy made by scripts/prepare_ministral.py
-    "seed-coder-8b"  # lu-usage done (eee7) - import-matched and target to finish the seed
+    "qwen3-8b"  # f2ca, 3079, f57b
+    "olmo3-7b"  # e93f, cb85, 15e4
+    "seed-coder-8b"  # 50e9, eee7, 5ad0
     # "qwen3-14b"  # on hold until there are hours to spare - trains across 2 nodes (see config/models.yaml), lu-usage only, as an ablation
 )
 
@@ -43,9 +39,9 @@ models=(
 # trained for each model above for 4 epochs (num_train_epochs in the recipe). the ablations
 # below ran on qwen3-8b only, with their run ids in brackets
 training_jobs=(
-    # the chosen rewards (seed-coder-8b: usage done, the other two now)
+    # the chosen rewards
     "data/train/library_usage|lu-import-matched|base|3e-6"
-    # "data/train/library_usage|lu-usage|base|3e-6"
+    "data/train/library_usage|lu-usage|base|3e-6"
     "data/train/library_usage|lu-target|base|3e-6"
     # done (qwen3-8b) - the shaping-weight ablations
     # "data/train/library_usage|lu-import|base|3e-6"  # (584b)
@@ -90,8 +86,8 @@ recipe_config="config/training.yaml"
 # accelerate config that shards the model across the job's gpus
 accelerate_config="config/accelerate_configs/fsdp2.yaml"
 
-# random seed for training
-seed=42
+# random seed for training - 42 for the first set of runs, 67 for the repeat
+seed=67
 
 # every epoch leaves a checkpoint (see save_strategy in the recipe); each is evaluated by
 # a dependent job once training finishes. read from the recipe so the two cannot drift.
