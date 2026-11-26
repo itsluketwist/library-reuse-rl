@@ -87,7 +87,7 @@ were scored on the final benchmark: see [v5](#v5-audited-target-libraries).
 - `useful_libs` is renamed `target_libs`. Every other field of every row is word for word v4's
   (checked row by row when it was built).
 - The lists (each category's `seed_libraries` in `taxonomy.yaml`) were audited in
-  `notebooks/04_target_library_audit.ipynb`, against every saved `library_usage` evaluation:
+  `notebooks/analysis/target_library_audit.ipynb`, against every saved `library_usage` evaluation:
   - **Removed:** `argparse` (cli-parsing). It is standard library, so it could never count.
   - **Added, from what models used:**
     - old names of listed libraries: `fuzzywuzzy`, `PyPDF2`;

@@ -261,8 +261,9 @@ them.
   environment.
 - [`data/`](data/) - Built training/evaluation datasets and their construction pipelines;
   see [`data/README.md`](data/README.md).
-- [`notebooks/`](notebooks/) - One-off, numbered notebooks for exploratory work that doesn't
-  belong in `src/`.
+- [`notebooks/`](notebooks/) - Analysis notebooks: the paper figures and the per-run training
+  summary at the top, `ablation/` and `analysis/` for the rest. Results and figures stay in
+  `output/`.
 - [`reward/`](reward/) - lure (Library-Use Rewards), our response parsing and library
   analysis, released on PyPI as a standalone package (`pip install lure`); see
   [`reward/README.md`](reward/README.md). It is used by the rewards, the evaluators and the

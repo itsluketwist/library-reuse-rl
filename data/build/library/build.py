@@ -71,7 +71,7 @@ VERSION = "2026-08"
 # name/signature/example, see augment.py) - 8 rows/task, or 7 for a task with no honest example.
 # v5 has v4's rows word for word: it renames useful_libs to target_libs (the libraries the
 # target reward components count) and fixes those lists after an audit
-# (notebooks/04_target_library_audit.ipynb).
+# (notebooks/analysis/target_library_audit.ipynb).
 DATASET_VERSION = "v5"
 
 _HERE = Path(__file__).parent

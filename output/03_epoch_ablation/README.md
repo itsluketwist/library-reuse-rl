@@ -4,11 +4,11 @@ Three GRPO runs on Qwen3-8B with the same recipe and data. They differ only in t
 run's training metrics are in `{run_id}/grpo/` and each epoch's evals in `{run_id}/epoch{n}/`.
 
 - **Figures per run:** `{run_id}/lure-{reward}-summary.png`, made by
-  `notebooks/01_grpo_training_summary.ipynb` (set `RUN_ID`).
+  `notebooks/grpo_training_summary.ipynb` (set `RUN_ID`).
 - **Prompt comparison figures:** `figures/prompt_engineering_summary.png` and
-  `figures/prompt_engineering_details.png`, made by `prompt_engineering_comparison.ipynb` (in this folder).
+  `figures/prompt_engineering_details.png`, made by `notebooks/archive/prompt_engineering_comparison.ipynb`.
 - **Paper figures:** figures 1-2 (PNG) and table 1 (LaTeX) in `figures/`, made by
-  `paper_figures.ipynb` (in this folder).
+  `notebooks/ablation/epoch_ablation.ipynb`.
 - **Base model results:** these stay in `output/baselines/qwen3-8b/`, because later iterations use
   them too. A rerun that records timings will replace those files. The numbers below are from the
   files as they stood in the commit that created this folder.

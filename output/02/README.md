@@ -2,7 +2,7 @@
 
 Two GRPO runs on Qwen3-8B with the same recipe. They differ only in the training data and the number
 of epochs. Each run's training metrics are in `{run_id}/grpo/` and each epoch's evals in
-`{run_id}/epoch{n}/`. Plots for either run come from `notebooks/01_grpo_run_analysis.ipynb` (set
+`{run_id}/epoch{n}/`. Plots for either run come from `notebooks/archive/01_grpo_run_analysis.ipynb` (set
 `RUN_ID`).
 
 The iteration also has the first results for a hosted frontier model (`deepseek-flash`) and for

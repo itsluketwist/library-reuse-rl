@@ -231,7 +231,6 @@ docs/
 # temporary ignore
 CLAUDE.md
 
-# ignore until final analysis when notebooks will be committed!
-notebooks/*
-# except the per-run summary figure, shared with supervisors
-!notebooks/01_grpo_training_summary.ipynb
+# old exploratory notebooks, and a local venv some of them used
+notebooks/archive/
+notebooks/.libreuseeval-venv/
