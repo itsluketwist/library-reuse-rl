@@ -1,0 +1,75 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-14B",
+    "weights": null,
+    "provider": "vllm",
+    "dataset": "humaneval_plus",
+    "dataset_file": "data/eval/humaneval_plus.jsonl",
+    "dataset_version": null,
+    "evaluator": "humaneval",
+    "lure_version": "0.3.1",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": "Use an external library when appropriate.",
+    "prompt_style": "appropriate",
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 865.4,
+      "evaluation": 366.7,
+      "model_load": 55.9
+    }
+  },
+  "analysis": {
+    "task": "humaneval",
+    "n_total": 820,
+    "n_tasks": 164,
+    "n_passed": 745,
+    "pass@1": 0.9085365853658537,
+    "pass@5": 0.9573170731707317,
+    "n_no_code": 4,
+    "n_overflow": 6,
+    "using_lib_rate": 0.024390243902439025,
+    "avg_extlibs": 0.024390243902439025,
+    "library_counts": {
+      "sympy": 11,
+      "numpy": 9
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 816,
+        "avg_lloc": 8.768382352941176,
+        "avg_maintainability_index": 82.17752258210508
+      },
+      "passed": {
+        "n_measured": 745,
+        "avg_lloc": 8.60268456375839,
+        "avg_maintainability_index": 81.97351822223474
+      }
+    },
+    "environment": {
+      "installed_packages": [
+        "numpy",
+        "sympy"
+      ],
+      "install_failed": [],
+      "distributions": {
+        "mpmath": "1.3.0",
+        "numpy": "2.5.5",
+        "pip": "25.0.1",
+        "sympy": "1.14.0"
+      }
+    }
+  }
+}

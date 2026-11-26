@@ -1,0 +1,128 @@
+{
+  "metadata": {
+    "base": "Qwen/Qwen3-14B",
+    "weights": null,
+    "provider": "vllm",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.3.1",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": "Use an external library when appropriate.",
+    "prompt_style": "appropriate",
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 650.3,
+      "evaluation": 60.8,
+      "model_load": 55.9
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 0.9238095238095237,
+    "pass@k": 0.9880952380952381,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.023809523809523808,
+          "avg_extlibs": 0.023809523809523808,
+          "library_counts": {
+            "pytz": 1,
+            "unidecode": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.007142857142857143,
+          "avg_extlibs": 0.007142857142857143,
+          "library_counts": {
+            "unidecode": 2,
+            "pytz": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.023809523809523808,
+          "avg_extlibs": 0.023809523809523808,
+          "library_counts": {
+            "pytz": 1,
+            "unidecode": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.007142857142857143,
+          "avg_extlibs": 0.007142857142857143,
+          "library_counts": {
+            "unidecode": 2,
+            "pytz": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 419,
+        "avg_lloc": 12.88782816229117,
+        "avg_maintainability_index": 90.03324420661127
+      },
+      "passed": {
+        "n_measured": 388,
+        "avg_lloc": 12.925257731958762,
+        "avg_maintainability_index": 89.71956419571875
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-lgb5y3xg",
+      "source": "response_imports",
+      "installed_packages": [
+        "pytz",
+        "scipy",
+        "unidecode"
+      ],
+      "install_failed": [],
+      "task_packages": [],
+      "installed_package_versions": {
+        "numpy": "2.5.5",
+        "pip": "25.0.1",
+        "pytz": "2026.6",
+        "scipy": "1.18.1",
+        "unidecode": "1.4.0"
+      },
+      "package_imports": {
+        "pytz": [
+          "pytz"
+        ],
+        "scipy": [
+          "scipy"
+        ],
+        "unidecode": [
+          "unidecode"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-h16fo3sg/libreusebench_eval_2026-11-26T16:34:19.464979.json"
+  }
+}
