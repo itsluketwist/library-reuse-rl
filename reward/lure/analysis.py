@@ -1,5 +1,6 @@
 """Statically find the libraries a python code block imports and actually uses."""
 
+# lets the `ast.TryStar` annotation below work on python 3.10, which doesn't have it
 from __future__ import annotations
 
 import ast
@@ -101,12 +102,11 @@ class _ImportUsageVisitor(ast.NodeVisitor):
     """
     Walk a syntax tree, tracking which names are bound to imported libraries.
 
-    Each scope maps a name to possible import origins. An empty set is an
-    explicit non-import binding. Alternative paths start from independent copies
-    and join their origins, so an exception fallback cannot erase a successful
-    import. An unconditional rebind still clears all import origins.
-
-    This is conservative static evidence, not execution or predicate evaluation.
+    Each scope (module, function, class, lambda, comprehension) maps a name to the set of
+    libraries it may refer to, which is empty once the name is rebound to something else.
+    This shadowing check stops `pd = object(); pd.x` counting as using pandas. Alternative
+    paths (if/else, try/except) are visited separately and their bindings merged, so a
+    fallback like `except ImportError: np = None` doesn't erase the import.
     """
 
     def __init__(
@@ -153,21 +153,33 @@ class _ImportUsageVisitor(ast.NodeVisitor):
         """
         Look a name up from the innermost scope outwards.
 
-        Returns possible import origins, or an empty set for an untracked binding.
+        Returns the libraries the name may refer to, empty if it isn't bound to one.
         """
         for scope in reversed(self.scopes):
             if name in scope:
                 return scope[name]
         return frozenset()
 
-    def _snapshot(self) -> list[dict[str, frozenset[str]]]:
+    def _snapshot(
+        self,
+    ) -> list[dict[str, frozenset[str]]]:
+        """
+        Copy the current scopes, so a branch can start from (or return to) this point.
+
+        Returns the copied scopes.
+        """
         return [scope.copy() for scope in self.scopes]
 
     @staticmethod
     def _join(
         states: list[list[dict[str, frozenset[str]]]],
     ) -> list[dict[str, frozenset[str]]]:
-        """Join alternative bindings without sharing mutable dictionaries."""
+        """
+        Merge the scopes left by several alternative paths, keeping every possible library.
+
+        Returns the merged scopes.
+        """
+        # every path is at the same scope depth, since scopes are popped before a path ends
         assert states and all(len(state) == len(states[0]) for state in states)
         joined = []
         for index in range(len(states[0])):
@@ -175,10 +187,10 @@ class _ImportUsageVisitor(ast.NodeVisitor):
             joined.append(
                 {
                     name: frozenset().union(
-                        *(state[index].get(name, frozenset()) for state in states)
+                        *(state[index].get(name, frozenset()) for state in states),
                     )
                     for name in names
-                }
+                },
             )
         return joined
 
@@ -187,34 +199,49 @@ class _ImportUsageVisitor(ast.NodeVisitor):
         nodes: Iterable[ast.AST],
         entry: list[dict[str, frozenset[str]]],
     ) -> list[dict[str, frozenset[str]]]:
+        """
+        Visit one alternative path, starting from a copy of the entry scopes.
+
+        Returns the scopes at the end of the path.
+        """
         self.scopes = [scope.copy() for scope in entry]
         for node in nodes:
             self.visit(node)
         return self._snapshot()
 
-    # Alternative paths must not overwrite or leak bindings into one another.
+    # --- alternative paths, which must not leak bindings into one another ---
 
-    def visit_If(self, node: ast.If) -> None:
+    def visit_If(
+        self,
+        node: ast.If,
+    ) -> None:
         self.visit(node.test)
         entry = self._snapshot()
         self.scopes = self._join(
             [
                 self._path(node.body, entry),
                 self._path(node.orelse, entry),
-            ]
+            ],
         )
 
-    def visit_IfExp(self, node: ast.IfExp) -> None:
+    def visit_IfExp(
+        self,
+        node: ast.IfExp,
+    ) -> None:
         self.visit(node.test)
         entry = self._snapshot()
         self.scopes = self._join(
             [
                 self._path([node.body], entry),
                 self._path([node.orelse], entry),
-            ]
+            ],
         )
 
-    def visit_BoolOp(self, node: ast.BoolOp) -> None:
+    def visit_BoolOp(
+        self,
+        node: ast.BoolOp,
+    ) -> None:
+        # `a or b` may stop after any value, so each value is a possible end point
         exits = []
         for value in node.values:
             self.visit(value)
@@ -222,11 +249,14 @@ class _ImportUsageVisitor(ast.NodeVisitor):
         self.scopes = self._join(exits)
 
     @staticmethod
-    def _can_raise(node: ast.AST) -> bool:
-        """Ignore trivial non-raising writes when finding exception entries.
+    def _can_raise(
+        node: ast.AST,
+    ) -> bool:
+        """
+        Check whether a statement could raise, roughly - only trivial ones are ruled out.
 
-        Other operations may raise; exception types and general expression
-        reachability are deliberately not solved.
+        Returns False for `pass`, `global`, `nonlocal`, a bare constant, or a constant
+        assigned to plain names, and True otherwise.
         """
         if isinstance(node, (ast.Pass, ast.Global, ast.Nonlocal)):
             return False
@@ -240,11 +270,15 @@ class _ImportUsageVisitor(ast.NodeVisitor):
             return False
         return True
 
-    def visit_Try(self, node: ast.Try | ast.TryStar) -> None:
+    def visit_Try(
+        self,
+        node: ast.Try | ast.TryStar,
+    ) -> None:
+        # the scopes at every point the try body could raise, where a handler may start
         exceptional = []
         for statement in node.body:
-            # Multi-name imports bind left to right and can fail partway through.
             if isinstance(statement, (ast.Import, ast.ImportFrom)):
+                # `import a, b` binds left to right, so can fail after binding `a`
                 for alias in statement.names:
                     exceptional.append(self._snapshot())
                     if isinstance(statement, ast.Import):
@@ -255,7 +289,7 @@ class _ImportUsageVisitor(ast.NodeVisitor):
                                 module=statement.module,
                                 names=[alias],
                                 level=statement.level,
-                            )
+                            ),
                         )
             else:
                 if self._can_raise(statement):
@@ -273,8 +307,10 @@ class _ImportUsageVisitor(ast.NodeVisitor):
                         ast.Try,
                     ),
                 ):
-                    # Compound statements can change bindings before raising.
+                    # a compound statement can rebind names and then raise
                     exceptional.append(self._snapshot())
+
+        # the else block runs after a body that didn't raise, each handler after one that did
         body_exit = self._snapshot()
         normal_exit = self._path(node.orelse, body_exit)
         handler_entry = self._join(exceptional) if exceptional else body_exit
@@ -283,8 +319,7 @@ class _ImportUsageVisitor(ast.NodeVisitor):
             handler_exit = self._path([handler], handler_entry)
             exits.append(handler_exit)
             if sys.version_info >= (3, 11) and isinstance(node, ast.TryStar):
-                # Several except* handlers can run, unlike ordinary except handlers.
-                # A later handler may see an earlier one's bindings or skip it.
+                # several `except*` handlers can run, so a later one may see earlier bindings
                 handler_entry = self._join([handler_entry, handler_exit])
         self.scopes = self._join(exits)
         for statement in node.finalbody:
@@ -421,7 +456,7 @@ class _ImportUsageVisitor(ast.NodeVisitor):
         for statement in node.body:
             self.visit(statement)
         if node.name is not None:
-            # Python deletes the exception target when the handler exits.
+            # python deletes the exception name when the handler ends
             self._shadow(node.name)
 
     # --- new scopes ---
