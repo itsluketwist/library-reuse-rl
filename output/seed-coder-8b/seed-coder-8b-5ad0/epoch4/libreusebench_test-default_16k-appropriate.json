@@ -1,0 +1,431 @@
+{
+  "metadata": {
+    "base": "ByteDance-Seed/Seed-Coder-8B-Reasoning",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/seed-coder-8b-5ad0/checkpoint-148",
+    "provider": "vllm",
+    "dataset": "libreusebench_test",
+    "dataset_file": "benchmark/libreusebench/data/test.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.3.1",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": "Use an external library when appropriate.",
+    "prompt_style": "appropriate",
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 1479.6,
+      "evaluation": 787.9,
+      "model_load": 67.2
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 1080,
+    "n_tasks": 216,
+    "n_responses": 1080,
+    "k": 5,
+    "pass@1": 0.6953703703703703,
+    "pass@k": 0.9212962962962963,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 1.0,
+          "avg_extlibs": 1.8425925925925926,
+          "library_counts": {
+            "numpy": 142,
+            "pandas": 132,
+            "sklearn": 38,
+            "scipy": 28,
+            "bs4": 13,
+            "statsmodels": 8,
+            "nltk": 8,
+            "dateutil": 8,
+            "pytz": 2,
+            "pendulum": 2,
+            "xmltodict": 2,
+            "fuzzywuzzy": 1,
+            "sympy": 1,
+            "geopy": 1,
+            "arrow": 1,
+            "cryptography": 1,
+            "Crypto": 1,
+            "rsa": 1,
+            "yaml": 1,
+            "tabulate": 1,
+            "prettytable": 1,
+            "lxml": 1,
+            "matplotlib": 1,
+            "pandas_market_calendars": 1,
+            "natsort": 1,
+            "PIL": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.9574074074074074,
+          "avg_extlibs": 1.3157407407407407,
+          "library_counts": {
+            "pandas": 498,
+            "numpy": 480,
+            "sklearn": 156,
+            "scipy": 85,
+            "bs4": 65,
+            "statsmodels": 29,
+            "dateutil": 26,
+            "nltk": 23,
+            "xmltodict": 9,
+            "pytz": 8,
+            "geopy": 5,
+            "yaml": 5,
+            "natsort": 5,
+            "PIL": 5,
+            "sympy": 4,
+            "rsa": 3,
+            "tabulate": 3,
+            "fuzzywuzzy": 2,
+            "pendulum": 2,
+            "lxml": 2,
+            "arrow": 1,
+            "Crypto": 1,
+            "cryptography": 1,
+            "prettytable": 1,
+            "matplotlib": 1,
+            "pandas_market_calendars": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 1.0,
+          "avg_extlibs": 1.787037037037037,
+          "library_counts": {
+            "pandas": 132,
+            "numpy": 132,
+            "sklearn": 38,
+            "scipy": 26,
+            "bs4": 13,
+            "statsmodels": 8,
+            "nltk": 8,
+            "dateutil": 8,
+            "pytz": 2,
+            "pendulum": 2,
+            "xmltodict": 2,
+            "fuzzywuzzy": 1,
+            "sympy": 1,
+            "geopy": 1,
+            "arrow": 1,
+            "cryptography": 1,
+            "Crypto": 1,
+            "rsa": 1,
+            "yaml": 1,
+            "tabulate": 1,
+            "prettytable": 1,
+            "lxml": 1,
+            "matplotlib": 1,
+            "pandas_market_calendars": 1,
+            "natsort": 1,
+            "PIL": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.9564814814814815,
+          "avg_extlibs": 1.2555555555555555,
+          "library_counts": {
+            "pandas": 495,
+            "numpy": 422,
+            "sklearn": 156,
+            "scipy": 82,
+            "bs4": 65,
+            "statsmodels": 29,
+            "dateutil": 25,
+            "nltk": 23,
+            "xmltodict": 9,
+            "pytz": 8,
+            "geopy": 5,
+            "yaml": 5,
+            "natsort": 5,
+            "PIL": 5,
+            "sympy": 4,
+            "rsa": 3,
+            "tabulate": 3,
+            "fuzzywuzzy": 2,
+            "pendulum": 2,
+            "lxml": 2,
+            "arrow": 1,
+            "Crypto": 1,
+            "cryptography": 1,
+            "prettytable": 1,
+            "matplotlib": 1,
+            "pandas_market_calendars": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 1072,
+        "avg_lloc": 17.723880597014926,
+        "avg_maintainability_index": 79.6166556560827
+      },
+      "passed": {
+        "n_measured": 751,
+        "avg_lloc": 17.00798934753662,
+        "avg_maintainability_index": 80.0597370103431
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "reuse_value": {
+      "tiers": {
+        "low": {
+          "n_tasks": 58,
+          "pass@1": 0.7206896551724138,
+          "library_use": 0.9103448275862069
+        },
+        "medium": {
+          "n_tasks": 106,
+          "pass@1": 0.6811320754716982,
+          "library_use": 0.9679245283018868
+        },
+        "high": {
+          "n_tasks": 52,
+          "pass@1": 0.6961538461538462,
+          "library_use": 0.9846153846153847
+        }
+      },
+      "high_value_library_use": 0.9846153846153847
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-nbluiexf",
+      "source": "response_imports",
+      "installed_packages": [
+        "Pillow",
+        "PyYAML",
+        "arrow",
+        "beautifulsoup4",
+        "cryptography",
+        "fuzzywuzzy",
+        "geopy",
+        "levenshtein",
+        "lxml",
+        "matplotlib",
+        "natsort",
+        "nltk",
+        "numpy",
+        "opencv-python",
+        "pandas",
+        "pandas_market_calendars",
+        "pendulum",
+        "prettytable",
+        "pycryptodome",
+        "pyquery",
+        "python-dateutil",
+        "pytz",
+        "pyyaml",
+        "regex",
+        "rsa",
+        "scikit-learn",
+        "scipy",
+        "statsmodels",
+        "sympy",
+        "tabulate",
+        "textblob",
+        "xmltodict"
+      ],
+      "install_failed": [],
+      "task_packages": [
+        "beautifulsoup4",
+        "geopy",
+        "levenshtein",
+        "lxml",
+        "matplotlib",
+        "natsort",
+        "nltk",
+        "numpy",
+        "opencv-python",
+        "pandas",
+        "prettytable",
+        "pyquery",
+        "python-dateutil",
+        "pytz",
+        "pyyaml",
+        "regex",
+        "rsa",
+        "scikit-learn",
+        "scipy",
+        "statsmodels",
+        "sympy",
+        "textblob",
+        "xmltodict"
+      ],
+      "installed_package_versions": {
+        "arrow": "1.4.0",
+        "beautifulsoup4": "4.15.0",
+        "cffi": "2.1.1",
+        "click": "8.5.1",
+        "cloudpickle": "3.1.3",
+        "contourpy": "1.4.0",
+        "cryptography": "50.0.2",
+        "cssselect": "1.6.0",
+        "cycler": "0.12.1",
+        "defusedxml": "0.7.1",
+        "exchange-calendars": "4.13.3",
+        "fonttools": "4.69.1",
+        "formulaic": "1.2.2",
+        "fuzzywuzzy": "0.18.0",
+        "geographiclib": "2.1",
+        "geopy": "2.5.0",
+        "interface-meta": "2.0.1",
+        "joblib": "1.6.0",
+        "kiwisolver": "1.5.1",
+        "korean-lunar-calendar": "0.4.0",
+        "levenshtein": "0.27.5",
+        "lxml": "6.1.3",
+        "matplotlib": "3.11.2",
+        "mpmath": "1.3.0",
+        "narwhals": "2.29.0",
+        "natsort": "8.4.0",
+        "nltk": "3.10.4",
+        "numpy": "2.5.5",
+        "opencv-python": "5.1.0.95",
+        "packaging": "26.4",
+        "pandas": "3.1.1",
+        "pandas-market-calendars": "5.6.1",
+        "patsy": "1.0.3",
+        "pendulum": "3.3.0",
+        "pillow": "13.0.0",
+        "pip": "25.0.1",
+        "prettytable": "3.19.0",
+        "pyasn1": "0.6.5",
+        "pycparser": "3.12",
+        "pycryptodome": "4.6.0",
+        "pyluach": "2.3.0",
+        "pyparsing": "3.3.3",
+        "pyquery": "2.1.0",
+        "python-dateutil": "4.0.0",
+        "pytz": "2026.6",
+        "pyyaml": "6.0.4",
+        "rapidfuzz": "3.14.6",
+        "regex": "2026.11.24",
+        "rsa": "4.9.1",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "soupsieve": "4.1.3",
+        "statsmodels": "0.15.0",
+        "sympy": "1.14.0",
+        "tabulate": "0.10.0",
+        "textblob": "0.20.1",
+        "threadpoolctl": "3.8.0",
+        "toolz": "1.2.0",
+        "tqdm": "4.70.1",
+        "typing-extensions": "4.16.0",
+        "tzdata": "2026.6",
+        "wcwidth": "0.9.5",
+        "wrapt": "2.5.2",
+        "xmltodict": "1.0.4"
+      },
+      "package_imports": {
+        "Pillow": [
+          "PIL"
+        ],
+        "PyYAML": [
+          "yaml"
+        ],
+        "arrow": [
+          "arrow"
+        ],
+        "beautifulsoup4": [
+          "bs4"
+        ],
+        "cryptography": [
+          "cryptography"
+        ],
+        "fuzzywuzzy": [
+          "fuzzywuzzy"
+        ],
+        "geopy": [
+          "geopy"
+        ],
+        "levenshtein": [],
+        "lxml": [
+          "lxml"
+        ],
+        "matplotlib": [
+          "matplotlib"
+        ],
+        "natsort": [
+          "natsort"
+        ],
+        "nltk": [
+          "nltk"
+        ],
+        "numpy": [
+          "numpy"
+        ],
+        "opencv-python": [],
+        "pandas": [
+          "pandas"
+        ],
+        "pandas_market_calendars": [
+          "pandas_market_calendars"
+        ],
+        "pendulum": [
+          "pendulum"
+        ],
+        "prettytable": [
+          "prettytable"
+        ],
+        "pycryptodome": [
+          "Crypto"
+        ],
+        "pyquery": [],
+        "python-dateutil": [
+          "dateutil"
+        ],
+        "pytz": [
+          "pytz"
+        ],
+        "pyyaml": [],
+        "regex": [],
+        "rsa": [
+          "rsa"
+        ],
+        "scikit-learn": [
+          "sklearn"
+        ],
+        "scipy": [
+          "scipy"
+        ],
+        "statsmodels": [
+          "statsmodels"
+        ],
+        "sympy": [
+          "sympy"
+        ],
+        "tabulate": [
+          "tabulate"
+        ],
+        "textblob": [],
+        "xmltodict": [
+          "xmltodict"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-qrovzzfv/libreusebench_eval_2026-11-25T22:45:15.818439.json"
+  }
+}

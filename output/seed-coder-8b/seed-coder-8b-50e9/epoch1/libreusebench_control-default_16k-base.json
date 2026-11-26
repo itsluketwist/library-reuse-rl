@@ -1,0 +1,149 @@
+{
+  "metadata": {
+    "base": "ByteDance-Seed/Seed-Coder-8B-Reasoning",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/seed-coder-8b-50e9/checkpoint-37",
+    "provider": "vllm",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.3.1",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 256.0,
+      "evaluation": 58.2,
+      "model_load": 67.3
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 0.7952380952380952,
+    "pass@k": 0.9404761904761905,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.047619047619047616,
+          "avg_extlibs": 0.047619047619047616,
+          "library_counts": {
+            "astunparse": 1,
+            "numpy": 1,
+            "unidecode": 1,
+            "nltk": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.011904761904761904,
+          "avg_extlibs": 0.011904761904761904,
+          "library_counts": {
+            "astunparse": 2,
+            "numpy": 1,
+            "unidecode": 1,
+            "nltk": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.047619047619047616,
+          "avg_extlibs": 0.047619047619047616,
+          "library_counts": {
+            "astunparse": 1,
+            "numpy": 1,
+            "unidecode": 1,
+            "nltk": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.011904761904761904,
+          "avg_extlibs": 0.011904761904761904,
+          "library_counts": {
+            "astunparse": 2,
+            "numpy": 1,
+            "unidecode": 1,
+            "nltk": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 420,
+        "avg_lloc": 14.047619047619047,
+        "avg_maintainability_index": 85.70231605683188
+      },
+      "passed": {
+        "n_measured": 334,
+        "avg_lloc": 13.8562874251497,
+        "avg_maintainability_index": 86.48098354773396
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-v8wkxypi",
+      "source": "response_imports",
+      "installed_packages": [
+        "astunparse",
+        "nltk",
+        "numpy",
+        "unidecode"
+      ],
+      "install_failed": [],
+      "task_packages": [],
+      "installed_package_versions": {
+        "astunparse": "1.6.3",
+        "click": "8.5.1",
+        "cloudpickle": "3.1.3",
+        "defusedxml": "0.7.1",
+        "joblib": "1.6.0",
+        "nltk": "3.10.4",
+        "numpy": "2.5.5",
+        "packaging": "26.4",
+        "pip": "25.0.1",
+        "regex": "2026.11.24",
+        "six": "1.17.0",
+        "tqdm": "4.70.1",
+        "unidecode": "1.4.0",
+        "wheel": "0.48.0"
+      },
+      "package_imports": {
+        "astunparse": [
+          "astunparse"
+        ],
+        "nltk": [
+          "nltk"
+        ],
+        "numpy": [
+          "numpy"
+        ],
+        "unidecode": [
+          "unidecode"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-udmnbdo_/libreusebench_eval_2026-11-25T22:09:28.485335.json"
+  }
+}

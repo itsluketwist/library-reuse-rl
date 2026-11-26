@@ -1,0 +1,84 @@
+{
+  "metadata": {
+    "base": "ByteDance-Seed/Seed-Coder-8B-Reasoning",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/seed-coder-8b-5ad0/checkpoint-74",
+    "provider": "vllm",
+    "dataset": "humaneval_plus",
+    "dataset_file": "data/eval/humaneval_plus.jsonl",
+    "dataset_version": null,
+    "evaluator": "humaneval",
+    "lure_version": "0.3.1",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 460.2,
+      "evaluation": 344.1,
+      "model_load": 64.1
+    }
+  },
+  "analysis": {
+    "task": "humaneval",
+    "n_total": 820,
+    "n_tasks": 164,
+    "n_passed": 682,
+    "pass@1": 0.8317073170731708,
+    "pass@5": 0.9085365853658537,
+    "n_no_code": 6,
+    "n_overflow": 6,
+    "using_lib_rate": 0.007317073170731708,
+    "avg_extlibs": 0.007317073170731708,
+    "library_counts": {
+      "nltk": 3,
+      "sympy": 2,
+      "numpy": 1
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 814,
+        "avg_lloc": 9.98894348894349,
+        "avg_maintainability_index": 74.84289982335203
+      },
+      "passed": {
+        "n_measured": 682,
+        "avg_lloc": 9.705278592375366,
+        "avg_maintainability_index": 74.7952283347207
+      }
+    },
+    "environment": {
+      "installed_packages": [
+        "nltk",
+        "numpy",
+        "sympy"
+      ],
+      "install_failed": [],
+      "distributions": {
+        "click": "8.5.1",
+        "cloudpickle": "3.1.3",
+        "defusedxml": "0.7.1",
+        "joblib": "1.6.0",
+        "mpmath": "1.3.0",
+        "nltk": "3.10.4",
+        "numpy": "2.5.5",
+        "pip": "25.0.1",
+        "regex": "2026.11.24",
+        "sympy": "1.14.0",
+        "tqdm": "4.70.1"
+      }
+    }
+  }
+}

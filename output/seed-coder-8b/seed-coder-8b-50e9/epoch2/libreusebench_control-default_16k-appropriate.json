@@ -1,0 +1,245 @@
+{
+  "metadata": {
+    "base": "ByteDance-Seed/Seed-Coder-8B-Reasoning",
+    "weights": "/projects/u6yb/twist.u6yb/library-reuse-rl/seed-coder-8b-50e9/checkpoint-74",
+    "provider": "vllm",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.3.1",
+    "python_executable": null,
+    "environment_root": "/scratch/u6yb/twist.u6yb/libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": "auto",
+    "system_prompt": null,
+    "task_suffix": "Use an external library when appropriate.",
+    "prompt_style": "appropriate",
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": 1,
+    "timing_seconds": {
+      "generation": 292.8,
+      "evaluation": 108.5,
+      "model_load": 60.8
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 0.7761904761904762,
+    "pass@k": 0.9523809523809523,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.2976190476190476,
+          "avg_extlibs": 0.36904761904761907,
+          "library_counts": {
+            "pandas": 13,
+            "numpy": 3,
+            "orjson": 2,
+            "simplejson": 2,
+            "nltk": 2,
+            "scipy": 1,
+            "email_validator": 1,
+            "bs4": 1,
+            "parso": 1,
+            "dateutil": 1,
+            "passlib": 1,
+            "pbkdf2": 1,
+            "unidecode": 1,
+            "lxml": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.13333333333333333,
+          "avg_extlibs": 0.1380952380952381,
+          "library_counts": {
+            "pandas": 19,
+            "numpy": 8,
+            "nltk": 8,
+            "email_validator": 4,
+            "unidecode": 4,
+            "parso": 3,
+            "scipy": 2,
+            "orjson": 2,
+            "simplejson": 2,
+            "lxml": 2,
+            "bs4": 1,
+            "dateutil": 1,
+            "passlib": 1,
+            "pbkdf2": 1
+          }
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.2976190476190476,
+          "avg_extlibs": 0.36904761904761907,
+          "library_counts": {
+            "pandas": 13,
+            "numpy": 3,
+            "orjson": 2,
+            "simplejson": 2,
+            "nltk": 2,
+            "scipy": 1,
+            "email_validator": 1,
+            "bs4": 1,
+            "parso": 1,
+            "dateutil": 1,
+            "passlib": 1,
+            "pbkdf2": 1,
+            "unidecode": 1,
+            "lxml": 1
+          }
+        },
+        "per_response": {
+          "using_lib_rate": 0.13333333333333333,
+          "avg_extlibs": 0.1380952380952381,
+          "library_counts": {
+            "pandas": 19,
+            "numpy": 8,
+            "nltk": 8,
+            "email_validator": 4,
+            "unidecode": 4,
+            "parso": 3,
+            "scipy": 2,
+            "orjson": 2,
+            "simplejson": 2,
+            "lxml": 2,
+            "bs4": 1,
+            "dateutil": 1,
+            "passlib": 1,
+            "pbkdf2": 1
+          }
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 419,
+        "avg_lloc": 13.649164677804295,
+        "avg_maintainability_index": 84.93298232641061
+      },
+      "passed": {
+        "n_measured": 326,
+        "avg_lloc": 13.300613496932515,
+        "avg_maintainability_index": 84.92685344801511
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "environment": {
+      "directory": "/lus/lfs1aip2/scratch/u6yb/twist.u6yb/libreuseeval-venvs/libreusebench-env-svt8gsbn",
+      "source": "response_imports",
+      "installed_packages": [
+        "beautifulsoup4",
+        "email-validator",
+        "email_validator",
+        "lxml",
+        "nltk",
+        "numpy",
+        "orjson",
+        "pandas",
+        "parso",
+        "passlib",
+        "pbkdf2",
+        "python-dateutil",
+        "scipy",
+        "simplejson",
+        "unidecode"
+      ],
+      "install_failed": [],
+      "task_packages": [],
+      "installed_package_versions": {
+        "beautifulsoup4": "4.15.0",
+        "click": "8.5.1",
+        "cloudpickle": "3.1.3",
+        "defusedxml": "0.7.1",
+        "dnspython": "2.9.2",
+        "email-validator": "2.4.0",
+        "idna": "3.20",
+        "joblib": "1.6.0",
+        "lxml": "6.1.3",
+        "nltk": "3.10.4",
+        "numpy": "2.5.5",
+        "orjson": "3.13.0",
+        "pandas": "3.1.1",
+        "parso": "0.8.7",
+        "passlib": "1.9.5",
+        "pbkdf2": "1.3",
+        "pip": "25.0.1",
+        "python-dateutil": "4.0.0",
+        "regex": "2026.11.24",
+        "scipy": "1.18.1",
+        "simplejson": "4.3.0",
+        "soupsieve": "4.1.3",
+        "tqdm": "4.70.1",
+        "typing-extensions": "4.16.0",
+        "tzdata": "2026.6",
+        "unidecode": "1.4.0"
+      },
+      "package_imports": {
+        "beautifulsoup4": [
+          "bs4"
+        ],
+        "email-validator": [
+          "email-validator"
+        ],
+        "email_validator": [
+          "email_validator"
+        ],
+        "lxml": [
+          "lxml"
+        ],
+        "nltk": [
+          "nltk"
+        ],
+        "numpy": [
+          "numpy"
+        ],
+        "orjson": [
+          "orjson"
+        ],
+        "pandas": [
+          "pandas"
+        ],
+        "parso": [
+          "parso"
+        ],
+        "passlib": [
+          "passlib"
+        ],
+        "pbkdf2": [
+          "pbkdf2"
+        ],
+        "python-dateutil": [
+          "dateutil"
+        ],
+        "scipy": [
+          "scipy"
+        ],
+        "simplejson": [
+          "simplejson"
+        ],
+        "unidecode": [
+          "unidecode"
+        ]
+      }
+    },
+    "results_file": "/scratch/u6yb/twist.u6yb/tmp/libreusebench-eval-fa7x02gt/libreusebench_eval_2026-11-25T22:10:18.671142.json"
+  }
+}

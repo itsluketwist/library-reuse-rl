@@ -1,0 +1,29 @@
+{
+  "train_runtime": 28212.442,
+  "train_samples_per_second": 0.171,
+  "train_steps_per_second": 0.005,
+  "total_flos": 0.0,
+  "train_loss": 0.004799975846843743,
+  "epoch": 4.0,
+  "train_samples": 1209,
+  "reward_profile": {
+    "name": "lu-target",
+    "weights": {
+      "correct_format": 0.25,
+      "passes_syntax_check": 0.25,
+      "external_lib_imported": 0,
+      "external_lib_used": 0,
+      "target_lib_imported": 0.5,
+      "target_lib_used": 1.0
+    }
+  },
+  "reward_kind": "library_usage",
+  "learning_rate": 3e-06,
+  "lure_version": "0.3.1",
+  "epoch_checkpoints": {
+    "1": "/projects/u6yb/twist.u6yb/library-reuse-rl/seed-coder-8b-5ad0/checkpoint-37",
+    "2": "/projects/u6yb/twist.u6yb/library-reuse-rl/seed-coder-8b-5ad0/checkpoint-74",
+    "3": "/projects/u6yb/twist.u6yb/library-reuse-rl/seed-coder-8b-5ad0/checkpoint-111",
+    "4": "/projects/u6yb/twist.u6yb/library-reuse-rl/seed-coder-8b-5ad0/checkpoint-148"
+  }
+}
