@@ -1,0 +1,98 @@
+{
+  "metadata": {
+    "base": "claude-haiku-5-5",
+    "weights": null,
+    "provider": "api",
+    "dataset": "libreusebench_control",
+    "dataset_file": "benchmark/libreusebench/data/control.jsonl",
+    "dataset_version": null,
+    "evaluator": "libreusebench",
+    "lure_version": "0.3.1",
+    "python_executable": null,
+    "environment_root": ".libreuseeval-venvs",
+    "environment_cache_dir": null,
+    "model_dtype": null,
+    "system_prompt": null,
+    "task_suffix": null,
+    "prompt_style": null,
+    "decoding_settings": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_new_tokens": 16384,
+      "enable_thinking": true,
+      "n_samples": 5
+    },
+    "debug": false,
+    "n_gpus": null,
+    "timing_seconds": {
+      "generation": 193.2,
+      "evaluation": 21.1,
+      "model_load": null
+    }
+  },
+  "analysis": {
+    "task": "libreusebench",
+    "n_total": 420,
+    "n_tasks": 84,
+    "n_responses": 420,
+    "k": 5,
+    "pass@1": 1.0,
+    "pass@k": 1.0,
+    "library_use": {
+      "imported": {
+        "per_task": {
+          "using_lib_rate": 0.0,
+          "avg_extlibs": 0.0,
+          "library_counts": {}
+        },
+        "per_response": {
+          "using_lib_rate": 0.0,
+          "avg_extlibs": 0.0,
+          "library_counts": {}
+        }
+      },
+      "used": {
+        "per_task": {
+          "using_lib_rate": 0.0,
+          "avg_extlibs": 0.0,
+          "library_counts": {}
+        },
+        "per_response": {
+          "using_lib_rate": 0.0,
+          "avg_extlibs": 0.0,
+          "library_counts": {}
+        }
+      }
+    },
+    "code_metrics": {
+      "all": {
+        "n_measured": 420,
+        "avg_lloc": 14.673809523809524,
+        "avg_maintainability_index": 90.88532353761653
+      },
+      "passed": {
+        "n_measured": 420,
+        "avg_lloc": 14.673809523809524,
+        "avg_maintainability_index": 90.88532353761653
+      }
+    },
+    "not_run": {
+      "n_responses": 0,
+      "packages": [],
+      "responses": []
+    },
+    "environment": {
+      "directory": "/home/shuyinouyang/research/pythonProject/library-reuse-rl/.libreuseeval-venvs/libreusebench-env-x1jmhn4r",
+      "source": "response_imports",
+      "installed_packages": [],
+      "install_failed": [],
+      "task_packages": [],
+      "installed_package_versions": {
+        "pip": "25.0.1"
+      },
+      "package_imports": {}
+    },
+    "results_file": "/tmp/libreusebench-eval-n8ir8g0p/libreusebench_eval_2026-11-18T13:27:01.803595.json"
+  }
+}
