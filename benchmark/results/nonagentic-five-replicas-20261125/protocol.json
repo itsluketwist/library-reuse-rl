@@ -1,0 +1,75 @@
+{
+  "experiment_key": "libreusebench-nonagentic-5rep-high-t1-p1-20261125",
+  "run_date_utc": "2026-11-25",
+  "export_date_utc": "2026-11-26",
+  "repo_commit": "77b898c96d54e1ea65c1ea7a5e88061820f6fac7",
+  "dataset": "libreusebench==0.3.1",
+  "split": "test",
+  "split_sha256": "49009043ecfff538a1eca29f87e024d432a2166a9e4c625afd675ef2a8cf2d82",
+  "tasks": 216,
+  "replicas": 5,
+  "samples": 3240,
+  "models": {
+    "ml4": {
+      "id": "mistral/mistral-large-4",
+      "label": "ML4",
+      "concurrency": 8
+    },
+    "glm53": {
+      "id": "mistral/zai-glm-5-3",
+      "label": "GLM-5.3",
+      "concurrency": 4
+    },
+    "deepseek_flash": {
+      "id": "mistral/deepseek-v4-1-flash-1017",
+      "label": "DeepSeek Flash",
+      "concurrency": 4
+    }
+  },
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "reasoning_effort": "high",
+    "max_tokens": 32768
+  },
+  "prompt_style": "base",
+  "system_prompt": null,
+  "tools": [],
+  "request_count_per_sample": 1,
+  "seeds": "not sent",
+  "transport_attempts_limit": 6,
+  "request_socket_timeout_seconds": 1800,
+  "replica_order": "interleaved per task; three T035 API pilots retained once in replica 1",
+  "execution_cluster": "SKO CPU; no local GPUs for API clients or grading",
+  "inference_location_and_immutable_checkpoint": "not exposed",
+  "grader_python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "grader_timeout_seconds": 30,
+  "grader_memory_limit_gib": 4,
+  "scorer": "Unchanged official LibReuseBench function evaluator at the pinned commit, including merged lure branch fix",
+  "replica_indexing": "Export replica is 1–5; idx is 0 within each one-sample replica file; source replica was 0–4",
+  "request_shape": {
+    "model": "{model_alias}",
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "reasoning_effort": "high",
+    "max_tokens": 32768,
+    "messages": [
+      {
+        "role": "user",
+        "content": "{original_task_prompt}"
+      }
+    ],
+    "stream": true,
+    "stream_options": {
+      "include_usage": true
+    }
+  },
+  "export_notes": [
+    "Full accepted reasoning and answer are preserved in response using the repository client's <think> assembly.",
+    "submitted_answer is the exact text used for original correctness grading.",
+    "All generated-code selections and static library sets were rechecked without executing code.",
+    "Raw HTTP/SSE framing, partial retries, connection metadata and local filesystem paths are not included.",
+    "These files adapt the streaming runner to the repository metadata/analysis and generations layout; they were not created by run_eval.py.",
+    "No new model calls or correctness regrading were performed for publication."
+  ]
+}
