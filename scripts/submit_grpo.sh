@@ -22,12 +22,13 @@ OUTPUT_BASE="${PROJECTDIR:?PROJECTDIR is not set - are you on isambard?}/$USER/l
 #                          rl training configuration                          #
 ###############################################################################
 
-# the base models to train (see config/models.yaml), with their seed 42 runs (import, usage, target)
+# the base models to train (see config/models.yaml), with their seed 42 runs (import, usage, target).
+# seed 67 is submitted a few runs at a time: qwen3-8b import is 00ea, the rest to follow
 models=(
     # "qwen3-debug"
     "qwen3-8b"  # f2ca, 3079, f57b
-    "olmo3-7b"  # e93f, cb85, 15e4
-    "seed-coder-8b"  # 50e9, eee7, 5ad0
+    # "olmo3-7b"  # e93f, cb85, 15e4
+    # "seed-coder-8b"  # 50e9, eee7, 5ad0
     # "qwen3-14b"  # on hold until there are hours to spare - trains across 2 nodes (see config/models.yaml), lu-usage only, as an ablation
 )
 
@@ -40,7 +41,7 @@ models=(
 # below ran on qwen3-8b only, with their run ids in brackets
 training_jobs=(
     # the chosen rewards
-    "data/train/library_usage|lu-import-matched|base|3e-6"
+    # "data/train/library_usage|lu-import-matched|base|3e-6"  # (qwen3-8b seed 67: 00ea)
     "data/train/library_usage|lu-usage|base|3e-6"
     "data/train/library_usage|lu-target|base|3e-6"
     # done (qwen3-8b) - the shaping-weight ablations
