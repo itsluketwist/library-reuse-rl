@@ -119,3 +119,37 @@ kimi-k3:
   base_url: "https://api.moonshot.cn/v1"
   api_key_env: "MOONSHOT_API_KEY"
   path:
+
+# frontier baselines run through the mistral api, all with high reasoning effort (original
+# export in git commit 52076df). results are in
+# output/baselines/{key}/ under the default_32k decoding profile
+mistral-large-4:
+  provider: api
+  base: "mistral-large-4"
+  base_url: "https://api.mistral.ai/v1"
+  api_key_env: "MISTRAL_API_KEY"
+  extra_params:
+    reasoning_effort: "high"
+  max_workers: 8
+  path:
+
+glm-5.3:
+  provider: api
+  base: "zai-glm-5-3"
+  base_url: "https://api.mistral.ai/v1"
+  api_key_env: "MISTRAL_API_KEY"
+  extra_params:
+    reasoning_effort: "high"
+  max_workers: 4
+  path:
+
+# the same flash model as deepseek-flash above, but a dated version served by mistral
+deepseek-v4.1-flash:
+  provider: api
+  base: "deepseek-v4-1-flash-1017"
+  base_url: "https://api.mistral.ai/v1"
+  api_key_env: "MISTRAL_API_KEY"
+  extra_params:
+    reasoning_effort: "high"
+  max_workers: 4
+  path:

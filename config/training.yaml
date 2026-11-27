@@ -64,6 +64,14 @@ eval_decoding_profiles:
     top_k: 0  # disabled
     max_new_tokens: 16384
     enable_thinking: true
+  # the frontier api baselines (mistral-large-4, glm-5.3, deepseek-v4.1-flash), run with high
+  # reasoning effort, which can need more than 16k tokens
+  default_32k:
+    temperature: 1.0
+    top_p: 1.0
+    top_k: 0  # disabled
+    max_new_tokens: 32768
+    enable_thinking: true
   greedy:
     temperature: 0.0
     top_p: 1.0

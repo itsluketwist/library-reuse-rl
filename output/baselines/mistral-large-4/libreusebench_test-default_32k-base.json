@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "base": "mistral/deepseek-v4-1-flash-1017",
+    "base": "mistral/mistral-large-4",
     "weights": null,
     "provider": "api",
     "dataset": "libreusebench_test",
@@ -31,7 +31,6 @@
       "evaluation": null,
       "model_load": null
     },
-    "replica": null,
     "repo_commit": "77b898c96d54e1ea65c1ea7a5e88061820f6fac7",
     "export_provenance": "Schema-adapted export of the streaming-runner campaign; native grading fields retained. Not an original run_eval.py output.",
     "connection_metadata": "Endpoint, credentials, response headers and local execution paths omitted.",
@@ -41,76 +40,64 @@
     "n_tasks": 216,
     "n_responses": 1080,
     "k": 5,
-    "pass@1": 0.9916666666666666,
-    "pass@k": 0.9953703703703703,
+    "pass@1": 0.9453703703703703,
+    "pass@k": 0.9907407407407407,
     "library_use": {
       "imported": {
         "per_task": {
-          "using_lib_rate": 0.046296296296296294,
-          "avg_extlibs": 0.05555555555555555,
+          "using_lib_rate": 0.032407407407407406,
+          "avg_extlibs": 0.032407407407407406,
           "library_counts": {
-            "numpy": 5,
-            "dateutil": 2,
+            "numpy": 4,
             "geographiclib": 1,
-            "geopy": 1,
-            "yaml": 1,
-            "sklearn": 1,
-            "scipy": 1
+            "dateutil": 1,
+            "yaml": 1
           }
         },
         "per_response": {
-          "using_lib_rate": 0.03425925925925926,
-          "avg_extlibs": 0.03518518518518519,
+          "using_lib_rate": 0.019444444444444445,
+          "avg_extlibs": 0.019444444444444445,
           "library_counts": {
-            "numpy": 16,
-            "dateutil": 8,
+            "numpy": 9,
             "yaml": 5,
             "geographiclib": 4,
-            "scipy": 2,
-            "sklearn": 2,
-            "geopy": 1
+            "dateutil": 3
           }
         }
       },
       "used": {
         "per_task": {
-          "using_lib_rate": 0.046296296296296294,
-          "avg_extlibs": 0.05555555555555555,
+          "using_lib_rate": 0.032407407407407406,
+          "avg_extlibs": 0.032407407407407406,
           "library_counts": {
-            "numpy": 5,
-            "dateutil": 2,
+            "numpy": 4,
             "geographiclib": 1,
-            "geopy": 1,
-            "yaml": 1,
-            "sklearn": 1,
-            "scipy": 1
+            "dateutil": 1,
+            "yaml": 1
           }
         },
         "per_response": {
-          "using_lib_rate": 0.03425925925925926,
-          "avg_extlibs": 0.03518518518518519,
+          "using_lib_rate": 0.019444444444444445,
+          "avg_extlibs": 0.019444444444444445,
           "library_counts": {
-            "numpy": 16,
-            "dateutil": 8,
+            "numpy": 9,
             "yaml": 5,
             "geographiclib": 4,
-            "scipy": 2,
-            "sklearn": 2,
-            "geopy": 1
+            "dateutil": 3
           }
         }
       }
     },
     "code_metrics": {
       "all": {
-        "n_measured": 1079,
-        "avg_lloc": 32.0129749768304,
-        "avg_maintainability_index": 57.57915636677394
+        "n_measured": 1048,
+        "avg_lloc": 30.313931297709924,
+        "avg_maintainability_index": 66.21069621886664
       },
       "passed": {
-        "n_measured": 1071,
-        "avg_lloc": 31.95704948646125,
-        "avg_maintainability_index": 57.57474121249442
+        "n_measured": 1021,
+        "avg_lloc": 30.02154750244858,
+        "avg_maintainability_index": 66.20615370903201
       }
     },
     "not_run": {
@@ -122,21 +109,21 @@
       "tiers": {
         "low": {
           "n_tasks": 58,
-          "pass@1": 1.0,
+          "pass@1": 0.9793103448275862,
           "library_use": 0.006896551724137931
         },
         "medium": {
           "n_tasks": 106,
-          "pass@1": 0.9849056603773585,
-          "library_use": 0.035849056603773584
+          "pass@1": 0.9547169811320755,
+          "library_use": 0.01509433962264151
         },
         "high": {
           "n_tasks": 52,
-          "pass@1": 0.9961538461538461,
-          "library_use": 0.06153846153846154
+          "pass@1": 0.8884615384615385,
+          "library_use": 0.04230769230769231
         }
       },
-      "high_value_library_use": 0.06153846153846154
+      "high_value_library_use": 0.04230769230769231
     },
     "task": "libreusebench",
     "n_total": 1080,
@@ -147,6 +134,7 @@
         "installed_packages": [
           "PyYAML",
           "beautifulsoup4",
+          "geographiclib",
           "geopy",
           "levenshtein",
           "lxml",
@@ -262,9 +250,10 @@
             "yaml"
           ],
           "beautifulsoup4": [],
-          "geopy": [
-            "geopy"
+          "geographiclib": [
+            "geographiclib"
           ],
+          "geopy": [],
           "levenshtein": [],
           "lxml": [],
           "matplotlib": [],
@@ -278,8 +267,7 @@
           "prettytable": [],
           "pyquery": [],
           "python-dateutil": [
-            "dateutil",
-            "python-dateutil"
+            "dateutil"
           ],
           "pytz": [],
           "pyyaml": [],
@@ -435,13 +423,13 @@
             "dateutil"
           ],
           "pytz": [],
-          "pyyaml": [],
+          "pyyaml": [
+            "pyyaml"
+          ],
           "regex": [],
           "rsa": [],
           "scikit-learn": [],
-          "scipy": [
-            "scipy"
-          ],
+          "scipy": [],
           "statsmodels": [],
           "sympy": [],
           "textblob": [],
@@ -476,6 +464,7 @@
           "statsmodels",
           "sympy",
           "textblob",
+          "tzdata",
           "xmltodict"
         ],
         "install_failed": [],
@@ -586,21 +575,19 @@
           "pandas": [],
           "prettytable": [],
           "pyquery": [],
-          "python-dateutil": [
-            "dateutil",
-            "python-dateutil"
-          ],
+          "python-dateutil": [],
           "pytz": [],
           "pyyaml": [],
           "regex": [],
           "rsa": [],
-          "scikit-learn": [
-            "sklearn"
-          ],
+          "scikit-learn": [],
           "scipy": [],
           "statsmodels": [],
           "sympy": [],
           "textblob": [],
+          "tzdata": [
+            "tzdata"
+          ],
           "xmltodict": []
         }
       },
@@ -610,7 +597,6 @@
         "installed_packages": [
           "PyYAML",
           "beautifulsoup4",
-          "geographiclib",
           "geopy",
           "levenshtein",
           "lxml",
@@ -726,9 +712,6 @@
             "yaml"
           ],
           "beautifulsoup4": [],
-          "geographiclib": [
-            "geographiclib"
-          ],
           "geopy": [],
           "levenshtein": [],
           "lxml": [],
@@ -742,18 +725,13 @@
           "pandas": [],
           "prettytable": [],
           "pyquery": [],
-          "python-dateutil": [
-            "dateutil",
-            "python-dateutil"
-          ],
+          "python-dateutil": [],
           "pytz": [],
           "pyyaml": [],
           "regex": [],
           "rsa": [],
           "scikit-learn": [],
-          "scipy": [
-            "scipy"
-          ],
+          "scipy": [],
           "statsmodels": [],
           "sympy": [],
           "textblob": [],
@@ -906,9 +884,7 @@
           "pyyaml": [],
           "regex": [],
           "rsa": [],
-          "scikit-learn": [
-            "sklearn"
-          ],
+          "scikit-learn": [],
           "scipy": [],
           "statsmodels": [],
           "sympy": [],
@@ -916,13 +892,7 @@
           "xmltodict": []
         }
       }
-    }
-  },
-  "generation_files": [
-    "raw/deepseek_flash/replica_1/libreusebench_test-high_t1_p1_32k-base.generations.jsonl",
-    "raw/deepseek_flash/replica_2/libreusebench_test-high_t1_p1_32k-base.generations.jsonl",
-    "raw/deepseek_flash/replica_3/libreusebench_test-high_t1_p1_32k-base.generations.jsonl",
-    "raw/deepseek_flash/replica_4/libreusebench_test-high_t1_p1_32k-base.generations.jsonl",
-    "raw/deepseek_flash/replica_5/libreusebench_test-high_t1_p1_32k-base.generations.jsonl"
-  ]
+    },
+    "results_file": "libreusebench_test-default_32k-base.json"
+  }
 }

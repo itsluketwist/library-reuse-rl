@@ -169,14 +169,14 @@ python scripts/summarize_eval.py
 ### *api-served models*
 
 A saved [LibReuseBench comparison of ML4, GLM-5.3 and DeepSeek Flash across direct
-API calls, Vibe and mini-swe](benchmark/results/api-harness-comparison-20261120/README.md)
+API calls, Vibe and mini-swe](output/05_harness_ablation/README.md)
 includes per-task submissions, corrected library-use metrics, token statistics,
 source/runtime audits, plots and regeneration instructions.
 
-The follow-up [five-replica non-agentic comparison](benchmark/results/nonagentic-five-replicas-20261125/README.md)
-uses high reasoning, temperature 1 and top-p 1 for all three models. It includes
-3,240 full accepted generations with thinking text, paired native-format analysis
-files, pooled and per-replica results, and reproducible summaries.
+A follow-up non-agentic run of the same three models (high reasoning, temperature 1,
+top-p 1, five samples per task) is saved as baselines under the `default_32k` decoding
+profile, in `output/baselines/{mistral-large-4,glm-5.3,deepseek-v4.1-flash}/`. Its
+original per-replica export is in the git history (commit 52076df).
 
 Models can be evaluated over an OpenAI-compatible API instead of local weights, by giving
 their `config/models.yaml` entry `provider: api` and an `api_key_env` naming the `.env`
